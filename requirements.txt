@@ -1,0 +1,12 @@
+opencv-python
+pandas
+easydict
+tqdm
+matplotlib
+numpy
+albumentations[imgaug]
+pyyaml
+scikit-learn
+wandb
+timm
+umap-learn

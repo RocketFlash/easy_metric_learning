@@ -1,0 +1,53 @@
+GENERAL:
+    RANDOM_STATE : 28
+    DEBUG : False
+    DEVICE: 0
+    USE_WANDB : True
+
+DATA:
+    DIR: "/home/rauf/datasets/retechlabs/holes_detection/"
+    SPLIT_FILE: "/home/rauf/datasets/retechlabs/holes_detection/folds.csv"
+    # LABELS_TO_IDS_FILE : "/home/rauf/datasets/retechlabs/metric_learning/sirajul_dataset/train_set/labels_to_ids.json"
+    # IDS_TO_LABELS_FILE : "/home/rauf/datasets/retechlabs/metric_learning/sirajul_dataset/train_set/ids_to_labels.json"
+    FOLD: 0
+    IMG_SIZE: 256
+    BATCH_SIZE: 32
+    WORKERS: 8
+
+OPTIMIZER:
+    OPTIMIZER_TYPE: 'adam'
+    LR: 1e-5
+    MOMENTUM: 0.9
+    WEIGHT_DECAY: 0.0
+
+    SHEDULER_TYPE: 'cosine'
+    T_MAX: 50
+    ETA_MIN: 1e-7
+
+MODEL:
+    ENCODER_NAME: 'efficientnet_b0'
+    MARGIN_TYPE: 'arcface'
+    EMBEDDINGS_SIZE: 512
+    SCALE_SIZE : 64
+    M : 1
+
+TRAIN:
+    LOSS_TYPE : 'cross_entropy'
+    CALCULATE_GAP : True
+    FOCAL_GAMMA : 0.1
+    EPOCHS : 50
+    RESUME : 
+    FREEZE_BACKBONE : False
+    AUG_TYPE: 'super_soft'
+    LOAD_WEIGHTS: 
+    AUTO_SCALE_SIZE : False
+    DROPOUT_PROB : 0.2
+    LS_PROB : 0.1
+
+TEST:
+    WEIGHTS: '/home/rauf/retechlabs/metric_learning/metric_learning/work_dirs/arcface_efficientnet_b0_fold0_holes/best_emb.pt'
+    EMBEDDINGS_SAVE_PATH : '/home/rauf/retechlabs/metric_learning/metric_learning/work_dirs/arcface_efficientnet_b0_fold0_holes/'
+
+MISC:
+    RUN_INFO: 'holes'
+    TMP: "./work_dirs/"

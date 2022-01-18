@@ -1,0 +1,53 @@
+GENERAL:
+    RANDOM_STATE : 28
+    DEBUG : False
+    DEVICE: 0
+    USE_WANDB : True
+
+DATA:
+    DIR: "/home/rkuleev/dataset/retech/metric_learning/rebotics/"
+    SPLIT_FILE: "/home/rkuleev/dataset/retech/metric_learning/rebotics/folds.csv"
+    LABELS_TO_IDS_FILE : "/home/rkuleev/dataset/retech/metric_learning/rebotics/labels_to_ids.json"
+    IDS_TO_LABELS_FILE : "/home/rkuleev/dataset/retech/metric_learning/rebotics/ids_to_labels.json"
+    FOLD: 0
+    IMG_SIZE: 512
+    BATCH_SIZE: 8
+    WORKERS: 8
+
+OPTIMIZER:
+    OPTIMIZER_TYPE: 'adam'
+    LR: 2e-4
+    MOMENTUM: 0.9
+    WEIGHT_DECAY: 0.0
+
+    SHEDULER_TYPE: 'cosine'
+    T_MAX: 30
+    ETA_MIN: 1e-5
+
+MODEL:
+    ENCODER_NAME: 'efficientnet_b0'
+    MARGIN_TYPE: 'arcface'
+    EMBEDDINGS_SIZE: 512
+    SCALE_SIZE : 30
+    M : 0.1
+
+TRAIN:
+    LOSS_TYPE : 'cross_entropy'
+    CALCULATE_GAP : True
+    FOCAL_GAMMA : 0.1
+    EPOCHS : 30
+    RESUME : 
+    FREEZE_BACKBONE : False
+    AUG_TYPE: 'soft'
+    LOAD_WEIGHTS: 
+    AUTO_SCALE_SIZE : True
+    DROPOUT_PROB : 0.1
+    LS_PROB : 0.1
+
+TEST:
+    WEIGHTS: 
+    EMBEDDINGS_SAVE_PATH : 
+
+MISC:
+    RUN_INFO: 'from_paper_m_0_1_s_auto'
+    TMP: "./work_dirs/"
