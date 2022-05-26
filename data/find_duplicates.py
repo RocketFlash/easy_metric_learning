@@ -8,6 +8,7 @@ from multiprocessing import Pool
 from multiprocessing import cpu_count
 import os
 import pickle
+import argparse
 
 
 def process_images(payload):
@@ -17,13 +18,16 @@ def process_images(payload):
 
     for imagePath in payload["input_paths"]:
         # load the input image, compute the hash, and conver it
-        image = cv2.imread(str(imagePath))
-        h = dhash(image)
-        h = convert_hash(h)
-        # update the hashes dictionary
-        l = hashes.get(h, [])
-        l.append(imagePath)
-        hashes[h] = l
+        try:
+            image = cv2.imread(str(imagePath))
+            h = dhash(image)
+            h = convert_hash(h)
+            # update the hashes dictionary
+            l = hashes.get(h, [])
+            l.append(imagePath)
+            hashes[h] = l
+        except:
+            print(f'Can not read image {str(imagePath)}')
 
     print("[INFO] process {} serializing hashes".format(payload["id"]))
     f = open(payload["output_path"], "wb")
@@ -78,22 +82,36 @@ def combine_hashes(hashes_path):
 
 
 if __name__ == '__main__':
-    DATASET_PATH = Path('/home/rauf/datasets/retechlabs/metric_learning/sirajul_dataset/test_set/')
+
+    parser = argparse.ArgumentParser(description='find dublicates')
+    # arguments from command line
+    parser.add_argument('--dataset_path', default="./", help="path to the dataset")
+    parser.add_argument('--hashes_save_path', default="./", help='path to the hashes save directory')
+
+    parser.add_argument('--no_hashes', action='store_true', help='do not calculate hashes (use it in case you already calculated and saved hashes)')
+
+    parser.add_argument('--save_duplicates', action='store_true', help='visualize duplicates')
+    parser.add_argument('--delete_duplicates', action='store_true', help='delete duplicates')
+    args = parser.parse_args()
+
+    DATASET_PATH = Path(args.dataset_path)
     CLASSES_FOLDER_PATHS = sorted(list(DATASET_PATH.glob('*/')))
-    HASHES_PATH = Path('/home/rauf/datasets/retechlabs/metric_learning/sirajul_dataset/test_set_hashes/')
+    HASHES_PATH = Path(args.hashes_save_path)
     HASHES_PATH.mkdir(exist_ok=True)
     
-    EXT = '.png'
-    CALCULATE_HASHES = True
-    COMBINE_HASHES = True
-    SAVE_DUBLICATES_VISUALIZATION = False
-    DELETE_DUBLICATES = False
+    CALCULATE_HASHES = not args.no_hashes
+    COMBINE_HASHES = not args.no_hashes
+    SAVE_DUBLICATES_VISUALIZATION = args.save_duplicates
+    DELETE_DUBLICATES = args.delete_duplicates
 
     image_paths = []
 
     if CALCULATE_HASHES:
         for class_folder_path in tqdm(CLASSES_FOLDER_PATHS):
-            images = sorted(list(class_folder_path.glob(f'*{EXT}')))
+            images = sorted([l for l in list(class_folder_path.glob('*.jpeg')) + \
+                           list(class_folder_path.glob('*.jpg')) + \
+                           list(class_folder_path.glob('*.png'))])
+
             for img in images:
                 image_paths.append(str(img))
         run_hashes_calculation(image_paths, hashes_path=HASHES_PATH)

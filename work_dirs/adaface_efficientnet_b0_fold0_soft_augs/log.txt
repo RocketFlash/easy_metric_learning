@@ -1,0 +1,72 @@
+2022-05-27 00:16:55,708 INFO {
+    "GENERAL": {
+        "RANDOM_STATE": 28,
+        "DEBUG": false,
+        "DEVICE": 0,
+        "USE_WANDB": true
+    },
+    "DATA": {
+        "DIR": "/home/rauf/datasets/object_recognition/train_set/",
+        "SPLIT_FILE": "/home/rauf/datasets/object_recognition/train_set/folds.csv",
+        "LABELS_TO_IDS_FILE": "/home/rauf/datasets/object_recognition/train_set/labels_to_ids.json",
+        "IDS_TO_LABELS_FILE": "/home/rauf/datasets/object_recognition/train_set/ids_to_labels.json",
+        "FOLD": 0,
+        "IMG_SIZE": 170,
+        "BATCH_SIZE": 32,
+        "WORKERS": 8
+    },
+    "OPTIMIZER": {
+        "OPTIMIZER_TYPE": "adam",
+        "LR": 0.001,
+        "MOMENTUM": 0.9,
+        "WEIGHT_DECAY": 0.0,
+        "SHEDULER_TYPE": "cosine",
+        "T_MAX": 50,
+        "ETA_MIN": "1e-5"
+    },
+    "MODEL": {
+        "ENCODER_NAME": "efficientnet_b0",
+        "MARGIN_TYPE": "adaface",
+        "EMBEDDINGS_SIZE": 512,
+        "SCALE_SIZE": 64,
+        "M": 0.5,
+        "K": 10,
+        "DYNAMIC_MARGIN_HB": 0.5,
+        "DYNAMIC_MARGIN_LB": 0.05,
+        "DYNAMIC_MARGIN_LAMBDA": null
+    },
+    "TRAIN": {
+        "LOSS_TYPE": "cross_entropy",
+        "CALCULATE_GAP": true,
+        "FOCAL_GAMMA": 0.1,
+        "EPOCHS": 50,
+        "RESUME": null,
+        "FREEZE_BACKBONE": false,
+        "AUG_TYPE": "super_soft",
+        "LOAD_WEIGHTS": null,
+        "AUTO_SCALE_SIZE": true,
+        "DROPOUT_PROB": 0.2,
+        "LS_PROB": 0.1
+    },
+    "TEST": {
+        "WEIGHTS": null,
+        "EMBEDDINGS_SAVE_PATH": null
+    },
+    "MISC": {
+        "RUN_INFO": "soft_augs",
+        "TMP": "./work_dirs/",
+        "RUN_NAME": "adaface_efficientnet_b0_fold0_soft_augs",
+        "WORK_DIR": "./work_dirs/adaface_efficientnet_b0_fold0_soft_augs"
+    }
+}
+2022-05-27 00:17:01,278 INFO 
+    ============   TRAINING PARAMETERS   ============
+    Total N classes           : 104349
+    Total N classes train     : 99888
+    Total N classes valid     : 71563
+    Total N samples           : 876461
+    Total N training samples  : 701168
+    Total N validation samples: 175293
+    Scale size s              : 16.28
+    Margin m                  : 0.5
+    =================================================

@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 import json
 from utils import get_labels_to_ids_map, get_stratified_kfold
+import argparse
 
 def make_all_training(df):
     train_df = df
@@ -20,17 +21,26 @@ def make_all_testing(df):
 
 
 if __name__ == '__main__':
-    DATASET_PATH = Path('/home/rauf/datasets/retechlabs/metric_learning/final_test/products_images/')
+    parser = argparse.ArgumentParser(description='find dublicates')
+    # arguments from command line
+    parser.add_argument('--dataset_path', default="./", help="path to the dataset")
+    parser.add_argument('--k', default=5, help="number of folds")
+    parser.add_argument('--random_seed', default=28, help='random seed')
+
+    args = parser.parse_args()
+
+    DATASET_PATH = Path(args.dataset_path)
     CLASSES_FOLDER_PATHS = sorted(list(DATASET_PATH.glob('*/')))
     
-    RANDOM_STATE = 28
-    EXT = '.png'
+    RANDOM_STATE = args.random_seed
     
     labels = []
     image_names = []
 
     for class_folder_path in CLASSES_FOLDER_PATHS:
-        images = sorted(list(class_folder_path.glob(f'*{EXT}')))
+        images = sorted([l for l in list(class_folder_path.glob('*.jpeg')) + \
+                           list(class_folder_path.glob('*.jpg')) + \
+                           list(class_folder_path.glob('*.png'))])
         label = class_folder_path.name
         for img in images:
             labels.append(label)    
@@ -47,7 +57,7 @@ if __name__ == '__main__':
     df = pd.DataFrame(list(zip(image_names, labels)), columns =['file_name', 'label'])
     df['label_id'] = df['label'].map(labels_to_ids)
 
-    df = get_stratified_kfold(df, k=2, random_state=28)
+    df = get_stratified_kfold(df, k=args.k, random_state=RANDOM_STATE)
     df.to_csv(DATASET_PATH / 'folds.csv', index=False)
 
     print(df)

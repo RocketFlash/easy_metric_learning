@@ -10,3 +10,5 @@ scikit-learn
 wandb
 timm
 umap-learn
+plotly
+kaleido

@@ -1,21 +1,17 @@
 import os
 import argparse
-from os.path import isfile, join, split
+from os.path import isfile
 from shutil import copyfile
 
 import numpy as np
 import torch
-import torch.nn as nn
 from torch.cuda import amp
-import torchvision
 import time
 import json
 from pathlib import Path
 
-from tqdm.auto import tqdm
 from src.dataloader import get_loader
 from src.model import get_model
-from src.metrics import accuracy, GAP
 from src.losses import get_loss
 from src.optimizers import get_optimizer
 from src.schedulers import get_scheduler
@@ -23,8 +19,8 @@ from src.schedulers import get_scheduler
 from src.utils import load_ckp, save_ckp
 from src.utils import load_config, Logger, get_train_val_split
 
-from src.utils import AverageMeter, seed_everything
-from src.utils import calculate_time, batch_grid
+from src.utils import  seed_everything, calculate_time
+from src.trainer import MLTrainer
 
 WANDB_AVAILABLE = False    
 try:
@@ -33,104 +29,6 @@ try:
 except ModuleNotFoundError:
     print('wandb is not installed')
 
-
-def train_epoch(model, train_loader, optimizer, scaler, loss_func, device='cpu', epoch=0, DEBUG=False):
-    model.train()
-
-    train_loss = AverageMeter()
-    train_acc = AverageMeter()
-    
-    tqdm_train = tqdm(train_loader, total=int(len(train_loader)))
-    images_wdb = []
-
-    for batch_index, (data, targets) in enumerate(tqdm_train):
-        batch_size = data.size(0)
-
-        if DEBUG and batch_index>=10: break
-
-        if not DEBUG and WANDB_AVAILABLE:
-            if epoch == 0 and batch_index < 3:
-                image_grid = batch_grid(data)
-                save_path = os.path.join(CONFIGS["MISC"]['WORK_DIR'], f'train_batch_{batch_index}.png')
-                torchvision.utils.save_image(image_grid, save_path)
-                images_wdb.append(wandb.Image(save_path, caption=f'train_batch_{batch_index}'))
-
-        data = data.to(device)
-        targets = targets.to(device)
-
-        optimizer.zero_grad()
-
-        with amp.autocast(enabled=True):
-            output = model(data, targets)
-            loss = loss_func(output, targets)
-            acc = accuracy(output, targets) * 100
-        
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-        scaler.update()
-
-        train_loss.update(loss.detach().item(), batch_size)
-        train_acc.update(acc)
-
-        tqdm_train.set_postfix(epoch=epoch, train_loss=train_loss.avg ,
-                                            train_acc=train_acc.avg,
-                                            lr=optimizer.param_groups[0]['lr'])
-
-    return train_loss, train_acc, images_wdb
-
-
-def valid_epoch(model, valid_loader, loss_func, device='cpu', epoch=0, calculate_GAP=True, DEBUG=False):
-    model.eval()
-
-    valid_loss = AverageMeter()
-    valid_acc = AverageMeter()
-
-    activation = nn.Softmax(dim=1)
-
-    tqdm_val = tqdm(valid_loader, total=int(len(valid_loader)))
-    vals_gt, vals_pred, vals_conf = [], [], []
-    images_wdb = []
-
-    with torch.no_grad():
-        for batch_index, (data, targets) in enumerate(tqdm_val):
-            batch_size = data.size(0)
-            if DEBUG and batch_index>10: break
-
-            if not DEBUG and WANDB_AVAILABLE:
-                if epoch == 0 and batch_index < 3:
-                    image_grid = batch_grid(data)
-                    save_path = os.path.join(CONFIGS["MISC"]['WORK_DIR'], f'valid_batch_{batch_index}.png')
-                    torchvision.utils.save_image(image_grid, save_path)
-                    images_wdb.append(wandb.Image(save_path, caption=f'valid_batch_{batch_index}'))
-
-            data = data.to(device)
-            targets = targets.to(device)
-            
-            output = model(data, targets)
-
-            if calculate_GAP:
-                output_probs = activation(output)
-                confs, pred = torch.max(output_probs, dim=1)
-
-                vals_conf.extend(confs.cpu().numpy().tolist())
-                vals_pred.extend(pred.cpu().numpy().tolist())
-                vals_gt.extend(targets.cpu().numpy().tolist())
-
-            loss = loss_func(output, targets)
-            acc = accuracy(output, targets) * 100
-
-            valid_loss.update(loss.detach().item(), batch_size)
-            valid_acc.update(acc)
-            tqdm_val.set_postfix(epoch=epoch, 
-                                 val_acc=valid_acc.avg,
-                                 val_loss=valid_loss.avg)
-    
-    gap_val = None
-    if calculate_GAP:
-        gap_val = GAP(vals_pred, vals_conf, vals_gt)
-        print(f'GAP value: {gap_val}')
-
-    return valid_loss, valid_acc, gap_val, images_wdb
 
 
 def train(CONFIGS):
@@ -212,27 +110,18 @@ def train(CONFIGS):
                       K=CONFIGS['MODEL']['K'],
                       easy_margin=False,
                       ls_eps=CONFIGS['TRAIN']['LS_PROB'])
-
     model = model.to(device)
 
-
-    train_loss_func = get_loss(CONFIGS['TRAIN']['LOSS_TYPE'], 
+    loss_func = get_loss(CONFIGS['TRAIN']['LOSS_TYPE'], 
                                 gamma=CONFIGS['TRAIN']['FOCAL_GAMMA'],
                                 num_classes=total_n_classes)
-    train_loss_func = train_loss_func.to(device)
-    test_loss_func = get_loss('cross_entropy')
+    loss_func = loss_func.to(device)
     
-
-    # optimizer
     optimizer = get_optimizer(model, CONFIGS["OPTIMIZER"])
-
-    # learning rate scheduler
     scheduler = get_scheduler(optimizer, CONFIGS["OPTIMIZER"])
-
 
     best_loss = 100
     if CONFIGS['TRAIN']['RESUME'] is not None:
-
         logger.info('Resume training from: {}'.format(CONFIGS['TRAIN']['RESUME']))
         model, optimizer, start_epoch, best_loss = load_ckp(CONFIGS['TRAIN']['RESUME'], model, optimizer)
     
@@ -250,49 +139,48 @@ def train(CONFIGS):
         wandb.watch(model)
 
     metrics = {}
-    scaler = amp.GradScaler(enabled=True)
+    scaler = amp.GradScaler(enabled=True) if device != 'cpu' else None
 
     if model.margin.m != margin_m:
         model.margin.update(margin_m)
 
+    trainer = MLTrainer(model=model, 
+                        optimizer=optimizer, 
+                        loss_func=loss_func, 
+                        logger=logger, 
+                        configs=CONFIGS, 
+                        device=device, 
+                        epoch=start_epoch, 
+                        amp_scaler=scaler,
+                        wandb_available=WANDB_AVAILABLE, 
+                        is_debug=CONFIGS['GENERAL']['DEBUG'])
+
     start_time = time.time()
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):
-        train_loss, train_acc, images_wdb_train = train_epoch(model, train_loader, 
-                                                                optimizer, 
-                                                                scaler, 
-                                                                loss_func=train_loss_func,
-                                                                device=device,
-                                                                epoch=epoch, 
-                                                                DEBUG=CONFIGS['GENERAL']['DEBUG'])
-        
+        train_loss, train_acc, images_wdb_train = trainer.train_epoch(train_loader)
         save_ckp(last_cpk_save_path, model, epoch, optimizer, best_loss)
         
-        metrics['train_loss'] = train_loss.avg
-        metrics['train_acc'] = train_acc.avg
+        metrics['train_loss'] = train_loss
+        metrics['train_acc'] = train_acc
         metrics['learning_rate'] = optimizer.param_groups[0]['lr']
         
         epoch_info_str = f'Epoch: {epoch} Training Loss: {train_loss.avg:.5f} Training Acc: {train_acc.avg:.5f}\n'
         
-        valid_loss, valid_acc, gap_val, images_wdb_valid = valid_epoch(model,valid_loader, 
-                                                                    loss_func=test_loss_func, 
-                                                                    epoch=epoch, 
-                                                                    device=device,
-                                                                    calculate_GAP=CONFIGS['TRAIN']['CALCULATE_GAP'], 
-                                                                    DEBUG=CONFIGS['GENERAL']['DEBUG'])
+        valid_loss, valid_acc, gap_val, images_wdb_valid = trainer.valid_epoch(model,valid_loader)
 
         if images_wdb_train and images_wdb_valid:
             metrics["training batch"] = images_wdb_train
             metrics["validation batch"] = images_wdb_valid
 
-        metrics['valid_loss'] = valid_loss.avg
-        metrics['valid_acc'] = valid_acc.avg
+        metrics['valid_loss'] = valid_loss
+        metrics['valid_acc'] = valid_acc
         if gap_val is not None: metrics['gap_val'] = gap_val
 
         scheduler.step()
 
-        if valid_loss.avg < best_loss:
+        if valid_loss < best_loss:
             logger.info('Saving best model')
-            best_loss = valid_loss.avg
+            best_loss = valid_loss
             save_ckp(best_cpk_save_path, model, epoch, optimizer, best_loss)
             save_ckp(best_embeddings_cpk_save_path, model.embeddings_net, emb_model_only=True)
 
@@ -300,8 +188,6 @@ def train(CONFIGS):
         
         if CONFIGS['GENERAL']['USE_WANDB'] and not CONFIGS['GENERAL']['DEBUG']:
             wandb.log(metrics, step=epoch)
-
-            # print training/validation statistics
             logger.info(epoch_info_str)
 
 

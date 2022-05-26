@@ -5,13 +5,14 @@ GENERAL:
     USE_WANDB : True
 
 DATA:
-    DIR: "/home/rkuleev/dataset/retech/metric_learning/rebotics/"
-    SPLIT_FILE: "/home/rkuleev/dataset/retech/metric_learning/rebotics/folds.csv"
-    LABELS_TO_IDS_FILE : "/home/rkuleev/dataset/retech/metric_learning/rebotics/labels_to_ids.json"
-    IDS_TO_LABELS_FILE : "/home/rkuleev/dataset/retech/metric_learning/rebotics/ids_to_labels.json"
+    DIR: "/home/rauf/datasets/object_recognition/train_set/"
+    SPLIT_FILE: "/home/rauf/datasets/object_recognition/train_set/folds.csv"
+    LABELS_TO_IDS_FILE : "/home/rauf/datasets/object_recognition/train_set/labels_to_ids.json"
+    IDS_TO_LABELS_FILE : "/home/rauf/datasets/object_recognition/train_set/ids_to_labels.json"
+    
     FOLD: 0
-    IMG_SIZE: 512
-    BATCH_SIZE: 16
+    IMG_SIZE: 170
+    BATCH_SIZE: 32
     WORKERS: 8
 
 OPTIMIZER:
@@ -25,11 +26,15 @@ OPTIMIZER:
     ETA_MIN: 1e-5
 
 MODEL:
-    ENCODER_NAME: 'efficientnet_b1'
-    MARGIN_TYPE: 'arcface'
+    ENCODER_NAME: 'efficientnet_b0'
+    MARGIN_TYPE: 'adaface'
     EMBEDDINGS_SIZE: 512
     SCALE_SIZE : 64
-    M : 0.0001
+    M : 0.5
+    K : 10
+    DYNAMIC_MARGIN_HB : 0.5
+    DYNAMIC_MARGIN_LB : 0.05
+    DYNAMIC_MARGIN_LAMBDA : 
 
 TRAIN:
     LOSS_TYPE : 'cross_entropy'
