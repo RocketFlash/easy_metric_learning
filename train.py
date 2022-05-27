@@ -86,23 +86,32 @@ def train(CONFIGS):
     else:
         margin_m = CONFIGS['MODEL']['M']
 
+    encoder_type = CONFIGS['MODEL']['ENCODER_NAME']
+    margin_type = CONFIGS['MODEL']['MARGIN_TYPE']
+    embeddings_size = CONFIGS['MODEL']['EMBEDDINGS_SIZE']
+
     logger.info(f'''
-    ============   TRAINING PARAMETERS   ============
+    ============   DATA INFO             ============
     Total N classes           : {total_n_classes}
     Total N classes train     : {train_n_classes}
     Total N classes valid     : {valid_n_classes}
     Total N samples           : {total_n_samples}
     Total N training samples  : {train_n_samples}
     Total N validation samples: {valid_n_samples}
+
+    ============   TRAINING PARAMETERS   ============
+    Encoder type              : {encoder_type}
+    Margin type               : {margin_type}
+    Embeddings size           : {embeddings_size}
     Scale size s              : {scale_size:.2f}
     Margin m                  : {margin_m if not isinstance(margin_m, dict) else 'dynamic'}
     =================================================''')
 
     device = torch.device(CONFIGS['GENERAL']['DEVICE']) 
 
-    model = get_model(model_name=CONFIGS['MODEL']['ENCODER_NAME'], 
-                      margin_type=CONFIGS['MODEL']['MARGIN_TYPE'],
-                      embeddings_size=CONFIGS['MODEL']['EMBEDDINGS_SIZE'],   
+    model = get_model(model_name=encoder_type, 
+                      margin_type=margin_type,
+                      embeddings_size=embeddings_size,   
                       dropout=CONFIGS['TRAIN']['DROPOUT_PROB'],
                       out_features=total_n_classes,
                       scale_size=scale_size,
@@ -164,7 +173,7 @@ def train(CONFIGS):
         metrics['train_acc'] = train_acc
         metrics['learning_rate'] = optimizer.param_groups[0]['lr']
         
-        epoch_info_str = f'Epoch: {epoch} Training Loss: {train_loss.avg:.5f} Training Acc: {train_acc.avg:.5f}\n'
+        epoch_info_str = f'Epoch: {epoch} Training Loss: {train_loss:.5f} Training Acc: {train_acc:.5f}\n'
         
         valid_loss, valid_acc, gap_val, images_wdb_valid = trainer.valid_epoch(model,valid_loader)
 
@@ -184,7 +193,7 @@ def train(CONFIGS):
             save_ckp(best_cpk_save_path, model, epoch, optimizer, best_loss)
             save_ckp(best_embeddings_cpk_save_path, model.embeddings_net, emb_model_only=True)
 
-        epoch_info_str += f'         Validation Loss: {valid_loss.avg:.5f} Validation Acc: {valid_acc.avg:.5f}'
+        epoch_info_str += f'         Validation Loss: {valid_loss:.5f} Validation Acc: {valid_acc:.5f}'
         
         if CONFIGS['GENERAL']['USE_WANDB'] and not CONFIGS['GENERAL']['DEBUG']:
             wandb.log(metrics, step=epoch)

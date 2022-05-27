@@ -59,7 +59,7 @@ class MLTrainer:
                 with amp.autocast(enabled=True):
                     output = self.model(data, targets)
                     loss = self.loss_func(output, targets)
-                    acc = accuracy(output, targets) * 100
+                    acc = accuracy(output, targets)
                 
                 self.amp_scaler.scale(loss).backward()
                 self.amp_scaler.step(self.optimizer)
@@ -67,7 +67,7 @@ class MLTrainer:
             else:
                 output = self.model(data, targets)
                 loss = self.loss_func(output, targets)
-                acc = accuracy(output, targets) * 100
+                acc = accuracy(output, targets)
 
             train_loss.update(loss.detach().item(), batch_size)
             train_acc.update(acc)
@@ -117,7 +117,7 @@ class MLTrainer:
                     vals_gt.extend(targets.cpu().numpy().tolist())
 
                 loss = self.loss_func(output, targets)
-                acc = accuracy(output, targets) * 100
+                acc = accuracy(output, targets)
 
                 valid_loss.update(loss.detach().item(), batch_size)
                 valid_acc.update(acc)
