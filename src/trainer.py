@@ -128,7 +128,6 @@ class MLTrainer:
         gap_val = None
         if calculate_GAP:
             gap_val = GAP(vals_pred, vals_conf, vals_gt)
-            print(f'GAP value: {gap_val}')
 
         return valid_loss.avg, valid_acc.avg, gap_val, images_wdb
 

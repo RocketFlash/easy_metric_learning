@@ -16,10 +16,11 @@ from src.losses import get_loss
 from src.optimizers import get_optimizer
 from src.schedulers import get_scheduler
 
-from src.utils import load_ckp, save_ckp
+from src.utils import load_ckp, save_ckp, get_cp_save_paths
 from src.utils import load_config, Logger, get_train_val_split
 
 from src.utils import  seed_everything, calculate_time
+from src.utils import calculate_autoscale
 from src.trainer import MLTrainer
 
 WANDB_AVAILABLE = False    
@@ -32,20 +33,16 @@ except ModuleNotFoundError:
 
 
 def train(CONFIGS):
+    start_epoch = 1
     wandb_run = None
+
     if CONFIGS['GENERAL']['USE_WANDB'] and WANDB_AVAILABLE:
         wandb_run = wandb.init(project=f'RETECHLABS metric learning',
                                name=CONFIGS["MISC"]['RUN_NAME'],
                                reinit=True)
+        wandb_run.config.update(CONFIGS)
 
-    best_weights_name = 'debug_best.pt' if CONFIGS['GENERAL']['DEBUG'] else 'best.pt'
-    last_weights_name = 'debug_last.pt' if CONFIGS['GENERAL']['DEBUG'] else 'last.pt'
-    best_embeddings_weights_name = 'debug_best_emb.pt' if CONFIGS['GENERAL']['DEBUG'] else 'best_emb.pt'
-    best_cpk_save_path = os.path.join(CONFIGS["MISC"]['WORK_DIR'], best_weights_name)
-    last_cpk_save_path = os.path.join(CONFIGS["MISC"]['WORK_DIR'], last_weights_name)
-    best_embeddings_cpk_save_path = os.path.join(CONFIGS["MISC"]['WORK_DIR'], best_embeddings_weights_name)
-
-    start_epoch = 0
+    best_cp_sp, last_cp_sp, best_emb_cp_sp = get_cp_save_paths(CONFIGS)
 
     df_train, df_valid, df_full = get_train_val_split(CONFIGS["DATA"]["SPLIT_FILE"],
                                                       fold=CONFIGS["DATA"]["FOLD"])
@@ -69,78 +66,50 @@ def train(CONFIGS):
     train_n_classes = df_train['label_id'].nunique()
     valid_n_classes = df_valid['label_id'].nunique()
 
-    total_n_samples = len(df_full)
-    train_n_samples = len(df_train)
-    valid_n_samples = len(df_valid)
-
     if CONFIGS['TRAIN']['AUTO_SCALE_SIZE']:
-        scale_size = np.sqrt(2) * np.log(train_n_classes-1)  
-    else:
-        scale_size = CONFIGS['MODEL']['SCALE_SIZE']
+        CONFIGS['MODEL']['SCALE_SIZE'] = calculate_autoscale(train_n_classes)  
 
     if CONFIGS['MODEL']['DYNAMIC_MARGIN_LAMBDA']:
         classes_counts = dict(df_full['label_id'].value_counts())
-        margin_m = {}
+        CONFIGS['MODEL']['M'] = {}
         for class_id, class_cnt in classes_counts.items():
-            margin_m[class_id] = CONFIGS['MODEL']['DYNAMIC_MARGIN_HB']*class_cnt**(-CONFIGS['MODEL']['DYNAMIC_MARGIN_LAMBDA']) + CONFIGS['MODEL']['DYNAMIC_MARGIN_LB']
-    else:
-        margin_m = CONFIGS['MODEL']['M']
+            CONFIGS['MODEL']['M'][class_id] = CONFIGS['MODEL']['DYNAMIC_MARGIN_HB']*class_cnt**(-CONFIGS['MODEL']['DYNAMIC_MARGIN_LAMBDA']) + CONFIGS['MODEL']['DYNAMIC_MARGIN_LB']
 
-    encoder_type = CONFIGS['MODEL']['ENCODER_NAME']
-    margin_type = CONFIGS['MODEL']['MARGIN_TYPE']
-    embeddings_size = CONFIGS['MODEL']['EMBEDDINGS_SIZE']
+    device = torch.device(CONFIGS['GENERAL']['DEVICE'])
 
-    logger.info(f'''
-    ============   DATA INFO             ============
-    Total N classes           : {total_n_classes}
-    Total N classes train     : {train_n_classes}
-    Total N classes valid     : {valid_n_classes}
-    Total N samples           : {total_n_samples}
-    Total N training samples  : {train_n_samples}
-    Total N validation samples: {valid_n_samples}
+    logger.data_info(CONFIGS, df_full, df_train, df_valid) 
 
-    ============   TRAINING PARAMETERS   ============
-    Encoder type              : {encoder_type}
-    Margin type               : {margin_type}
-    Embeddings size           : {embeddings_size}
-    Scale size s              : {scale_size:.2f}
-    Margin m                  : {margin_m if not isinstance(margin_m, dict) else 'dynamic'}
-    =================================================''')
-
-    device = torch.device(CONFIGS['GENERAL']['DEVICE']) 
-
-    model = get_model(model_name=encoder_type, 
-                      margin_type=margin_type,
-                      embeddings_size=embeddings_size,   
+    model = get_model(model_name=CONFIGS['MODEL']['ENCODER_NAME'], 
+                      margin_type=CONFIGS['MODEL']['MARGIN_TYPE'],
+                      embeddings_size=CONFIGS['MODEL']['EMBEDDINGS_SIZE'],   
                       dropout=CONFIGS['TRAIN']['DROPOUT_PROB'],
                       out_features=total_n_classes,
-                      scale_size=scale_size,
-                      m=margin_m,
+                      scale_size=CONFIGS['MODEL']['SCALE_SIZE'],
+                      m=CONFIGS['MODEL']['M'],
                       K=CONFIGS['MODEL']['K'],
                       easy_margin=False,
-                      ls_eps=CONFIGS['TRAIN']['LS_PROB'])
-    model = model.to(device)
+                      ls_eps=CONFIGS['TRAIN']['LS_PROB']).to(device)
 
     loss_func = get_loss(CONFIGS['TRAIN']['LOSS_TYPE'], 
-                                gamma=CONFIGS['TRAIN']['FOCAL_GAMMA'],
-                                num_classes=total_n_classes)
-    loss_func = loss_func.to(device)
+                         gamma=CONFIGS['TRAIN']['FOCAL_GAMMA'],
+                         num_classes=total_n_classes).to(device)
+    
     
     optimizer = get_optimizer(model, CONFIGS["OPTIMIZER"])
     scheduler = get_scheduler(optimizer, CONFIGS["OPTIMIZER"])
 
-    best_loss = 100
+    best_loss = 10000
     if CONFIGS['TRAIN']['RESUME'] is not None:
-        logger.info('Resume training from: {}'.format(CONFIGS['TRAIN']['RESUME']))
+        logger.info('resume training from: {}'.format(CONFIGS['TRAIN']['RESUME']))
         model, optimizer, start_epoch, best_loss = load_ckp(CONFIGS['TRAIN']['RESUME'], model, optimizer)
     
     if CONFIGS["TRAIN"]["LOAD_WEIGHTS"]:
         if isfile(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]):
-            logger.info("=> loading checkpoint '{}'".format(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]))
+            logger.info("loading checkpoint :'{}'".format(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]))
             model, _, _, _ = load_ckp(CONFIGS["TRAIN"]["LOAD_WEIGHTS"], model)
-            logger.info("=> start from checkpoint '{}'".format(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]))
+            logger.info("start from checkpoint :'{}'".format(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]))
         else:
-            logger.info("=> no checkpoint found at '{}'".format(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]))
+            logger.info("no checkpoint found at :'{}'".format(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]))
    
     print(f'Current best loss: {best_loss}')
     
@@ -150,8 +119,8 @@ def train(CONFIGS):
     metrics = {}
     scaler = amp.GradScaler(enabled=True) if device != 'cpu' else None
 
-    if model.margin.m != margin_m:
-        model.margin.update(margin_m)
+    if model.margin.m != CONFIGS['MODEL']['M']:
+        model.margin.update(CONFIGS['MODEL']['M'])
 
     trainer = MLTrainer(model=model, 
                         optimizer=optimizer, 
@@ -167,15 +136,13 @@ def train(CONFIGS):
     start_time = time.time()
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):
         train_loss, train_acc, images_wdb_train = trainer.train_epoch(train_loader)
-        save_ckp(last_cpk_save_path, model, epoch, optimizer, best_loss)
+        valid_loss, valid_acc, gap_val, images_wdb_valid = trainer.valid_epoch(valid_loader, calculate_GAP=CONFIGS['TRAIN']['CALCULATE_GAP'])
+        
+        save_ckp(last_cp_sp, model, epoch, optimizer, best_loss)
         
         metrics['train_loss'] = train_loss
         metrics['train_acc'] = train_acc
         metrics['learning_rate'] = optimizer.param_groups[0]['lr']
-        
-        epoch_info_str = f'Epoch: {epoch} Training Loss: {train_loss:.5f} Training Acc: {train_acc:.5f}\n'
-        
-        valid_loss, valid_acc, gap_val, images_wdb_valid = trainer.valid_epoch(model,valid_loader)
 
         if images_wdb_train and images_wdb_valid:
             metrics["training batch"] = images_wdb_train
@@ -190,25 +157,15 @@ def train(CONFIGS):
         if valid_loss < best_loss:
             logger.info('Saving best model')
             best_loss = valid_loss
-            save_ckp(best_cpk_save_path, model, epoch, optimizer, best_loss)
-            save_ckp(best_embeddings_cpk_save_path, model.embeddings_net, emb_model_only=True)
+            save_ckp(best_cp_sp, model, epoch, optimizer, best_loss)
+            save_ckp(best_emb_cp_sp, model.embeddings_net, emb_model_only=True)
 
-        epoch_info_str += f'         Validation Loss: {valid_loss:.5f} Validation Acc: {valid_acc:.5f}'
-        
         if CONFIGS['GENERAL']['USE_WANDB'] and not CONFIGS['GENERAL']['DEBUG']:
             wandb.log(metrics, step=epoch)
-            logger.info(epoch_info_str)
-
-
-        elapsed, remaining = calculate_time(start_time=start_time, 
-                                            start_epoch=start_epoch, 
-                                            epoch=epoch, 
-                                            epochs=CONFIGS["TRAIN"]["EPOCHS"])
         
-        logger.info("Epoch {0}/{1} finishied, saved to {2} .\t"
-                    "Elapsed {elapsed.days:d} days {elapsed.hours:d} hours {elapsed.minutes:d} minutes.\t"
-                    "Remaining {remaining.days:d} days {remaining.hours:d} hours {remaining.minutes:d} minutes.".format(
-            epoch, CONFIGS["TRAIN"]["EPOCHS"], CONFIGS["MISC"]['WORK_DIR'], elapsed=elapsed, remaining=remaining))
+        logger.epoch_train_info(epoch, train_loss, train_acc, valid_loss, valid_acc, gap_val)
+        logger.epoch_time_info(start_time, start_epoch, epoch, num_epochs=CONFIGS["TRAIN"]["EPOCHS"], 
+                                                               workdir_path=CONFIGS["MISC"]['WORK_DIR'])
 
     logger.info("Training done, all results saved to {}".format(CONFIGS["MISC"]['WORK_DIR']))
 
@@ -219,7 +176,7 @@ def train(CONFIGS):
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='', help='path to cfg.yaml')
-    parser.add_argument('--resume', default="", help='path to config file')
+    parser.add_argument('--resume', default="", help='path to weights from which to resume')
     parser.add_argument('--tmp', default="", help='tmp')
     parser.add_argument('--debug', action='store_true', help='debug mode')
     parser.add_argument('--device', type=str, default='', help='select device')
@@ -241,6 +198,8 @@ if __name__=="__main__":
     if args.device:
         CONFIGS['GENERAL']['DEVICE'] = int(args.device)
     
+    if args.resume:
+        CONFIGS['TRAIN']['RESUME'] = args.resume
 
     CONFIGS["OPTIMIZER"]["WEIGHT_DECAY"] = float(CONFIGS["OPTIMIZER"]["WEIGHT_DECAY"])
     CONFIGS["OPTIMIZER"]["LR"] = float(CONFIGS["OPTIMIZER"]["LR"])
