@@ -13,6 +13,10 @@ def l2_norm(input,axis=1):
     return output
 
 class AdaFace(nn.Module):
+    """
+    Implementation of adaface
+    Implementation taken from: https://github.com/mk-minchul/AdaFace 
+    """
     def __init__(self,
                  in_features=512,
                  out_features=70722,
@@ -20,7 +24,7 @@ class AdaFace(nn.Module):
                  h=0.333,
                  s=64.,
                  t_alpha=1.0,
-                 ):
+                 use_batchnorm=False):
         super(AdaFace, self).__init__()
         self.classnum = out_features
         self.kernel = Parameter(torch.Tensor(in_features, out_features))
@@ -31,12 +35,15 @@ class AdaFace(nn.Module):
         self.eps = 1e-3
         self.h = h
         self.s = s
-
-        # ema prep
+        self.use_batchnorm = use_batchnorm
         self.t_alpha = t_alpha
-        self.register_buffer('t', torch.zeros(1))
-        self.register_buffer('batch_mean', torch.ones(1)*(20))
-        self.register_buffer('batch_std', torch.ones(1)*100)
+
+        if self.use_batchnorm:
+            self.norm_layer = nn.BatchNorm1d(1, eps=self.eps, momentum=self.t_alpha, affine=False)
+        else:
+            self.register_buffer('t', torch.zeros(1))
+            self.register_buffer('batch_mean', torch.ones(1)*(20))
+            self.register_buffer('batch_std', torch.ones(1)*100)
 
 
     def forward(self, x, label):
@@ -51,21 +58,19 @@ class AdaFace(nn.Module):
         safe_norms = torch.clip(norms, min=0.001, max=100) # for stability
         safe_norms = safe_norms.clone().detach()
 
-        # update batchmean batchstd
-        with torch.no_grad():
-            mean = safe_norms.mean().detach()
-            std = safe_norms.std().detach()
-            self.batch_mean = mean * self.t_alpha + (1 - self.t_alpha) * self.batch_mean
-            self.batch_std =  std * self.t_alpha + (1 - self.t_alpha) * self.batch_std
+        if self.use_batchnorm:
+            margin_scaler = self.norm_layer(safe_norms)
+        else:
+            # update batchmean batchstd
+            with torch.no_grad():
+                mean = safe_norms.mean().detach()
+                std = safe_norms.std().detach()
+                self.batch_mean = mean * self.t_alpha + (1 - self.t_alpha) * self.batch_mean
+                self.batch_std =  std * self.t_alpha + (1 - self.t_alpha) * self.batch_std
 
-        margin_scaler = (safe_norms - self.batch_mean) / (self.batch_std+self.eps) # 66% between -1, 1
-        margin_scaler = margin_scaler * self.h # 68% between -0.333 ,0.333 when h:0.333
-        margin_scaler = torch.clip(margin_scaler, -1, 1)
-        # ex: m=0.5, h:0.333
-        # range
-        #       (66% range)
-        #   -1 -0.333  0.333   1  (margin_scaler)
-        # -0.5 -0.166  0.166 0.5  (m * margin_scaler)
+            margin_scaler = (safe_norms - self.batch_mean) / (self.batch_std+self.eps) # 66% between -1, 1
+            margin_scaler = margin_scaler * self.h # 68% between -0.333 ,0.333 when h:0.333
+            margin_scaler = torch.clip(margin_scaler, -1, 1)
 
         # g_angular
         m_arc = torch.zeros(label.size()[0], cosine.size()[1], device=cosine.device)
@@ -506,6 +511,14 @@ def get_model(model_name='efficientnet_b0',
                         out_features=out_features, 
                         m=m,  
                         ls_eps=ls_eps)
+    elif margin_type=='adaface_bn':
+        margin = AdaFace(in_features=embeddings_size,
+                         out_features=out_features,
+                         m=m,
+                         h=0.333,
+                         s=scale_size,
+                         t_alpha=1.0,
+                         use_batchnorm=True)
     elif margin_type=='adaface':
         margin = AdaFace(in_features=embeddings_size,
                          out_features=out_features,

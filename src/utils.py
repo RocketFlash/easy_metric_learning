@@ -98,6 +98,9 @@ def get_mapper(mapper_path):
     
     return mapper
 
+def calculate_autoscale(train_n_classes):
+    return np.sqrt(2) * np.log(train_n_classes-1) 
+
 
 def get_train_val_split(split_file, fold=0):
     if isinstance(split_file, list):
@@ -114,7 +117,15 @@ def get_train_val_split(split_file, fold=0):
         df_valid = df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)]
 
     return df_train, df_valid, df_folds
-    
+
+def get_cp_save_paths(config):
+    best_weights_name = 'debug_best.pt' if config['GENERAL']['DEBUG'] else 'best.pt'
+    last_weights_name = 'debug_last.pt' if config['GENERAL']['DEBUG'] else 'last.pt'
+    best_embeddings_weights_name = 'debug_best_emb.pt' if config['GENERAL']['DEBUG'] else 'best_emb.pt'
+    best_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], best_weights_name)
+    last_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], last_weights_name)
+    best_emb_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], best_embeddings_weights_name)
+    return best_cp_sp, last_cp_sp, best_emb_cp_sp
 
 class Logger():
     def __init__(self, path="log.txt"):
@@ -129,6 +140,56 @@ class Logger():
 
     def info(self, txt):
         self.logger.info(txt)
+
+    def data_info(self, config, df_full, df_train, df_valid):
+
+        total_n_classes = df_full['label_id'].nunique()
+        train_n_classes = df_train['label_id'].nunique()
+        valid_n_classes = df_valid['label_id'].nunique()
+
+        total_n_samples = len(df_full)
+        train_n_samples = len(df_train)
+        valid_n_samples = len(df_valid)
+
+        encoder_type = config['MODEL']['ENCODER_NAME']
+        margin_type = config['MODEL']['MARGIN_TYPE']
+        embeddings_size = config['MODEL']['EMBEDDINGS_SIZE']
+        scale_size = config['MODEL']['SCALE_SIZE']
+        margin_m = config['MODEL']['M']
+
+        self.logger.info(f'''
+        ============   DATA INFO             ============
+        Total N classes           : {total_n_classes}
+        Total N classes train     : {train_n_classes}
+        Total N classes valid     : {valid_n_classes}
+        Total N samples           : {total_n_samples}
+        Total N training samples  : {train_n_samples}
+        Total N validation samples: {valid_n_samples}
+
+        ============   TRAINING PARAMETERS   ============
+        Encoder type              : {encoder_type}
+        Margin type               : {margin_type}
+        Embeddings size           : {embeddings_size}
+        Scale size s              : {scale_size:.2f}
+        Margin m                  : {margin_m if not isinstance(margin_m, dict) else 'dynamic'}
+        =================================================''')
+
+    def epoch_train_info(self, epoch, train_loss, train_acc, valid_loss, valid_acc, gap_val=None):
+        epoch_info_str = f'Epoch: {epoch} Train Loss: {train_loss:.5f} Train Acc: {train_acc:.5f}\n'
+        epoch_info_str += f'{" "*37} Valid Loss: {valid_loss:.5f} Valid Acc: {valid_acc:.5f}'
+        if gap_val is not None:
+            epoch_info_str += f'\n{" "*37} GAP value : {gap_val:.5f}'
+        self.logger.info(epoch_info_str)
+    
+    def epoch_time_info(self, start_time, start_epoch, epoch, num_epochs, workdir_path):
+        elapsed, remaining = calculate_time(start_time=start_time, 
+                                            start_epoch=start_epoch, 
+                                            epoch=epoch, 
+                                            epochs=num_epochs)
+
+        self.logger.info(f"Epoch {epoch}/{num_epochs} finishied, saved to {workdir_path} ." + \
+                         f"\n{' '*37} Elapsed {elapsed.days:d} days {elapsed.hours:d} hours {elapsed.minutes:d} minutes." + \
+                         f"\n{' '*37} Remaining {remaining.days:d} days {remaining.hours:d} hours {remaining.minutes:d} minutes.")
 
     def close(self):
         self.file_handler.close()
