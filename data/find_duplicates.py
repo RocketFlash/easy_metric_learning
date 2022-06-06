@@ -133,13 +133,16 @@ if __name__ == '__main__':
                 count_total+=1
 
                 if SAVE_DUBLICATES_VISUALIZATION:
-                    image = cv2.imread(p)
-                    image = cv2.resize(image, (150, 150))
+                    try:
+                        image = cv2.imread(p)
+                        image = cv2.resize(image, (150, 150))
 
-                    if montage is None:
-                        montage = image
-                    else:
-                        montage = np.hstack([montage, image])
+                        if montage is None:
+                            montage = image
+                        else:
+                            montage = np.hstack([montage, image])
+                    except:
+                        print(f'wrong image path {p}')
 
             count_dublicates-=1
             if SAVE_DUBLICATES_VISUALIZATION:
