@@ -8,11 +8,56 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset as BaseDataset
 
 from .transforms import get_transformations
-from .utils import worker_init_fn
+from .utils import worker_init_fn, split_image_on_patches, get_image
+
+
+class TilesDataset(BaseDataset):
+    """SMetric learning Dataset. Read images, apply augmentation and preprocessing transformations.
+    
+    Args:
+        root_dir (str): path to data folder
+        df_names (str): dataframe with names
+        classes  (list): classes indexes
+        transform (albumentations.Compose): data transfromation pipeline 
+            (e.g. flip, scale, etc.)
+    
+    """
+    
+    def __init__(
+            self,
+            image,
+            window_size=20,
+            step_size=10,
+            is_horizontal=True,   
+            transform=None):
+
+        self.image = image
+        self.tiles, self.tiler = split_image_on_patches(self.image, window_size=window_size,
+                                                                    step_size=step_size,
+                                                                    is_horizontal=is_horizontal)
+        self.coords = self.tiler.crops 
+            
+        self.augmentation = transform
+        
+    
+    def __getitem__(self, i):
+        image=self.tiles[i]
+        coords = self.coords[i]
+
+        # apply augmentations
+        if self.augmentation:
+            sample = self.augmentation(image=image)
+            image = sample['image']
+            
+        return image, coords
+        
+    def __len__(self):
+        return len(self.tiles)
+
 
 
 class MetricDataset(BaseDataset):
-    """SMetric learning Dataset. Read images, apply augmentation and preprocessing transformations.
+    """Metric learning Dataset. Read images, apply augmentation and preprocessing transformations.
     
     Args:
         root_dir (str): path to data folder
@@ -81,15 +126,13 @@ def get_loader(root_dir,
 
 
     if test is False:
-        transform_train = get_transformations(transform_name, image_size=(img_size,img_size))
-        dataset = MetricDataset(root_dir=root_dir,
-                                df_names=df_names,      
-                                transform=transform_train)
+        transform = get_transformations(transform_name, image_size=(img_size,img_size))
     else:
-        transform_test = get_transformations('test_aug', image_size=(img_size,img_size))
-        dataset = MetricDataset(root_dir=root_dir,
-                             df_names=df_names,      
-                             transform=transform_test)
+        transform = get_transformations('test_aug', image_size=(img_size,img_size))
+    
+    dataset = MetricDataset(root_dir=root_dir,
+                            df_names=df_names,      
+                            transform=transform)
     
     shuffle = split=='train'
     drop_last = split=='train'

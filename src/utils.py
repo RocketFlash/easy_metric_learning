@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 import os
+import math
+import cv2
 import random
 import yaml
 import logging
@@ -14,6 +16,22 @@ from pathlib import Path
 import torchvision
 from torchvision import transforms
 from sklearn.metrics.pairwise import cosine_similarity
+from pytorch_toolbelt.inference.tiles import ImageSlicer
+from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image, to_numpy
+
+
+def get_image(image_path):
+    image = cv2.imread(str(image_path))
+    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
+
+
+def split_image_on_patches(image, window_size=20, step_size=10, is_horizontal=True):
+    h, w, c = image.shape
+    tile_size = (h, window_size) if is_horizontal else (window_size, w)
+    tile_step = (1, step_size) if is_horizontal else (step_size, 1)
+    tiler = ImageSlicer(image.shape, tile_size=tile_size, tile_step=tile_step)
+    tiles = tiler.split(image)
+    return tiles, tiler
 
 
 def batch_grid(images):
@@ -242,6 +260,15 @@ def load_embedings_separate(path_to_embedings, path_to_labels=None):
     labels = np.load(path_to_labels)
     return embeddings , labels
 
+def plot_tiles_similarity(similarity_matrix, save_path='./img.png'):
+    similarities = similarity_matrix[0]
+    fig, ax = plt.subplots( nrows=1, ncols=1 )
+    ax.plot(similarities)
+    ax.set_xlabel('tile index')
+    ax.set_ylabel('cosine similarity')
+    fig.savefig(save_path)
+    plt.close(fig)
+
 
 def plot_embeddings(embeddings, labels, save_dir='./', show=True, n_labels=-1, mapper=None,  method='fast_tsne', n_jobs=4):
     
@@ -394,3 +421,37 @@ def calculate_top_n(sim_matrix,best_top_n_vals,
 
     del res, total_matrix_idxs, total_matrix_vals
     return res_vals, res_idxs
+
+
+def show_images(images, n_col=3, save_name=None):
+    n_rows = math.ceil(len(images)/n_col)
+    fig, ax = plt.subplots(n_rows, n_col, figsize=(25, 12*n_rows))
+
+    for ax_i in ax:
+        if len(images) <= n_col:
+            ax_i.set_axis_off()
+        else:
+            for ax_j in ax_i:
+                ax_j.set_axis_off()
+
+    if isinstance(images, dict):
+        for img_idx, (title, img) in enumerate(images.items()):
+            if len(images) <= n_col:
+                ax[img_idx].imshow(img)
+                ax[img_idx].set_title(title)
+            else:
+                ax[img_idx//n_col, img_idx%n_col].imshow(img)
+                ax[img_idx//n_col, img_idx%n_col].set_title(title)
+    else:
+        for img_idx, img in enumerate(images):
+            if len(images) <= n_col:
+                ax[img_idx].imshow(img)
+            else:
+                ax[img_idx//n_col, img_idx%n_col].imshow(img)
+
+    fig.subplots_adjust(wspace=0, hspace=0)
+    if save_name is None:
+        plt.show()
+    else:
+        plt.savefig(save_name)
+        plt.close(fig)

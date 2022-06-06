@@ -42,6 +42,13 @@ def get_transformations(aug_name='soft', image_size=(400, 400)):
                         std=[0.229, 0.224, 0.225]),
             ToTensorV2()
         ]),
+        'test_aug_tiles': A.Compose([
+            A.Resize(image_size[0], image_size[1]),
+            A.CLAHE (clip_limit=4.0, tile_grid_size=(8, 8), p=1),
+            A.Normalize(mean=[0.485, 0.456, 0.406],
+                        std=[0.229, 0.224, 0.225]),
+            ToTensorV2()
+        ]),
         'hflip_tta': A.Compose([
             A.Resize(image_size[0], image_size[1]),
             A.HorizontalFlip(p=1),
