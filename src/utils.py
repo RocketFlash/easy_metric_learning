@@ -455,3 +455,11 @@ def show_images(images, n_col=3, save_name=None):
     else:
         plt.savefig(save_name)
         plt.close(fig)
+
+
+def get_device(device_str):
+    if device_str:
+        device = torch.device(device_str)
+    else:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    return device 

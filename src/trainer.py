@@ -8,7 +8,7 @@ from torch.cuda import amp
 
 from .utils import AverageMeter
 from .utils import batch_grid
-from .metrics import accuracy, GAP
+from .metric import accuracy, GAP
 
 try:
     import wandb

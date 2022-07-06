@@ -11,8 +11,8 @@ DATA:
     IDS_TO_LABELS_FILE : "/home/rauf/datasets/metric_learning/train_set/ids_to_labels.json"
     
     FOLD: 0
-    IMG_SIZE: 170
-    BATCH_SIZE: 100
+    IMG_SIZE: 224
+    BATCH_SIZE: 40
     WORKERS: 8
 
 OPTIMIZER:
@@ -25,7 +25,7 @@ OPTIMIZER:
     ETA_MIN: 1e-5
 
 MODEL:
-    ENCODER_NAME: 'efficientnet_b0'
+    ENCODER_NAME: 'swin_tiny_patch4_window7_224'
     MARGIN_TYPE: 'adaface_bn'
     EMBEDDINGS_SIZE: 512
     SCALE_SIZE : 64

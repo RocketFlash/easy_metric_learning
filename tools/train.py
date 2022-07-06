@@ -1,3 +1,6 @@
+import sys
+sys.path.append("..")
+
 import os
 import argparse
 from os.path import isfile
@@ -12,7 +15,7 @@ from pathlib import Path
 
 from src.dataloader import get_loader
 from src.model import get_model
-from src.losses import get_loss
+from src.loss import get_loss
 from src.optimizers import get_optimizer
 from src.schedulers import get_scheduler
 

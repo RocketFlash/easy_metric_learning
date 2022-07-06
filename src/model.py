@@ -424,28 +424,35 @@ class EmbeddigsNet(nn.Module):
                        dropout=0.0):
         super(EmbeddigsNet, self).__init__()
 
-        self.backbone = timm.create_model(model_name, pretrained=pretrained)
-        final_in_features = self.backbone.classifier.in_features
-
-        self.backbone.classifier = nn.Identity()
-        self.backbone.global_pool = nn.Identity()
-
-        self.pooling =  nn.AdaptiveAvgPool2d(1)
+        self.backbone = timm.create_model(model_name, pretrained=pretrained, 
+                                                      scriptable=True)
+        
+        if 'swin' in model_name:
+            in_features = self.backbone.head.in_features
+            self.backbone.head = nn.Identity()
+            self.pooling = None
+        else:
+            in_features = self.backbone.classifier.in_features
+            self.backbone.classifier = nn.Identity()
+            self.backbone.global_pool = nn.Identity()
+            self.pooling = nn.AdaptiveAvgPool2d(1)
 
         self.dropout = nn.Dropout(p=dropout)
-        self.fc = nn.Linear(final_in_features, embeddings_size)
-        self.bn = nn.BatchNorm1d(embeddings_size)
-        self._init_params()
         self.n_features = embeddings_size
+
+        self.classifier = nn.Linear(in_features, self.n_features)
+        self.bn = nn.BatchNorm1d(self.n_features)
+        self._init_params()
+
         
         # Unfreeze model weights
         for param in self.backbone.parameters():
             param.requires_grad = True
 
-
+    
     def _init_params(self):
-        nn.init.xavier_normal_(self.fc.weight)
-        nn.init.constant_(self.fc.bias, 0)
+        nn.init.xavier_normal_(self.classifier.weight)
+        nn.init.constant_(self.classifier.bias, 0)
         nn.init.constant_(self.bn.weight, 1)
         nn.init.constant_(self.bn.bias, 0)
 
@@ -453,10 +460,11 @@ class EmbeddigsNet(nn.Module):
     def extract_features(self, x):
         batch_size = x.shape[0]
         x = self.backbone(x)
-        x = self.pooling(x).view(batch_size, -1)
+        if self.pooling is not None:
+            x = self.pooling(x).view(batch_size, -1)
 
         x = self.dropout(x)
-        x = self.fc(x)
+        x = self.classifier(x)
         x = self.bn(x)
 
         return x
