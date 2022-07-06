@@ -24,9 +24,12 @@ class AdaFace(nn.Module):
                  h=0.333,
                  s=64.,
                  t_alpha=1.0,
+                 ls_eps=0.0,
                  use_batchnorm=False):
         super(AdaFace, self).__init__()
         self.classnum = out_features
+        self.in_features = in_features
+        self.out_features = out_features
         self.kernel = Parameter(torch.Tensor(in_features, out_features))
 
         # initial kernel
@@ -37,6 +40,7 @@ class AdaFace(nn.Module):
         self.s = s
         self.use_batchnorm = use_batchnorm
         self.t_alpha = t_alpha
+        self.ls_eps = ls_eps
 
         if self.use_batchnorm:
             self.norm_layer = nn.BatchNorm1d(1, eps=self.eps, momentum=self.t_alpha, affine=False)
@@ -75,6 +79,10 @@ class AdaFace(nn.Module):
         # g_angular
         m_arc = torch.zeros(label.size()[0], cosine.size()[1], device=cosine.device)
         m_arc.scatter_(1, label.reshape(-1, 1), 1.0)
+
+        if self.ls_eps > 0:
+            m_arc = (1 - self.ls_eps) * m_arc + self.ls_eps / self.out_features
+
         g_angular = self.m * margin_scaler * -1
         m_arc = m_arc * g_angular
         theta = cosine.acos()
@@ -526,6 +534,7 @@ def get_model(model_name='efficientnet_b0',
                          h=0.333,
                          s=scale_size,
                          t_alpha=1.0,
+                         ls_eps=ls_eps,
                          use_batchnorm=True)
     elif margin_type=='adaface':
         margin = AdaFace(in_features=embeddings_size,
