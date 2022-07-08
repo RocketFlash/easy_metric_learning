@@ -16,22 +16,11 @@ from pathlib import Path
 import torchvision
 from torchvision import transforms
 from sklearn.metrics.pairwise import cosine_similarity
-from pytorch_toolbelt.inference.tiles import ImageSlicer
-from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image, to_numpy
 
 
 def get_image(image_path):
     image = cv2.imread(str(image_path))
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
-
-
-def split_image_on_patches(image, window_size=20, step_size=10, is_horizontal=True):
-    h, w, c = image.shape
-    tile_size = (h, window_size) if is_horizontal else (window_size, w)
-    tile_step = (1, step_size) if is_horizontal else (step_size, 1)
-    tiler = ImageSlicer(image.shape, tile_size=tile_size, tile_step=tile_step)
-    tiles = tiler.split(image)
-    return tiles, tiler
 
 
 def batch_grid(images):
@@ -116,11 +105,23 @@ def get_mapper(mapper_path):
     
     return mapper
 
+
 def calculate_autoscale(train_n_classes):
     return np.sqrt(2) * np.log(train_n_classes-1) 
+ 
+
+def calculate_dynamic_margin(dynamic_margin_config, classes_counts):
+    dynamic_margin = {}
+    for class_id, class_cnt in classes_counts.items():
+        dynamic_margin[class_id] = dynamic_margin_config['HB']*class_cnt**(-dynamic_margin_config['LAMBDA']) + dynamic_margin_config['LB']
+    return dynamic_margin
 
 
-def get_train_val_split(split_file, fold=0):
+def get_train_val_split(data_config=None, split_file=None, fold=0):
+    if data_config is not None:
+        split_file = data_config["SPLIT_FILE"]
+        fold       = data_config["FOLD"]
+
     if isinstance(split_file, list):
         df_train = []
         df_valid = []
@@ -136,6 +137,7 @@ def get_train_val_split(split_file, fold=0):
 
     return df_train, df_valid, df_folds
 
+
 def get_cp_save_paths(config):
     best_weights_name = 'debug_best.pt' if config['GENERAL']['DEBUG'] else 'best.pt'
     last_weights_name = 'debug_last.pt' if config['GENERAL']['DEBUG'] else 'last.pt'
@@ -144,6 +146,7 @@ def get_cp_save_paths(config):
     last_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], last_weights_name)
     best_emb_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], best_embeddings_weights_name)
     return best_cp_sp, last_cp_sp, best_emb_cp_sp
+
 
 class Logger():
     def __init__(self, path="log.txt"):
@@ -259,6 +262,7 @@ def load_embedings_separate(path_to_embedings, path_to_labels=None):
 
     labels = np.load(path_to_labels)
     return embeddings , labels
+
 
 def plot_tiles_similarity(similarity_matrix, save_path='./img.png'):
     similarities = similarity_matrix[0]
@@ -404,6 +408,7 @@ def cosine_similarity_chunks(X, Y, n_chunks=5, top_n=5):
                                                             curr_zero_idx=(i*ch_sz),
                                                             n=top_n)
     return best_top_n_vals, best_top_n_idxs
+
 
 def calculate_top_n(sim_matrix,best_top_n_vals,
                                best_top_n_idxs,

@@ -18,12 +18,12 @@ DATA:
 
 
 MODEL:
-    ENCODER_NAME: 'efficientnet_b0'
-    MARGIN_TYPE: 'arcface'
+    ENCODER_NAME: 'swin_tiny_patch4_window7_224'
+    MARGIN_TYPE: 'adaface'
     EMBEDDINGS_SIZE: 512
     SCALE_SIZE : 64
     M : 0.01
-    K : 3
+    K : 10
     DROPOUT_PROB : 0.2
     LS_PROB : 0.1
     AUTO_SCALE_SIZE : True

@@ -13,7 +13,7 @@ import time
 import json
 from pathlib import Path
 
-from src.dataloader import get_loader
+from src.dataset import get_loader
 from src.model import get_model
 from src.loss import get_loss
 from src.optimizers import get_optimizer
@@ -22,21 +22,14 @@ from src.schedulers import get_scheduler
 from src.utils import load_ckp, save_ckp, get_cp_save_paths
 from src.utils import load_config, Logger, get_train_val_split
 
-from src.utils import  seed_everything, calculate_time
-from src.utils import calculate_autoscale
+from src.utils import  seed_everything, calculate_time, get_device
+from src.utils import calculate_autoscale, calculate_dynamic_margin
 from src.trainer import MLTrainer
 
-WANDB_AVAILABLE = False    
-try:
-    import wandb
-    WANDB_AVAILABLE = True
-except ModuleNotFoundError:
-    print('wandb is not installed')
 
-
-
-def train(CONFIGS):
+def train(CONFIGS, WANDB_AVAILABLE=False):
     start_epoch = 1
+    best_loss = 10000
     wandb_run = None
 
     if CONFIGS['GENERAL']['USE_WANDB'] and WANDB_AVAILABLE:
@@ -47,61 +40,33 @@ def train(CONFIGS):
 
     best_cp_sp, last_cp_sp, best_emb_cp_sp = get_cp_save_paths(CONFIGS)
 
-    df_train, df_valid, df_full = get_train_val_split(CONFIGS["DATA"]["SPLIT_FILE"],
-                                                      fold=CONFIGS["DATA"]["FOLD"])
+    df_train, df_valid, df_full = get_train_val_split(data_config=CONFIGS["DATA"])
 
-    train_loader = get_loader(CONFIGS["DATA"]["DIR"],
-                              df_train, 
-                              batch_size=CONFIGS["DATA"]["BATCH_SIZE"],
-                              num_thread=CONFIGS["DATA"]["WORKERS"], 
-                              img_size=CONFIGS['DATA']['IMG_SIZE'],
-                              split='train',
-                              transform_name=CONFIGS['TRAIN']['AUG_TYPE'])
-                            
-    valid_loader = get_loader(CONFIGS["DATA"]["DIR"],
-                              df_valid,
-                              batch_size=CONFIGS["DATA"]["BATCH_SIZE"],
-                              split='val',
-                              num_thread=CONFIGS["DATA"]["WORKERS"], 
-                              img_size=CONFIGS['DATA']['IMG_SIZE'])
+    train_loader = get_loader(df_train, data_config=CONFIGS["DATA"], split='train')
+    valid_loader = get_loader(df_valid, data_config=CONFIGS["DATA"], split='val')
 
-    total_n_classes = df_full['label_id'].nunique()
-    train_n_classes = df_train['label_id'].nunique()
-    valid_n_classes = df_valid['label_id'].nunique()
+    n_cl_total = df_full['label_id'].nunique()
+    n_cl_train = df_train['label_id'].nunique()
+    n_cl_valid = df_valid['label_id'].nunique()
+    classes_counts = dict(df_full['label_id'].value_counts())
+    CONFIGS['MODEL']['N_CLASSES'] = n_cl_total
+    CONFIGS['TRAIN']['N_CLASSES'] = n_cl_total
 
-    if CONFIGS['TRAIN']['AUTO_SCALE_SIZE']:
-        CONFIGS['MODEL']['SCALE_SIZE'] = calculate_autoscale(train_n_classes)  
+    if CONFIGS['MODEL']['AUTO_SCALE_SIZE']:
+        CONFIGS['MODEL']['SCALE_SIZE'] = calculate_autoscale(n_cl_train)  
 
-    if CONFIGS['MODEL']['DYNAMIC_MARGIN_LAMBDA']:
-        classes_counts = dict(df_full['label_id'].value_counts())
-        CONFIGS['MODEL']['M'] = {}
-        for class_id, class_cnt in classes_counts.items():
-            CONFIGS['MODEL']['M'][class_id] = CONFIGS['MODEL']['DYNAMIC_MARGIN_HB']*class_cnt**(-CONFIGS['MODEL']['DYNAMIC_MARGIN_LAMBDA']) + CONFIGS['MODEL']['DYNAMIC_MARGIN_LB']
-
-    device = torch.device(CONFIGS['GENERAL']['DEVICE'])
+    if CONFIGS['MODEL']['DYNAMIC_MARGIN']:
+        CONFIGS['MODEL']['M'] = calculate_dynamic_margin(CONFIGS['MODEL']['DYNAMIC_MARGIN'], classes_counts)
 
     logger.data_info(CONFIGS, df_full, df_train, df_valid) 
 
-    model = get_model(model_name=CONFIGS['MODEL']['ENCODER_NAME'], 
-                      margin_type=CONFIGS['MODEL']['MARGIN_TYPE'],
-                      embeddings_size=CONFIGS['MODEL']['EMBEDDINGS_SIZE'],   
-                      dropout=CONFIGS['TRAIN']['DROPOUT_PROB'],
-                      out_features=total_n_classes,
-                      scale_size=CONFIGS['MODEL']['SCALE_SIZE'],
-                      m=CONFIGS['MODEL']['M'],
-                      K=CONFIGS['MODEL']['K'],
-                      easy_margin=False,
-                      ls_eps=CONFIGS['TRAIN']['LS_PROB']).to(device)
+    device = get_device(CONFIGS['GENERAL']['DEVICE'])
+    model  = get_model(model_config=CONFIGS['MODEL']).to(device)
 
-    loss_func = get_loss(CONFIGS['TRAIN']['LOSS_TYPE'], 
-                         gamma=CONFIGS['TRAIN']['FOCAL_GAMMA'],
-                         num_classes=total_n_classes).to(device)
-    
-    
-    optimizer = get_optimizer(model, CONFIGS["OPTIMIZER"])
-    scheduler = get_scheduler(optimizer, CONFIGS["OPTIMIZER"])
+    loss_func = get_loss(train_config=CONFIGS['TRAIN']).to(device)
+    optimizer = get_optimizer(model,     CONFIGS['TRAIN']["OPTIMIZER"])
+    scheduler = get_scheduler(optimizer, CONFIGS['TRAIN']["SCHEDULER"])
 
-    best_loss = 10000
     if CONFIGS['TRAIN']['RESUME'] is not None:
         logger.info('resume training from: {}'.format(CONFIGS['TRAIN']['RESUME']))
         model, optimizer, start_epoch, best_loss = load_ckp(CONFIGS['TRAIN']['RESUME'], model, optimizer)
@@ -114,7 +79,7 @@ def train(CONFIGS):
         else:
             logger.info("no checkpoint found at :'{}'".format(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]))
    
-    print(f'Current best loss: {best_loss}')
+    logger.info(f'Current best loss: {best_loss}')
     
     if CONFIGS['GENERAL']['USE_WANDB'] and WANDB_AVAILABLE and not CONFIGS['GENERAL']['DEBUG']:
         wandb.watch(model)
@@ -140,21 +105,9 @@ def train(CONFIGS):
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):
         train_loss, train_acc, images_wdb_train = trainer.train_epoch(train_loader)
         valid_loss, valid_acc, gap_val, images_wdb_valid = trainer.valid_epoch(valid_loader, calculate_GAP=CONFIGS['TRAIN']['CALCULATE_GAP'])
+        trainer.update_epoch()
         
         save_ckp(last_cp_sp, model, epoch, optimizer, best_loss)
-        
-        metrics['train_loss'] = train_loss
-        metrics['train_acc'] = train_acc
-        metrics['learning_rate'] = optimizer.param_groups[0]['lr']
-
-        if images_wdb_train and images_wdb_valid:
-            metrics["training batch"] = images_wdb_train
-            metrics["validation batch"] = images_wdb_valid
-
-        metrics['valid_loss'] = valid_loss
-        metrics['valid_acc'] = valid_acc
-        if gap_val is not None: metrics['gap_val'] = gap_val
-
         scheduler.step()
 
         if valid_loss < best_loss:
@@ -164,6 +117,17 @@ def train(CONFIGS):
             save_ckp(best_emb_cp_sp, model.embeddings_net, emb_model_only=True)
 
         if CONFIGS['GENERAL']['USE_WANDB'] and not CONFIGS['GENERAL']['DEBUG']:
+            metrics['train_loss'] = train_loss
+            metrics['train_acc']  = train_acc
+            metrics['learning_rate'] = optimizer.param_groups[0]['lr']
+
+            if images_wdb_train and images_wdb_valid:
+                metrics["training batch"] = images_wdb_train
+                metrics["validation batch"] = images_wdb_valid
+
+            metrics['valid_loss'] = valid_loss
+            metrics['valid_acc']  = valid_acc
+            if gap_val is not None: metrics['gap_val'] = gap_val
             wandb.log(metrics, step=epoch)
         
         logger.epoch_train_info(epoch, train_loss, train_acc, valid_loss, valid_acc, gap_val)
@@ -192,11 +156,6 @@ if __name__=="__main__":
 
     if args.tmp != "" and args.tmp != CONFIGS["MISC"]["TMP"]:
         CONFIGS["MISC"]["TMP"] = args.tmp
-    
-    if args.debug: CONFIGS['GENERAL']['DEBUG'] = True
-    if CONFIGS['GENERAL']['DEBUG']: 
-        print('DEBUG MODE')
-        CONFIGS['GENERAL']['USE_WANDB'] = False
 
     if args.device:
         CONFIGS['GENERAL']['DEVICE'] = int(args.device)
@@ -204,13 +163,13 @@ if __name__=="__main__":
     if args.resume:
         CONFIGS['TRAIN']['RESUME'] = args.resume
 
-    CONFIGS["OPTIMIZER"]["WEIGHT_DECAY"] = float(CONFIGS["OPTIMIZER"]["WEIGHT_DECAY"])
-    CONFIGS["OPTIMIZER"]["LR"] = float(CONFIGS["OPTIMIZER"]["LR"])
+    CONFIGS['TRAIN']["OPTIMIZER"]["WEIGHT_DECAY"] = float(CONFIGS['TRAIN']["OPTIMIZER"]["WEIGHT_DECAY"])
+    CONFIGS['TRAIN']["OPTIMIZER"]["LR"] = float(CONFIGS['TRAIN']["OPTIMIZER"]["LR"])
 
     CONFIGS["MISC"]['RUN_NAME'] = '{}_{}_fold{}_{}'.format(CONFIGS['MODEL']['MARGIN_TYPE'],
-                                                        CONFIGS['MODEL']['ENCODER_NAME'],
-                                                        CONFIGS["DATA"]["FOLD"],
-                                                        CONFIGS['MISC']['RUN_INFO'])
+                                                           CONFIGS['MODEL']['ENCODER_NAME'],
+                                                           CONFIGS["DATA"]["FOLD"],
+                                                           CONFIGS['MISC']['RUN_INFO'])
 
     CONFIGS["MISC"]['WORK_DIR'] = os.path.join(CONFIGS["MISC"]["TMP"], 
                                                CONFIGS["MISC"]['RUN_NAME'])
@@ -221,4 +180,16 @@ if __name__=="__main__":
 
     copyfile(args.config, Path(CONFIGS["MISC"]['WORK_DIR'])/'config.yml')
 
-    train(CONFIGS)
+    if args.debug: CONFIGS['GENERAL']['DEBUG'] = True
+    if CONFIGS['GENERAL']['DEBUG']: 
+        logger.info('DEBUG MODE')
+        CONFIGS['GENERAL']['USE_WANDB'] = False
+
+    WANDB_AVAILABLE = False    
+    try:
+        import wandb
+        WANDB_AVAILABLE = True
+    except ModuleNotFoundError:
+        logger.info('wandb is not installed')
+
+    train(CONFIGS, WANDB_AVAILABLE)

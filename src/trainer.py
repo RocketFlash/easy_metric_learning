@@ -44,7 +44,7 @@ class MLTrainer:
             if self.is_debug and batch_index>=10: break
 
             if not self.is_debug and self.wandb_available:
-                if self.epoch == 0 and batch_index < 3:
+                if self.epoch == 1 and batch_index < 3:
                     image_grid = batch_grid(data)
                     save_path = os.path.join(self.configs["MISC"]['WORK_DIR'], f'train_batch_{batch_index}.png')
                     torchvision.utils.save_image(image_grid, save_path)
@@ -97,7 +97,7 @@ class MLTrainer:
                 if self.is_debug and batch_index>10: break
 
                 if not self.is_debug and self.wandb_available:
-                    if self.epoch == 0 and batch_index < 3:
+                    if self.epoch == 1 and batch_index < 3:
                         image_grid = batch_grid(data)
                         save_path = os.path.join(self.configs["MISC"]['WORK_DIR'], f'valid_batch_{batch_index}.png')
                         torchvision.utils.save_image(image_grid, save_path)
@@ -133,4 +133,8 @@ class MLTrainer:
 
 
     def _reset_epochs(self):
-        self.epoch = 0
+        self.epoch = 1
+
+    
+    def update_epoch(self):
+        self.epoch += 1
