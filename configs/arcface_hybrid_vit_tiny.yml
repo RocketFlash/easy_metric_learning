@@ -13,12 +13,12 @@ DATA:
     TRAIN_AUG: 'soft'
     FOLD: 0
     IMG_SIZE: 224
-    BATCH_SIZE: 400
+    BATCH_SIZE: 50
     WORKERS: 8
 
 
 MODEL:
-    ENCODER_NAME: 'vit_tiny_patch16_224_in21k'
+    ENCODER_NAME: 'vit_base_r50_s16_224_in21k'
     MARGIN_TYPE: 'arcface'
     EMBEDDINGS_SIZE: 512
     SCALE_SIZE : 64

@@ -1,5 +1,5 @@
 import sys
-sys.path.append("..")
+sys.path.append("./")
 
 import os
 import argparse
@@ -39,26 +39,43 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         wandb_run.config.update(CONFIGS)
 
     best_cp_sp, last_cp_sp, best_emb_cp_sp = get_cp_save_paths(CONFIGS)
+    VALIDATE = CONFIGS["DATA"]['SPLIT_FILE'] is not None
 
-    df_train, df_valid, df_full = get_train_val_split(data_config=CONFIGS["DATA"])
+    if VALIDATE:
+        df_train, df_valid, df_full = get_train_val_split(data_config=CONFIGS["DATA"])
 
-    train_loader = get_loader(df_train, data_config=CONFIGS["DATA"], split='train')
-    valid_loader = get_loader(df_valid, data_config=CONFIGS["DATA"], split='val')
+        train_loader, train_dataset = get_loader(df_train, data_config=CONFIGS["DATA"], split='train')
+        valid_loader, valid_dataset = get_loader(df_valid, data_config=CONFIGS["DATA"], split='val')
 
-    n_cl_total = df_full['label_id'].nunique()
-    n_cl_train = df_train['label_id'].nunique()
-    n_cl_valid = df_valid['label_id'].nunique()
-    classes_counts = dict(df_full['label_id'].value_counts())
+        n_cl_total = df_full['label_id'].nunique()
+        n_cl_train = df_train['label_id'].nunique()
+        n_cl_valid = df_valid['label_id'].nunique()
+        n_s_total = len(df_full)
+        n_s_train = len(df_train)
+        n_s_valid = len(df_valid)
+
+        classes_counts = dict(df_full['label_id'].value_counts())
+    else:
+        train_loader, train_dataset = get_loader(data_config=CONFIGS["DATA"], split='train')
+        n_cl_total = train_dataset.num_classes
+        n_cl_train = n_cl_total
+        n_cl_valid = 0 
+        n_s_total = train_dataset.__len__()
+        n_s_train = n_s_total
+        n_s_valid = 0
+        classes_counts = train_dataset.classes_counts
+
+    
     CONFIGS['MODEL']['N_CLASSES'] = n_cl_total
     CONFIGS['TRAIN']['N_CLASSES'] = n_cl_total
 
     if CONFIGS['MODEL']['AUTO_SCALE_SIZE']:
-        CONFIGS['MODEL']['SCALE_SIZE'] = calculate_autoscale(n_cl_train)  
+        CONFIGS['MODEL']['SCALE_SIZE'] = calculate_autoscale(n_cl_total)  
 
     if CONFIGS['MODEL']['DYNAMIC_MARGIN']:
         CONFIGS['MODEL']['M'] = calculate_dynamic_margin(CONFIGS['MODEL']['DYNAMIC_MARGIN'], classes_counts)
 
-    logger.data_info(CONFIGS, df_full, df_train, df_valid) 
+    logger.data_info(CONFIGS, n_cl_total, n_cl_train, n_cl_valid, n_s_total, n_s_train, n_s_valid) 
 
     device = get_device(CONFIGS['GENERAL']['DEVICE'])
     model  = get_model(model_config=CONFIGS['MODEL']).to(device)
@@ -104,15 +121,20 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
     start_time = time.time()
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):
         train_loss, train_acc, images_wdb_train = trainer.train_epoch(train_loader)
-        valid_loss, valid_acc, gap_val, images_wdb_valid = trainer.valid_epoch(valid_loader, calculate_GAP=CONFIGS['TRAIN']['CALCULATE_GAP'])
+        if VALIDATE:
+            valid_loss, valid_acc, gap_val, images_wdb_valid = trainer.valid_epoch(valid_loader, calculate_GAP=CONFIGS['TRAIN']['CALCULATE_GAP'])
+        else:
+            valid_loss, valid_acc, gap_val = None, None, None
         trainer.update_epoch()
         
         save_ckp(last_cp_sp, model, epoch, optimizer, best_loss)
         scheduler.step()
-
-        if valid_loss < best_loss:
+        
+        check_loss = valid_loss if VALIDATE else train_loss
+        
+        if check_loss < best_loss:
             logger.info('Saving best model')
-            best_loss = valid_loss
+            best_loss = check_loss
             save_ckp(best_cp_sp, model, epoch, optimizer, best_loss)
             save_ckp(best_emb_cp_sp, model.embeddings_net, emb_model_only=True)
 
@@ -121,13 +143,15 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
             metrics['train_acc']  = train_acc
             metrics['learning_rate'] = optimizer.param_groups[0]['lr']
 
-            if images_wdb_train and images_wdb_valid:
+            if images_wdb_train:
                 metrics["training batch"] = images_wdb_train
-                metrics["validation batch"] = images_wdb_valid
-
-            metrics['valid_loss'] = valid_loss
-            metrics['valid_acc']  = valid_acc
-            if gap_val is not None: metrics['gap_val'] = gap_val
+                
+            if VALIDATE:
+                if images_wdb_valid:
+                    metrics["validation batch"] = images_wdb_valid
+                metrics['valid_loss'] = valid_loss
+                metrics['valid_acc']  = valid_acc
+                if gap_val is not None: metrics['gap_val'] = gap_val
             wandb.log(metrics, step=epoch)
         
         logger.epoch_train_info(epoch, train_loss, train_acc, valid_loss, valid_acc, gap_val)

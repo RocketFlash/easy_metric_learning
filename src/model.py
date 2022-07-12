@@ -10,6 +10,23 @@ import math
 from .margin import get_margin
 
 
+class GeM(nn.Module):
+    """GeM pooling: https://arxiv.org/pdf/1711.02512.pdf """
+    def __init__(self, p=3, eps=1e-6):
+        super(GeM,self).__init__()
+        self.p = nn.Parameter(torch.ones(1)*p)
+        self.eps = eps
+
+    def forward(self, x):
+        return self.gem(x, p=self.p, eps=self.eps)
+        
+    def gem(self, x, p=3, eps=1e-6):
+        return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1./p)
+        
+    def __repr__(self):
+        return self.__class__.__name__ + '(' + 'p=' + '{:.4f}'.format(self.p.data.tolist()[0]) + ', ' + 'eps=' + str(self.eps) + ')'
+
+
 class EmbeddigsNet(nn.Module):
     """
     A class for embeddings learning model  
@@ -17,7 +34,7 @@ class EmbeddigsNet(nn.Module):
     Attributes
     ----------
     model_name : 
-        backbone name e.g. resnet50, resnext101_32x4d, efficientnet_b0 etc
+        backbone name from timm library e.g. resnet50, resnext101_32x4d, efficientnet_b0, vit, swin etc
     embeddings_size : 
         model output size (vector size in embeddings space) 
     DP : 
@@ -30,6 +47,7 @@ class EmbeddigsNet(nn.Module):
     def __init__(self, model_name='efficientnet_b0', 
                        embeddings_size=512, 
                        pretrained=True,
+                       pool_type='avg',
                        dropout=0.0):
         super(EmbeddigsNet, self).__init__()
 
@@ -44,7 +62,10 @@ class EmbeddigsNet(nn.Module):
             in_features = self.backbone.classifier.in_features
             self.backbone.classifier = nn.Identity()
             self.backbone.global_pool = nn.Identity()
-            self.pooling = nn.AdaptiveAvgPool2d(1)
+            if pool_type=='gem':
+                self.pooling = GeM()
+            else:
+                self.pooling = nn.AdaptiveAvgPool2d(1)
 
         self.dropout = nn.Dropout(p=dropout)
         self.n_features = embeddings_size
@@ -110,10 +131,12 @@ class MLNet(nn.Module):
 
 def get_model_embeddings(model_name='efficientnet_b0', 
               embeddings_size=512, 
+              pool_type='avg',
               pretrained=True, 
               dropout=0.0):
     model = EmbeddigsNet(model_name=model_name, 
                          embeddings_size=embeddings_size, 
+                         pool_type=pool_type,
                          pretrained=pretrained, 
                          dropout=dropout)
     return model
@@ -122,6 +145,7 @@ def get_model_embeddings(model_name='efficientnet_b0',
 def get_model(model_config=None,
               model_name='efficientnet_b0', 
               margin_type='arcface',
+              pool_type='avg',
               embeddings_size=512, 
               pretrained=True, 
               dropout=0.0,
@@ -138,6 +162,7 @@ def get_model(model_config=None,
         embeddings_size = model_config['EMBEDDINGS_SIZE']   
         dropout         = model_config['DROPOUT_PROB']
         out_features    = model_config['N_CLASSES']
+        pool_type       = model_config['POOL_TYPE']
         s               = model_config['SCALE_SIZE']
         m               = model_config['M']
         K               = model_config['K']
@@ -145,6 +170,7 @@ def get_model(model_config=None,
         ls_eps          = model_config['LS_PROB']
 
     embeddings_model = get_model_embeddings(model_name=model_name, 
+                                            pool_type=pool_type,
                                             embeddings_size=embeddings_size, 
                                             pretrained=pretrained, 
                                             dropout=dropout)

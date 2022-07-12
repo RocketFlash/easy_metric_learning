@@ -5,6 +5,7 @@ GENERAL:
     USE_WANDB : True
 
 DATA:
+    DATASET_TYPE : 'simple'
     DIR: "/home/ubuntu/datasets/metric_learning/train_set/"
     SPLIT_FILE: "/home/ubuntu/datasets/metric_learning/train_set/folds.csv"
     LABELS_TO_IDS_FILE : "/home/ubuntu/datasets/metric_learning/train_set/labels_to_ids.json"
@@ -26,6 +27,7 @@ MODEL:
     K : 10
     DROPOUT_PROB : 0.2
     LS_PROB : 0.1
+    POOL_TYPE : 'gem'
     AUTO_SCALE_SIZE : True
     EASY_MARGIN : False 
 

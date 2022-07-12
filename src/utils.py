@@ -162,15 +162,7 @@ class Logger():
     def info(self, txt):
         self.logger.info(txt)
 
-    def data_info(self, config, df_full, df_train, df_valid):
-
-        total_n_classes = df_full['label_id'].nunique()
-        train_n_classes = df_train['label_id'].nunique()
-        valid_n_classes = df_valid['label_id'].nunique()
-
-        total_n_samples = len(df_full)
-        train_n_samples = len(df_train)
-        valid_n_samples = len(df_valid)
+    def data_info(self, config, n_cl_total, n_cl_train=0, n_cl_valid=0, n_s_total=0, n_s_train=0, n_s_valid=0):
 
         encoder_type = config['MODEL']['ENCODER_NAME']
         margin_type = config['MODEL']['MARGIN_TYPE']
@@ -180,12 +172,12 @@ class Logger():
 
         self.logger.info(f'''
         ============   DATA INFO             ============
-        Total N classes           : {total_n_classes}
-        Total N classes train     : {train_n_classes}
-        Total N classes valid     : {valid_n_classes}
-        Total N samples           : {total_n_samples}
-        Total N training samples  : {train_n_samples}
-        Total N validation samples: {valid_n_samples}
+        Total N classes           : {n_cl_total}
+        Total N classes train     : {n_cl_train}
+        Total N classes valid     : {n_cl_valid}
+        Total N samples           : {n_s_total}
+        Total N training samples  : {n_s_train}
+        Total N validation samples: {n_s_valid}
 
         ============   TRAINING PARAMETERS   ============
         Encoder type              : {encoder_type}
@@ -195,9 +187,10 @@ class Logger():
         Margin m                  : {margin_m if not isinstance(margin_m, dict) else 'dynamic'}
         =================================================''')
 
-    def epoch_train_info(self, epoch, train_loss, train_acc, valid_loss, valid_acc, gap_val=None):
+    def epoch_train_info(self, epoch, train_loss, train_acc, valid_loss=None, valid_acc=None, gap_val=None):
         epoch_info_str = f'Epoch: {epoch} Train Loss: {train_loss:.5f} Train Acc: {train_acc:.5f}\n'
-        epoch_info_str += f'{" "*37} Valid Loss: {valid_loss:.5f} Valid Acc: {valid_acc:.5f}'
+        if valid_loss is not None:
+            epoch_info_str += f'{" "*37} Valid Loss: {valid_loss:.5f} Valid Acc: {valid_acc:.5f}'
         if gap_val is not None:
             epoch_info_str += f'\n{" "*37} GAP value : {gap_val:.5f}'
         self.logger.info(epoch_info_str)

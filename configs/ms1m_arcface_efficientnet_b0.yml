@@ -5,20 +5,21 @@ GENERAL:
     USE_WANDB : True
 
 DATA:
-    DIR: "/home/ubuntu/datasets/metric_learning/train_set/"
-    SPLIT_FILE: "/home/ubuntu/datasets/metric_learning/train_set/folds.csv"
-    LABELS_TO_IDS_FILE : "/home/ubuntu/datasets/metric_learning/train_set/labels_to_ids.json"
-    IDS_TO_LABELS_FILE : "/home/ubuntu/datasets/metric_learning/train_set/ids_to_labels.json"
+    DATASET_TYPE : 'mxdataset'
+    DIR: "/home/ubuntu/datasets/metric_learning/ms1mv3"
+    SPLIT_FILE: 
+    LABELS_TO_IDS_FILE : 
+    IDS_TO_LABELS_FILE : 
     
     TRAIN_AUG: 'soft'
     FOLD: 0
-    IMG_SIZE: 224
-    BATCH_SIZE: 400
+    IMG_SIZE: 112
+    BATCH_SIZE: 800
     WORKERS: 8
 
 
 MODEL:
-    ENCODER_NAME: 'vit_tiny_patch16_224_in21k'
+    ENCODER_NAME: 'efficientnet_b0'
     MARGIN_TYPE: 'arcface'
     EMBEDDINGS_SIZE: 512
     SCALE_SIZE : 64
@@ -46,10 +47,10 @@ TRAIN:
 
     OPTIMIZER:
         OPTIMIZER_TYPE: 'adam'
-        LR: 1e-4
+        LR: 1e-3
         MOMENTUM: 0.9
         WEIGHT_DECAY: 0.0
-
+        
     SCHEDULER:
         SHEDULER_TYPE: 'cosine'
         T_MAX: 10
@@ -61,5 +62,5 @@ TEST:
     EMBEDDINGS_SAVE_PATH : 
 
 MISC:
-    RUN_INFO: 'soft_augs_gem'
+    RUN_INFO: 'soft_augs'
     TMP: "./work_dirs/"
