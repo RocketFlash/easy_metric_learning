@@ -1,1 +1,3 @@
-# metric_learning
+# Easy metric learning 
+
+Simple framework for metric learning training

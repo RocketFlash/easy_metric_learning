@@ -1,16 +1,27 @@
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
+mean_vals = {
+        'general' : [0.485, 0.456, 0.406],
+        'faces'   : [0.5,   0.5,   0.5]
+    }
 
-def get_transformations(aug_name='soft', image_size=(400, 400)):
+std_vals = {
+    'general' : [0.229, 0.224, 0.225],
+    'faces'   : [0.5,   0.5,   0.5]
+}
+
+def get_transform(aug_name='soft', data_type='general', image_size=(400, 400)):
+
     all_transforms = {
         'super_soft': A.Compose([
             A.Resize(image_size[0], image_size[1]),
             A.HorizontalFlip(p=0.5),
-            A.Normalize(mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225]),
+            A.Normalize(mean=mean_vals[data_type],
+                        std=std_vals[data_type]),
             ToTensorV2()
         ]),
+        
         'soft': A.Compose([
             A.Resize(image_size[0], image_size[1]),
             A.HorizontalFlip(p=0.5),
@@ -32,46 +43,52 @@ def get_transformations(aug_name='soft', image_size=(400, 400)):
                        color_shift=(0.01, 0.05)),
             A.MotionBlur(p=0.01,
                          blur_limit=(3, 5)),
-            A.Normalize(mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225]),
+            A.Normalize(mean=mean_vals[data_type],
+                        std=std_vals[data_type]),
             ToTensorV2()
         ]),
+
         'test_aug': A.Compose([
             A.Resize(image_size[0], image_size[1]),
-            A.Normalize(mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225]),
+            A.Normalize(mean=mean_vals[data_type],
+                        std=std_vals[data_type]),
             ToTensorV2()
         ]),
+
         'test_aug_tiles': A.Compose([
             A.Resize(image_size[0], image_size[1]),
             A.CLAHE (clip_limit=4.0, tile_grid_size=(8, 8), p=1),
-            A.Normalize(mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225]),
+            A.Normalize(mean=mean_vals[data_type],
+                        std=std_vals[data_type]),
             ToTensorV2()
         ]),
+
         'hflip_tta': A.Compose([
             A.Resize(image_size[0], image_size[1]),
             A.HorizontalFlip(p=1),
-            A.Normalize(mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225]),
+            A.Normalize(mean=mean_vals[data_type],
+                        std=std_vals[data_type]),
             ToTensorV2()
         ]),
+
         'scale_up_tta': A.Compose([
             A.Resize(int(image_size[0]*1.3), int(image_size[1]*1.3)),
-            A.Normalize(mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225]),
+            A.Normalize(mean=mean_vals[data_type],
+                        std=std_vals[data_type]),
             ToTensorV2()
         ]),
+
         'scale_down_tta': A.Compose([
             A.Resize(int(image_size[0]/1.3), int(image_size[1]/1.3)),
-            A.Normalize(mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225]),
+            A.Normalize(mean=mean_vals[data_type],
+                        std=std_vals[data_type]),
             ToTensorV2()
         ]),
+        
         'no_aug': A.Compose([
             A.Resize(image_size[0], image_size[1]),
-            A.Normalize(mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225]),
+            A.Normalize(mean=mean_vals[data_type],
+                        std=std_vals[data_type]),
             ToTensorV2()
         ])
     }

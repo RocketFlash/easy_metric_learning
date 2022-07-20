@@ -6,6 +6,7 @@ GENERAL:
 
 DATA:
     DATASET_TYPE : 'mxdataset'
+    DATA_TYPE : 'faces'
     DIR: "/home/ubuntu/datasets/metric_learning/ms1mv3"
     SPLIT_FILE: 
     LABELS_TO_IDS_FILE : 
@@ -14,16 +15,15 @@ DATA:
     TRAIN_AUG: 'soft'
     FOLD: 0
     IMG_SIZE: 112
-    BATCH_SIZE: 800
+    BATCH_SIZE: 128
     WORKERS: 8
 
-
 MODEL:
-    ENCODER_NAME: 'efficientnet_b0'
+    ENCODER_NAME: 'efficientnet_b1'
     MARGIN_TYPE: 'arcface'
     EMBEDDINGS_SIZE: 512
     SCALE_SIZE : 64
-    M : 0.01
+    M : 0.5
     K : 10
     DROPOUT_PROB : 0.2
     LS_PROB : 0.1
@@ -32,15 +32,15 @@ MODEL:
     EASY_MARGIN : False 
 
     DYNAMIC_MARGIN:
-        # HB : 0.5
-        # LB : 0.05
-        # LAMBDA : 0.25
+        HB : 0.5
+        LB : 0.05
+        LAMBDA : 0.25
 
 TRAIN:
     LOSS_TYPE : 'cross_entropy'
     CALCULATE_GAP : True
     FOCAL_GAMMA : 0.1
-    EPOCHS : 50
+    EPOCHS : 30
     RESUME : 
     FREEZE_BACKBONE : False
     LOAD_WEIGHTS: 
@@ -53,7 +53,7 @@ TRAIN:
         
     SCHEDULER:
         SHEDULER_TYPE: 'cosine'
-        T_MAX: 10
+        T_MAX: 15
         ETA_MIN: 1e-6
     
 
@@ -62,5 +62,7 @@ TEST:
     EMBEDDINGS_SAVE_PATH : 
 
 MISC:
-    RUN_INFO: 'soft_augs'
+    RUN_INFO: 'dynamic_margin'
+    DATASET_INFO: 'ms1m'
+    PROJECT_NAME: 'Face recognition'
     TMP: "./work_dirs/"

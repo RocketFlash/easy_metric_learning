@@ -167,8 +167,10 @@ class Logger():
         encoder_type = config['MODEL']['ENCODER_NAME']
         margin_type = config['MODEL']['MARGIN_TYPE']
         embeddings_size = config['MODEL']['EMBEDDINGS_SIZE']
-        scale_size = config['MODEL']['SCALE_SIZE']
+        scale_size = config['MODEL']['S']
         margin_m = config['MODEL']['M']
+        is_autoscalse = config['MODEL']['AUTO_SCALE_SIZE']
+        sc_s = f'autoscale {scale_size:.2f}' if config['MODEL']['AUTO_SCALE_SIZE'] else f'{scale_size:.2f}'
 
         self.logger.info(f'''
         ============   DATA INFO             ============
@@ -183,7 +185,7 @@ class Logger():
         Encoder type              : {encoder_type}
         Margin type               : {margin_type}
         Embeddings size           : {embeddings_size}
-        Scale size s              : {scale_size:.2f}
+        Scale size s              : {sc_s}
         Margin m                  : {margin_m if not isinstance(margin_m, dict) else 'dynamic'}
         =================================================''')
 

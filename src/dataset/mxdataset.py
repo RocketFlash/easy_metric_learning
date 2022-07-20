@@ -2,7 +2,7 @@ import os
 import numbers
 import mxnet as mx
 import numpy as np
-
+from tqdm.auto import tqdm
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
@@ -12,7 +12,7 @@ class MXDataset(Dataset):
     '''
     Modified code from https://github.com/deepinsight/insightface
     '''
-    def __init__(self, root_dir, transform):
+    def __init__(self, root_dir, transform, calc_cl_count=False):
         super(MXDataset, self).__init__()
         self.transform = transform
         self.root_dir = root_dir
@@ -27,18 +27,22 @@ class MXDataset(Dataset):
         else:
             self.imgidx = np.array(list(self.imgrec.keys))
         
-        labels = []
-        for im_i in self.imgidx:
-            header, img = mx.recordio.unpack(s)
-            label = header.label
-            if not isinstance(label, numbers.Number):
-                label = label[0]
-            labels.append(label)
-
         prop = open(os.path.join(root_dir, "property"), "r").read().strip().split(',')
         assert len(prop) == 3
         self.num_classes = int(prop[0])
-        self.classes_counts = dict(Counter(labels))
+
+        if calc_cl_count:
+            labels = []
+            for im_i in tqdm(self.imgidx):
+                s = self.imgrec.read_idx(im_i)
+                header, img = mx.recordio.unpack(s)
+                label = header.label
+                if not isinstance(label, numbers.Number):
+                    label = label[0]
+                labels.append(int(label))
+            self.classes_counts = dict(Counter(labels))
+        else:
+            self.classes_counts = {}
 
     def __getitem__(self, index):
         idx = self.imgidx[index]

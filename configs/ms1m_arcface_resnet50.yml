@@ -5,31 +5,30 @@ GENERAL:
     USE_WANDB : True
 
 DATA:
-    DATASET_TYPE : 'simple'
-    DATA_TYPE : 'general'
-    DIR: "/home/ubuntu/datasets/metric_learning/train_set/"
-    SPLIT_FILE: "/home/ubuntu/datasets/metric_learning/train_set/folds.csv"
-    LABELS_TO_IDS_FILE : "/home/ubuntu/datasets/metric_learning/train_set/labels_to_ids.json"
-    IDS_TO_LABELS_FILE : "/home/ubuntu/datasets/metric_learning/train_set/ids_to_labels.json"
+    DATASET_TYPE : 'mxdataset'
+    DATA_TYPE : 'faces'
+    DIR: "/home/ubuntu/datasets/metric_learning/ms1mv3"
+    SPLIT_FILE: 
+    LABELS_TO_IDS_FILE : 
+    IDS_TO_LABELS_FILE : 
     
-    TRAIN_AUG: 'soft'
+    TRAIN_AUG: 'super_soft'
     FOLD: 0
-    IMG_SIZE: 224
-    BATCH_SIZE: 100
+    IMG_SIZE: 112
+    BATCH_SIZE: 800
     WORKERS: 8
 
-
 MODEL:
-    ENCODER_NAME: 'efficientnet_b0'
+    ENCODER_NAME: 'resnet50'
     MARGIN_TYPE: 'arcface'
     EMBEDDINGS_SIZE: 512
-    SCALE_SIZE : 64
-    M : 0.01
+    S : 64
+    M : 0.5
     K : 10
     DROPOUT_PROB : 0.2
     LS_PROB : 0.1
-    POOL_TYPE : 'gem'
-    AUTO_SCALE_SIZE : True
+    POOL_TYPE : 'avg'
+    AUTO_SCALE_SIZE : False
     EASY_MARGIN : False 
 
     DYNAMIC_MARGIN:
@@ -41,21 +40,23 @@ TRAIN:
     LOSS_TYPE : 'cross_entropy'
     CALCULATE_GAP : True
     FOCAL_GAMMA : 0.1
-    EPOCHS : 50
+    EPOCHS : 20
     RESUME : 
     FREEZE_BACKBONE : False
     LOAD_WEIGHTS: 
 
     OPTIMIZER:
         OPTIMIZER_TYPE: 'adam'
-        LR: 1e-4
+        LR: 1e-3
         MOMENTUM: 0.9
-        WEIGHT_DECAY: 0.0
+        WEIGHT_DECAY: 0.0005
         
     SCHEDULER:
         SHEDULER_TYPE: 'cosine'
-        T_MAX: 10
-        ETA_MIN: 1e-6
+        T_MAX: 20
+        ETA_MIN: 1e-5
+    
+    WARMUP: False
     
 
 TEST:
@@ -63,5 +64,5 @@ TEST:
     EMBEDDINGS_SAVE_PATH : 
 
 MISC:
-    RUN_INFO: 'soft_augs'
+    RUN_INFO: 'avg_pooling'
     TMP: "./work_dirs/"

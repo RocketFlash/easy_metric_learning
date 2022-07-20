@@ -3,13 +3,14 @@ from .mxdataset import MXDataset
 
 from torch.utils.data import DataLoader
 
-from ..transforms import get_transformations
+from ..transform import get_transform
 from ..utils import worker_init_fn
 
 
 def get_loader(df_names=None,
                data_config=None,
                dataset_type='simple',
+               data_type='general',
                root_dir=None,  
                batch_size=8, 
                img_size=170,
@@ -17,7 +18,8 @@ def get_loader(df_names=None,
                pin=False,
                test=False,
                split='train',
-               transform_name='no_aug'):
+               transform_name='no_aug',
+               calc_cl_count=False):
 
     if data_config is not None:
         root_dir       = data_config["DIR"]
@@ -26,14 +28,17 @@ def get_loader(df_names=None,
         num_thread     = data_config["WORKERS"]
         img_size       = data_config['IMG_SIZE']
         transform_name = data_config['TRAIN_AUG']
+        data_type      = data_config["DATA_TYPE"]
 
     if test is False:
-        transform = get_transformations(transform_name, image_size=(img_size,img_size))
+        transform = get_transform(transform_name, data_type=data_type, image_size=(img_size,img_size))
     else:
-        transform = get_transformations('test_aug', image_size=(img_size,img_size))
+        transform = get_transform('test_aug', data_type=data_type, image_size=(img_size,img_size))
     
     if dataset_type=='mxdataset':
-        dataset = MXDataset(root_dir=root_dir, transform=transform)
+        dataset = MXDataset(root_dir=root_dir, 
+                            transform=transform,
+                            calc_cl_count=calc_cl_count)
     else:
         dataset = MetricDataset(root_dir=root_dir,
                                 df_names=df_names,      

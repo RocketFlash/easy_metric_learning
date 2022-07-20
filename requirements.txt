@@ -12,3 +12,4 @@ timm
 umap-learn
 plotly
 kaleido
+pytorch_warmup

@@ -84,7 +84,6 @@ def combine_hashes(hashes_path):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='find dublicates')
-    # arguments from command line
     parser.add_argument('--dataset_path', default="./", help="path to the dataset")
     parser.add_argument('--hashes_save_path', default="./", help='path to the hashes save directory')
 

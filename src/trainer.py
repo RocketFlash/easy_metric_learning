@@ -17,7 +17,7 @@ except ModuleNotFoundError:
 
 
 class MLTrainer:
-    def __init__(self, model, optimizer, loss_func, logger, configs, device='cpu', epoch=0, amp_scaler=None, wandb_available=True, is_debug=False):
+    def __init__(self, model, optimizer, loss_func, logger, configs, device='cpu', epoch=1, amp_scaler=None, warmup_scheduler=None, wandb_available=True, is_debug=False):
         self.model = model
         self.loss_func = loss_func
         self.optimizer = optimizer
@@ -28,6 +28,7 @@ class MLTrainer:
         self.device = device
         self.is_debug = is_debug
         self.amp_scaler = amp_scaler
+        self.warmup_scheduler = warmup_scheduler
 
     def train_epoch(self, train_loader):
         self.model.train()
@@ -44,7 +45,7 @@ class MLTrainer:
             if self.is_debug and batch_index>=10: break
 
             if not self.is_debug and self.wandb_available:
-                if self.epoch == 1 and batch_index < 3:
+                if self.epoch == 1 and batch_index == 0:
                     image_grid = batch_grid(data)
                     save_path = os.path.join(self.configs["MISC"]['WORK_DIR'], f'train_batch_{batch_index}.png')
                     torchvision.utils.save_image(image_grid, save_path)
@@ -56,18 +57,27 @@ class MLTrainer:
             self.optimizer.zero_grad()
 
             if self.amp_scaler is not None:
-                with amp.autocast(enabled=True):
+                with amp.autocast():
                     output = self.model(data, targets)
                     loss = self.loss_func(output, targets)
                     acc = accuracy(output, targets)
                 
                 self.amp_scaler.scale(loss).backward()
+                self.amp_scaler.unscale_(self.optimizer)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
                 self.amp_scaler.step(self.optimizer)
                 self.amp_scaler.update()
             else:
                 output = self.model(data, targets)
                 loss = self.loss_func(output, targets)
                 acc = accuracy(output, targets)
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
+                self.optimizer.step()
+
+            if self.warmup_scheduler is not None:
+                if batch_index < len(tqdm_train)-1:
+                    with self.warmup_scheduler.dampening(): pass
 
             train_loss.update(loss.detach().item(), batch_size)
             train_acc.update(acc)
@@ -97,7 +107,7 @@ class MLTrainer:
                 if self.is_debug and batch_index>10: break
 
                 if not self.is_debug and self.wandb_available:
-                    if self.epoch == 1 and batch_index < 3:
+                    if self.epoch == 1 and batch_index == 0:
                         image_grid = batch_grid(data)
                         save_path = os.path.join(self.configs["MISC"]['WORK_DIR'], f'valid_batch_{batch_index}.png')
                         torchvision.utils.save_image(image_grid, save_path)

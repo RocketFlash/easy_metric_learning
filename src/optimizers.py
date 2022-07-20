@@ -10,18 +10,22 @@ def get_optimizer(model, optimizer_config):
         except ModuleNotFoundError:
             print('torch_optimizer is not installed')
         optimizer = optim_t.RAdam([{'params': model.parameters()}],
-                                  lr=optimizer_config['LR'],
-                                  betas=(0.9, 0.999),
-                                  eps=1e-8,
-                                  weight_decay=optimizer_config['WEIGHT_DECAY'])
+                                    lr=optimizer_config['LR'],
+                                    betas=(0.9, 0.999),
+                                    eps=1e-8,
+                                    weight_decay=optimizer_config['WEIGHT_DECAY'])
     elif optimizer_type == 'adam':
         optimizer = optim.Adam([{'params': model.parameters()}],
-                               lr=optimizer_config['LR'],
-                               weight_decay=optimizer_config['WEIGHT_DECAY'])
+                                 lr=optimizer_config['LR'],
+                                 weight_decay=optimizer_config['WEIGHT_DECAY'])
+    elif optimizer_type == 'adamw':
+        optimizer = optim.AdamW([{'params': model.parameters()}],
+                                  lr=optimizer_config['LR'],
+                                  weight_decay=optimizer_config['WEIGHT_DECAY'])
     else:
         optimizer = optim.SGD([{'params': model.parameters()}],
-                              lr=optimizer_config['LR'],
-                              momentum=optimizer_config['MOMENTUM'],
-                              nesterov=True,
-                              weight_decay=optimizer_config['WEIGHT_DECAY'])
+                                lr=optimizer_config['LR'],
+                                momentum=optimizer_config['MOMENTUM'],
+                                nesterov=True,
+                                weight_decay=optimizer_config['WEIGHT_DECAY'])
     return optimizer

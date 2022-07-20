@@ -8,7 +8,7 @@ import timm
 import math
 
 from .margin import get_margin
-
+from .backbone import get_backbone
 
 class GeM(nn.Module):
     """GeM pooling: https://arxiv.org/pdf/1711.02512.pdf """
@@ -51,21 +51,32 @@ class EmbeddigsNet(nn.Module):
                        dropout=0.0):
         super(EmbeddigsNet, self).__init__()
 
-        self.backbone = timm.create_model(model_name, pretrained=pretrained, 
-                                                      scriptable=True)
+        if pool_type=='gem':
+            self.pooling = GeM()
+        elif pool_type=='avg':
+            self.pooling = nn.AdaptiveAvgPool2d(1)
+        else:
+            self.pooling = None
+
+        if 'iresnet' in model_name:
+            self.backbone = get_backbone(model_name)
+        else:
+            self.backbone = timm.create_model(model_name, pretrained=pretrained, 
+                                                          scriptable=True)
         
         if 'swin' in model_name or 'vit' in model_name:
             in_features = self.backbone.head.in_features
             self.backbone.head = nn.Identity()
             self.pooling = None
-        else:
+        elif 'efficientnet' in model_name:
             in_features = self.backbone.classifier.in_features
             self.backbone.classifier = nn.Identity()
             self.backbone.global_pool = nn.Identity()
-            if pool_type=='gem':
-                self.pooling = GeM()
-            else:
-                self.pooling = nn.AdaptiveAvgPool2d(1)
+        else:
+            in_features = self.backbone.fc.in_features
+            self.backbone.fc = nn.Identity()
+            self.backbone.global_pool = nn.Identity()
+
 
         self.dropout = nn.Dropout(p=dropout)
         self.n_features = embeddings_size
@@ -92,7 +103,6 @@ class EmbeddigsNet(nn.Module):
         x = self.backbone(x)
         if self.pooling is not None:
             x = self.pooling(x).view(batch_size, -1)
-
         x = self.dropout(x)
         x = self.classifier(x)
         x = self.bn(x)
@@ -101,8 +111,7 @@ class EmbeddigsNet(nn.Module):
 
 
     def forward(self, x):
-        x = self.extract_features(x)
-        return x
+        return self.extract_features(x)
 
 
 class MLNet(nn.Module):
@@ -129,11 +138,18 @@ class MLNet(nn.Module):
         return x
 
 
-def get_model_embeddings(model_name='efficientnet_b0', 
-              embeddings_size=512, 
-              pool_type='avg',
-              pretrained=True, 
-              dropout=0.0):
+def get_model_embeddings(model_config=None,
+                         model_name='efficientnet_b0', 
+                         embeddings_size=512, 
+                         pool_type='avg',
+                         pretrained=True, 
+                         dropout=0.0):
+    if model_config is not None:
+        model_name      = model_config['ENCODER_NAME'] 
+        margin_type     = model_config['MARGIN_TYPE']
+        embeddings_size = model_config['EMBEDDINGS_SIZE']   
+        dropout         = model_config['DROPOUT_PROB']
+        pool_type       = model_config['POOL_TYPE']
     model = EmbeddigsNet(model_name=model_name, 
                          embeddings_size=embeddings_size, 
                          pool_type=pool_type,
@@ -163,7 +179,7 @@ def get_model(model_config=None,
         dropout         = model_config['DROPOUT_PROB']
         out_features    = model_config['N_CLASSES']
         pool_type       = model_config['POOL_TYPE']
-        s               = model_config['SCALE_SIZE']
+        s               = model_config['S']
         m               = model_config['M']
         K               = model_config['K']
         easy_margin     = model_config['EASY_MARGIN']

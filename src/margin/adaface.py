@@ -4,10 +4,7 @@ from torch.nn import Parameter
 import torch.nn.functional as F
 import math
 
-def l2_norm(input_x,axis=1):
-    norm = torch.norm(input_x,2,axis,True)
-    output = torch.div(input_x, norm)
-    return output
+from .utils import l2_norm
 
 class AdaFace(nn.Module):
     """
