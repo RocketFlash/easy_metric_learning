@@ -19,6 +19,7 @@ def get_loader(df_names=None,
                test=False,
                split='train',
                transform_name='no_aug',
+               use_cache=False,
                calc_cl_count=False):
 
     if data_config is not None:
@@ -29,6 +30,7 @@ def get_loader(df_names=None,
         img_size       = data_config['IMG_SIZE']
         transform_name = data_config['TRAIN_AUG']
         data_type      = data_config["DATA_TYPE"]
+        use_cache      = data_config["USE_CACHE"] if "USE_CACHE" in data_config else False
 
     if test is False:
         transform = get_transform(transform_name, data_type=data_type, image_size=(img_size,img_size))
@@ -38,6 +40,7 @@ def get_loader(df_names=None,
     if dataset_type=='mxdataset':
         dataset = MXDataset(root_dir=root_dir, 
                             transform=transform,
+                            use_cache=use_cache,
                             calc_cl_count=calc_cl_count)
     else:
         dataset = MetricDataset(root_dir=root_dir,

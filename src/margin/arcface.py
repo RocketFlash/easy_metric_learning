@@ -73,7 +73,7 @@ class ArcMarginProduct(nn.Module):
             mm_i = self.mm
 
         cosine = F.linear(F.normalize(x), F.normalize(self.weight))
-        sine = torch.sqrt(1.0 - torch.pow(cosine, 2))
+        sine = torch.sqrt((1.0 - torch.pow(cosine, 2)).clamp(0, 1))
 
         if isinstance(self.m, dict):
             cos_m_i = torch.unsqueeze(cos_m_i, 1)

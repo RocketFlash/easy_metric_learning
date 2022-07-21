@@ -105,6 +105,14 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
             logger.info("start from checkpoint :'{}'".format(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]))
         else:
             logger.info("no checkpoint found at :'{}'".format(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]))
+
+    if CONFIGS["TRAIN"]["LOAD_EMBEDDER"]:
+        if isfile(CONFIGS["TRAIN"]["LOAD_EMBEDDER"]):
+            logger.info("loading checkpoint :'{}'".format(CONFIGS["TRAIN"]["LOAD_EMBEDDER"]))
+            model.embeddings_net = load_ckp(CONFIGS["TRAIN"]["LOAD_EMBEDDER"], model.embeddings_net,  emb_model_only=True)
+            logger.info("start from checkpoint :'{}'".format(CONFIGS["TRAIN"]["LOAD_EMBEDDER"]))
+        else:
+            logger.info("no checkpoint found at :'{}'".format(CONFIGS["TRAIN"]["LOAD_EMBEDDER"]))
    
     logger.info(f'Current best loss: {best_loss}')
     
@@ -129,13 +137,13 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
                         wandb_available=WANDB_AVAILABLE, 
                         is_debug=CONFIGS['GENERAL']['DEBUG'])
 
-    if CONFIGS['TEST']['FACES_EVALUATION']:
-        faces_evaluator = FacesEvaluator(CONFIGS['TEST']['VAL_TARGETS'], 
-                                         CONFIGS['DATA']['DIR'],
-                                         logger=logger,
-                                         device=device)
-    else:
-        faces_evaluator = None
+    faces_evaluator = None
+    if 'FACES_EVALUATION' in CONFIGS:
+        if CONFIGS['TEST']['FACES_EVALUATION']:
+            faces_evaluator = FacesEvaluator(CONFIGS['TEST']['VAL_TARGETS'], 
+                                            CONFIGS['DATA']['DIR'],
+                                            logger=logger,
+                                            device=device)
 
     start_time = time.time()
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):

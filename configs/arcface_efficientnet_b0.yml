@@ -5,7 +5,7 @@ GENERAL:
     USE_WANDB : True
 
 DATA:
-    DATASET_TYPE : 'simple'
+    DATASET_TYPE : 'general'
     DATA_TYPE : 'general'
     DIR: "/home/ubuntu/datasets/metric_learning/train_set/"
     SPLIT_FILE: "/home/ubuntu/datasets/metric_learning/train_set/folds.csv"
@@ -14,23 +14,23 @@ DATA:
     
     TRAIN_AUG: 'soft'
     FOLD: 0
-    IMG_SIZE: 224
-    BATCH_SIZE: 100
+    IMG_SIZE: 112
+    BATCH_SIZE: 800
     WORKERS: 8
-
 
 MODEL:
     ENCODER_NAME: 'efficientnet_b0'
     MARGIN_TYPE: 'arcface'
     EMBEDDINGS_SIZE: 512
-    SCALE_SIZE : 64
-    M : 0.01
+    S : 64
+    M : 0.1
     K : 10
-    DROPOUT_PROB : 0.2
-    LS_PROB : 0.1
-    POOL_TYPE : 'gem'
+    DROPOUT_PROB : 0.1
+    LS_PROB : 0
+    POOL_TYPE : 'avg'
     AUTO_SCALE_SIZE : True
     EASY_MARGIN : False 
+    FREEZE_BACKBONE : False
 
     DYNAMIC_MARGIN:
         # HB : 0.5
@@ -41,21 +41,25 @@ TRAIN:
     LOSS_TYPE : 'cross_entropy'
     CALCULATE_GAP : True
     FOCAL_GAMMA : 0.1
-    EPOCHS : 50
+    EPOCHS : 30
     RESUME : 
-    FREEZE_BACKBONE : False
     LOAD_WEIGHTS: 
+    LOAD_EMBEDDER: 
 
     OPTIMIZER:
-        OPTIMIZER_TYPE: 'adam'
-        LR: 1e-4
+        OPTIMIZER_TYPE: 'sgd'
+        LR: 0.5
         MOMENTUM: 0.9
-        WEIGHT_DECAY: 0.0
+        WEIGHT_DECAY: 1e-4
         
     SCHEDULER:
         SHEDULER_TYPE: 'cosine'
-        T_MAX: 10
-        ETA_MIN: 1e-6
+        T_MAX: 30
+        ETA_MIN: 1e-5
+    
+    AMP: True
+    WARMUP: False
+    GRADIENT_ACC_STEPS: 3
     
 
 TEST:
@@ -63,5 +67,7 @@ TEST:
     EMBEDDINGS_SAVE_PATH : 
 
 MISC:
-    RUN_INFO: 'soft_augs'
+    RUN_INFO: 'm_0_1'
+    DATASET_INFO: 'dataset1'
+    PROJECT_NAME: 'RETECH metric learning'
     TMP: "./work_dirs/"

@@ -40,21 +40,21 @@ TRAIN:
     LOSS_TYPE : 'cross_entropy'
     CALCULATE_GAP : False
     FOCAL_GAMMA : 0.1
-    EPOCHS : 20
+    EPOCHS : 5
     RESUME : 
     FREEZE_BACKBONE : False
-    LOAD_WEIGHTS: 
+    LOAD_WEIGHTS: work_dirs/ms1m_combined_efficientnet_b0_avg_pooling_continue/best.pt
 
     OPTIMIZER:
         OPTIMIZER_TYPE: 'sgd'
-        LR: 0.05
+        LR: 5e-4
         MOMENTUM: 0.9
         WEIGHT_DECAY: 1e-4
         
     SCHEDULER:
         SHEDULER_TYPE: 'cosine'
-        T_MAX: 20
-        ETA_MIN: 1e-5
+        T_MAX: 5
+        ETA_MIN: 5e-6
     
     AMP: True
     WARMUP: True
@@ -67,7 +67,7 @@ TEST:
     VAL_TARGETS: ['lfw', 'cfp_fp', 'agedb_30']
 
 MISC:
-    RUN_INFO: 'avg_pooling'
+    RUN_INFO: 'avg_pooling_continue'
     DATASET_INFO: 'ms1m'
     PROJECT_NAME: 'Face recognition'
     TMP: "./work_dirs/"

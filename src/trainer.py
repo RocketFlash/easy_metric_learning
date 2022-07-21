@@ -38,6 +38,7 @@ class MLTrainer:
         
         tqdm_train = tqdm(train_loader, total=int(len(train_loader)))
         images_wdb = []
+        grad_accum_steps = self.configs["TRAIN"]['GRADIENT_ACC_STEPS']
 
         for batch_index, (data, targets) in enumerate(tqdm_train):
             batch_size = data.size(0)
@@ -54,26 +55,31 @@ class MLTrainer:
             data = data.to(self.device)
             targets = targets.to(self.device)
 
-            self.optimizer.zero_grad()
-
             if self.amp_scaler is not None:
                 with amp.autocast():
                     output = self.model(data, targets)
                     loss = self.loss_func(output, targets)
                     acc = accuracy(output, targets)
-                
+                loss /= grad_accum_steps
                 self.amp_scaler.scale(loss).backward()
-                self.amp_scaler.unscale_(self.optimizer)
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
-                self.amp_scaler.step(self.optimizer)
-                self.amp_scaler.update()
+
+                if ((batch_index + 1) % grad_accum_steps == 0) or (batch_index + 1 == len(train_loader)):
+                    self.amp_scaler.unscale_(self.optimizer)
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
+                    self.amp_scaler.step(self.optimizer)
+                    self.amp_scaler.update()
+                    self.optimizer.zero_grad()
             else:
                 output = self.model(data, targets)
-                loss = self.loss_func(output, targets)
                 acc = accuracy(output, targets)
+                loss = self.loss_func(output, targets)
+                loss /= grad_accum_steps
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
-                self.optimizer.step()
+
+                if ((batch_index + 1) % grad_accum_steps == 0) or (batch_index + 1 == len(train_loader)):
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
+                    self.optimizer.step()
+                    self.optimizer.zero_grad()
 
             if self.warmup_scheduler is not None:
                 if batch_index < len(tqdm_train)-1:

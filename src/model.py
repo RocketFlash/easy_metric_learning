@@ -48,7 +48,8 @@ class EmbeddigsNet(nn.Module):
                        embeddings_size=512, 
                        pretrained=True,
                        pool_type='avg',
-                       dropout=0.0):
+                       dropout=0.0,
+                       freeze_backbone=False):
         super(EmbeddigsNet, self).__init__()
 
         if pool_type=='gem':
@@ -85,10 +86,9 @@ class EmbeddigsNet(nn.Module):
         self.bn = nn.BatchNorm1d(self.n_features)
         self._init_params()
 
-        
-        # Unfreeze model weights
-        for param in self.backbone.parameters():
-            param.requires_grad = True
+        if freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
 
     
     def _init_params(self):
@@ -143,18 +143,21 @@ def get_model_embeddings(model_config=None,
                          embeddings_size=512, 
                          pool_type='avg',
                          pretrained=True, 
-                         dropout=0.0):
+                         dropout=0.0,
+                         freeze_backbone=False):
     if model_config is not None:
         model_name      = model_config['ENCODER_NAME'] 
         margin_type     = model_config['MARGIN_TYPE']
         embeddings_size = model_config['EMBEDDINGS_SIZE']   
         dropout         = model_config['DROPOUT_PROB']
         pool_type       = model_config['POOL_TYPE']
+        freeze_backbone = model_config['FREEZE_BACKBONE']
     model = EmbeddigsNet(model_name=model_name, 
                          embeddings_size=embeddings_size, 
                          pool_type=pool_type,
                          pretrained=pretrained, 
-                         dropout=dropout)
+                         dropout=dropout,
+                         freeze_backbone=freeze_backbone)
     return model
 
 
