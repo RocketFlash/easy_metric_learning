@@ -52,3 +52,19 @@ def get_stratified_kfold(df, k=5, random_state=28):
         df.loc[test_index, 'fold'] = fold
     df['fold'] = df['fold'].astype(int)
     return df
+
+
+def make_all_training(df):
+    train_df = df
+    train_df['fold'] = -1
+
+    train_df['fold'] = train_df['fold'].astype(int)
+    return train_df[['file_name', 'label','label_id', 'fold']]
+
+
+def make_all_testing(df):
+    train_df = df
+    train_df['fold'] = -2
+
+    train_df['fold'] = train_df['fold'].astype(int)
+    return train_df[['file_name', 'label','label_id', 'fold']]

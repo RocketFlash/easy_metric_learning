@@ -43,7 +43,7 @@ TRAIN:
     FOCAL_GAMMA : 0.1
     EPOCHS : 30
     RESUME : 
-    LOAD_WEIGHTS: 
+    LOAD_WEIGHTS: work_dirs/dataset1_arcface_efficientnet_b0_m_0_1_fold0/best.pt
     LOAD_EMBEDDER: 
 
     OPTIMIZER:

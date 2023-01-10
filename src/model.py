@@ -64,8 +64,12 @@ class EmbeddigsNet(nn.Module):
         else:
             self.backbone = timm.create_model(model_name, pretrained=pretrained, 
                                                           scriptable=True)
-        
-        if 'swin' in model_name or 'vit' in model_name:
+        print(self.backbone)
+        if 'maxvit' in model_name or 'convnext' in model_name:
+            in_features = self.backbone.head.fc.in_features
+            self.backbone.head.fc = nn.Identity()
+            self.pooling = None
+        elif 'swin' in model_name or 'vit' in model_name:
             in_features = self.backbone.head.in_features
             self.backbone.head = nn.Identity()
             self.pooling = None

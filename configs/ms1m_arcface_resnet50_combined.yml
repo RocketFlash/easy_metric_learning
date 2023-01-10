@@ -30,6 +30,7 @@ MODEL:
     POOL_TYPE : 'avg'
     AUTO_SCALE_SIZE : False
     EASY_MARGIN : False 
+    FREEZE_BACKBONE : False
 
     DYNAMIC_MARGIN:
         # HB : 0.5
@@ -42,22 +43,23 @@ TRAIN:
     FOCAL_GAMMA : 0.1
     EPOCHS : 20
     RESUME : 
-    FREEZE_BACKBONE : False
     LOAD_WEIGHTS: 
+    LOAD_EMBEDDER: 
 
     OPTIMIZER:
-        OPTIMIZER_TYPE: 'adamw'
-        LR: 1e-5
+        OPTIMIZER_TYPE: 'sgd'
+        LR: 1
         MOMENTUM: 0.9
-        WEIGHT_DECAY: 0.01
+        WEIGHT_DECAY: 1e-5
         
     SCHEDULER:
         SHEDULER_TYPE: 'cosine'
         T_MAX: 20
-        ETA_MIN: 1e-7
+        ETA_MIN: 1e-5
     
     AMP: True
     WARMUP: False
+    GRADIENT_ACC_STEPS: 3
     
 
 TEST:
@@ -65,7 +67,7 @@ TEST:
     EMBEDDINGS_SAVE_PATH : 
 
 MISC:
-    RUN_INFO: 'avg_pooling'
+    RUN_INFO: 'gradient_accumulation'
     DATASET_INFO: 'ms1m'
     PROJECT_NAME: 'Face recognition'
     TMP: "./work_dirs/"

@@ -1,23 +1,8 @@
 import pandas as pd
 from pathlib import Path
 import json
-from utils import get_labels_to_ids_map, get_stratified_kfold
+from utils import get_labels_to_ids_map, get_stratified_kfold, make_all_training, make_all_testing
 import argparse
-
-def make_all_training(df):
-    train_df = df
-    train_df['fold'] = -1
-
-    train_df['fold'] = train_df['fold'].astype(int)
-    return train_df[['file_name', 'label','label_id', 'fold']]
-
-
-def make_all_testing(df):
-    train_df = df
-    train_df['fold'] = -2
-
-    train_df['fold'] = train_df['fold'].astype(int)
-    return train_df[['file_name', 'label','label_id', 'fold']]
 
 
 if __name__ == '__main__':

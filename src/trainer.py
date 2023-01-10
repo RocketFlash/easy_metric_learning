@@ -39,7 +39,7 @@ class MLTrainer:
         tqdm_train = tqdm(train_loader, total=int(len(train_loader)))
         images_wdb = []
         grad_accum_steps = self.configs["TRAIN"]['GRADIENT_ACC_STEPS']
-
+        total_loss = 0
         for batch_index, (data, targets) in enumerate(tqdm_train):
             batch_size = data.size(0)
 
@@ -80,12 +80,14 @@ class MLTrainer:
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
                     self.optimizer.step()
                     self.optimizer.zero_grad()
+            
+            train_loss.update(loss.detach().item())
 
             if self.warmup_scheduler is not None:
                 if batch_index < len(tqdm_train)-1:
                     with self.warmup_scheduler.dampening(): pass
 
-            train_loss.update(loss.detach().item(), batch_size)
+            
             train_acc.update(acc)
 
             tqdm_train.set_postfix(epoch=self.epoch, train_loss=train_loss.avg ,
