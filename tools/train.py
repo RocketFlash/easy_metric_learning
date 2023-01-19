@@ -25,7 +25,6 @@ from src.utils import load_config, Logger, get_train_val_split
 from src.utils import  seed_everything, calculate_time, get_device
 from src.utils import calculate_autoscale, calculate_dynamic_margin
 from src.trainer import MLTrainer
-from src.evaluator import FacesEvaluator
 
 
 def train(CONFIGS, WANDB_AVAILABLE=False):
@@ -137,14 +136,6 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
                         wandb_available=WANDB_AVAILABLE, 
                         is_debug=CONFIGS['GENERAL']['DEBUG'])
 
-    faces_evaluator = None
-    if 'FACES_EVALUATION' in CONFIGS:
-        if CONFIGS['TEST']['FACES_EVALUATION']:
-            faces_evaluator = FacesEvaluator(CONFIGS['TEST']['VAL_TARGETS'], 
-                                            CONFIGS['DATA']['DIR'],
-                                            logger=logger,
-                                            device=device)
-
     start_time = time.time()
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):
         train_loss, train_acc, images_wdb_train = trainer.train_epoch(train_loader)
@@ -153,9 +144,6 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         else:
             valid_loss, valid_acc, gap_val = None, None, None
         trainer.update_epoch()
-        
-        if faces_evaluator is not None:
-            faces_evaluator(model.embeddings_net)
         
         save_ckp(last_cp_sp, model, epoch, optimizer, best_loss)
 

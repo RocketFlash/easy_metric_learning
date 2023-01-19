@@ -1,6 +1,5 @@
 import os
 import numbers
-import mxnet as mx
 import numpy as np
 from tqdm.auto import tqdm
 import torch
@@ -14,6 +13,9 @@ class MXDataset(Dataset):
     '''
     def __init__(self, root_dir, transform, calc_cl_count=False, use_cache=False):
         super(MXDataset, self).__init__()
+
+        import mxnet as mx
+        
         self.transform = transform
         self.root_dir = root_dir
         path_imgrec = os.path.join(root_dir, 'train.rec')

@@ -15,44 +15,29 @@ def get_percentage_of_classes_less_than(counts_df, threshold=100):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='find dublicates')
     # arguments from command line
-    parser.add_argument('--dataset_path', default="./", help="path to the dataset")
-    parser.add_argument('--save_path', default="./", help='visualization save directory')
+    parser.add_argument('--dataset_csv', default="./", help="path to the dataset")
+    parser.add_argument('--save_path', default="~/tmp", help='visualization save directory')
 
     args = parser.parse_args()
 
-    DATASET_PATH = Path(args.dataset_path)
-    CLASSES_FOLDER_PATHS = sorted(list(DATASET_PATH.glob('*/')))
+    DATASET_CSV = Path(args.dataset_csv)
+    DATASET_PATH = DATASET_CSV.parents[0]
+
     SAVE_PATH = Path(args.save_path)
     SAVE_PATH.mkdir(exist_ok=True, parents=True)
     
-    
-    labels = []
-    image_names = []
-    labels_dict = {}
-
-    for class_folder_path in tqdm(CLASSES_FOLDER_PATHS):
-        images = sorted([l for l in list(class_folder_path.glob('*.jpeg')) + \
-                           list(class_folder_path.glob('*.jpg')) + \
-                           list(class_folder_path.glob('*.png'))])
-        label = class_folder_path.name
-        for img in images:
-            labels.append(label)
-            if label not in labels_dict:
-                labels_dict[label] = 1
-            else:
-                labels_dict[label]+=1  
-
-            image_names.append(f'{label}/{img.name}')
-
-    data_tuples = list(zip(image_names, labels))
-    df = pd.DataFrame(data_tuples, columns=['filename','label'])
-
-
-    counts = df.label.value_counts()
+    df = pd.read_csv(DATASET_CSV, dtype={'label': str,
+                                        'file_name': str,
+                                        'width': int,
+                                        'height': int,
+                                        'hash': str
+                                    })
+    counts = df['label'].value_counts()
     counts_df = pd.DataFrame({'label':counts.index, 'frequency':counts.values})
+    counts_df.to_csv(DATASET_PATH / 'class_counts.csv', index=False)
+    print(counts_df.describe()) 
 
-
-    get_percentage_of_classes_less_than(counts_df, threshold=[2,5,10,20,50,100,500])
+    get_percentage_of_classes_less_than(counts_df, threshold=[2,5,6,7,8,10,20,50,100,500])
 
     counts_df = counts_df.head(50)
 

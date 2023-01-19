@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import time
-from .transforms import get_transformations
+from .transform import get_transform
 import torch
 from tqdm import tqdm
 
@@ -54,7 +54,7 @@ def infer(image, embeddings_model,
                                
         device=config["GENERAL"]["DEVICE"]
 
-    transform = get_transformations('test_aug', image_size=input_size)
+    transform = get_transform('test_aug', image_size=input_size)
     t = time.time()
 
     output = get_embeddings(image, embeddings_model, transform, device)

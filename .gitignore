@@ -1,6 +1,9 @@
 results/
 wandb/
 work_dirs/
+logs/
+proxy_list.txt
+proxy_list_filtered.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

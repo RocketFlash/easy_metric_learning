@@ -3,9 +3,9 @@ from os.path import join, split, isdir, isfile, abspath
 from pathlib import Path
 import numpy as np
 import cv2
-
+from imageio import mimread
 from torch.utils.data import Dataset as BaseDataset
-
+import matplotlib.pyplot as plt
 
 class MetricDataset(BaseDataset):
     """Metric learning Dataset. Read images, apply augmentation and preprocessing transformations.
@@ -22,10 +22,12 @@ class MetricDataset(BaseDataset):
             self,
             root_dir,
             df_names,   
-            transform=None):
+            transform=None,
+            return_filenames=False):
 
         self.images_paths = []
         self.labels = []
+        self.return_filenames = return_filenames
         
         if isinstance(root_dir, list) and isinstance(df_names, list):
             lines = [df_nms['file_name'].tolist() for df_nms in df_names]
@@ -43,22 +45,35 @@ class MetricDataset(BaseDataset):
             else:
                 self.images_paths = [join(root_dir, str(i)) for i in lines]
             self.labels = df_names['label_id'].tolist()
-            
+        
+        self.file_names = lines
         self.augmentation = transform
         
     
     def __getitem__(self, i):
-        
-        # read data
-        image = cv2.imread(self.images_paths[i])
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        # apply augmentations
-        if self.augmentation:
-            sample = self.augmentation(image=image)
-            image = sample['image']
+        image_path = self.images_paths[i]
+        try:
+            # read data
+            if Path(image_path).suffix == '.gif':
+                image =  plt.imread(image_path)
+            else:
+                image = cv2.imread(image_path)
+            image = image[:,:,:3]
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
-        return image, self.labels[i]
+            # apply augmentations
+            if self.augmentation:
+                sample = self.augmentation(image=image)
+                image = sample['image']
+            
+            if self.return_filenames:
+                return image, self.labels[i], self.file_names[i]
+            else:
+                return image, self.labels[i]
+        except:
+            print(f'Corrupted image {image_path}')
+        
+        return None
         
     def __len__(self):
         return len(self.images_paths)

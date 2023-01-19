@@ -64,7 +64,7 @@ class EmbeddigsNet(nn.Module):
         else:
             self.backbone = timm.create_model(model_name, pretrained=pretrained, 
                                                           scriptable=True)
-        print(self.backbone)
+                                                          
         if 'maxvit' in model_name or 'convnext' in model_name:
             in_features = self.backbone.head.fc.in_features
             self.backbone.head.fc = nn.Identity()
