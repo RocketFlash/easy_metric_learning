@@ -1,0 +1,69 @@
+GENERAL:
+    RANDOM_STATE : 28
+    DEBUG : False     # if True train and validate only on first 10 batches, jist to check if everything works 
+    DEVICE: 0         # GPU index or cpu
+    USE_WANDB : True  # if True (recommended) will use wandb for training and validation process logging 
+
+DATA:
+    DATASET_TYPE : 'simple'                                     # [simple, mxdataset] 
+    DATA_TYPE : 'general'                                       # [general, faces]
+    DIR: "/my/dataset/path/"                                    # dataset path
+    SPLIT_FILE: "/my/dataset/path/folds.csv"                    # split file path
+    LABELS_TO_IDS_FILE : "/my/dataset/path/labels_to_ids.json"  # path to original labels to label ids mapper (for example {apple:0, orange:1})
+    IDS_TO_LABELS_FILE : "/my/dataset/path/ids_to_labels.json"  # path to label ids to original labels mapper (for example {0:apple, 1:orange})
+    
+    TRAIN_AUG: 'soft'        # training augmentation type. Select one from src.transform.get_transform or add anything you want in get_transform function 
+    FOLD: 0                  # fold for testing
+    IMG_SIZE: 170            # input image size
+    BATCH_SIZE: 500          # barch size
+    WORKERS: 8               # number of workers
+    BALANCED_SAMPLER: False  # if True will use m_per_class sampler from https://github.com/KevinMusgrave/pytorch-metric-learning
+
+MODEL:
+    ENCODER_NAME: 'efficientnet_b1_pruned' # backbone model, could be any model from timm library
+    MARGIN_TYPE: 'arcface'                 # margin type [adacos, arcface, cosface, subcenter_arcface, elastic_arcface, elastic_cosface, curricularface, combined, softmax]
+    EMBEDDINGS_SIZE: 512                   # embeddings generation model output size
+    S : 64                                 # s parameter for arcface, cosface etc 
+    M : 0.5                                # m parameter for arcface, cosface etc
+    K : 10                                 # number of subcenters if subcenter_arcface selected
+    DROPOUT_PROB : 0.1                     # dropout probability
+    LS_PROB : 0.1                          # label smoothing parameter
+    POOL_TYPE : 'avg'                      # pooling type after backbone [gem, avg, None]
+    AUTO_SCALE_SIZE : True                 # if True calculates s parameter automatically, using formula from AdaCos paper (https://arxiv.org/pdf/1905.00292.pdf)
+    EASY_MARGIN : False                    # if True in some margin types will use simplified versions of margins
+    FREEZE_BACKBONE : False                # if True freezes backbone weights and trains only last layer
+
+    DYNAMIC_MARGIN:     # If parameters are uncommented uses different m parameter for each class based on number of samples (detailed explanation: https://arxiv.org/pdf/2010.05350.pdf))
+    #     HB : 0.5
+    #     LB : 0.05
+    #     LAMBDA : 0.25
+
+TRAIN:
+    LOSS_TYPE : 'cross_entropy' # loss type [focal, cross_entropy]
+    CALCULATE_GAP : True        # calculate GAP metric (Global Average Precision). Metric from Google Landmark Recognition challenge
+    FOCAL_GAMMA : 0.1           # gamma parameter from focal loss
+    EPOCHS : 30                 # number of training epochs
+    RESUME :                    # if non empty: path to the .pt weights file to resume training from it
+    LOAD_WEIGHTS:               # if non empty: path to the .pt weights file just to load model weights without loading last epoch stats
+    LOAD_EMBEDDER:              # if non empty: path to the .pt weights file (only embedder) 
+
+    OPTIMIZER:
+        OPTIMIZER_TYPE: 'sgd'   # optimizer type [sgd, adam, radam, adamw]
+        LR: 0.1                 # initial learning rate
+        MOMENTUM: 0.9           # momentum
+        WEIGHT_DECAY: 1e-4      # weight decay
+        
+    SCHEDULER:
+        SHEDULER_TYPE: 'cosine' # learning rate scheduler type [cosine, cyclic, plato] add additional parameters in config if needed (see src.schedulers.get_scheduler)
+        T_MAX: 30               # parameter for cosine annealing
+        ETA_MIN: 1e-5           # parameter for cosine annealing
+    
+    AMP: True                   # if True (recommended) uses Automatic Mixed Precision
+    WARMUP: False               # if True starts training from warmup
+    GRADIENT_ACC_STEPS: 5       # number of gradient accumution steps (it increases training batch size like BATCH_SIZE*GRADIENT_ACC_STEPS) 
+
+MISC:
+    RUN_INFO: 'exp1'             # some additional information
+    DATASET_INFO: 'new_dataset'  # dataset information
+    PROJECT_NAME: 'my project'   # project name
+    TMP: "./work_dirs/"          # training save path (./work_dirs/ recommended)

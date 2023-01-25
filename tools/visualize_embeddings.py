@@ -1,14 +1,18 @@
+import sys
+sys.path.append("./")
+
 from src.utils import plot_embeddings, plot_embeddings_interactive
-from src.utils import load_embedings, get_mapper, load_embedings_separate
+from src.utils import get_mapper
 import argparse
 import os
 from pathlib import Path
+import numpy as np
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--embeddings', type=str, default='', help='path to embeddings')
     parser.add_argument('--method', type=str, default='fast_tsne', help='embeddings projection method [fast_tsne, umap, tsne]')
-    parser.add_argument('--labels', type=str, default='', help='path to labels')
     parser.add_argument('--n_labels', type=int, default=-1, help='number of labels to show, if value is less than 0 for example -5 script will visualize only labels with 5 or more samples')
     parser.add_argument('--n_jobs', type=int, default=4, help='number of parallel jobs')
     parser.add_argument('--interactive', action='store_true', help='use interactive visualization')
@@ -27,10 +31,11 @@ if __name__ == '__main__':
     save_path.mkdir(exist_ok=True, parents=True)
 
     print('Load embeddings')
-    if args.labels:
-        embeddings, labels = load_embedings_separate(args.embeddings, args.labels)
-    else:
-        embeddings, labels = load_embedings(args.embeddings)
+    
+    data = np.load(args.embeddings)
+    embeddings = data['embeddings']
+    labels = data['labels']
+    file_names = data['file_names']
     print('Embeddings were loaded')
 
 

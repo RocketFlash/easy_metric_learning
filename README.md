@@ -1,6 +1,6 @@
 # Easy metric learning 
 
-Simple framework for metric learning training
+Simple framework for metric learning training. Just create configuration file and start training.
 
 # Install requirements
 

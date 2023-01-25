@@ -63,8 +63,8 @@ def save_ckp(save_path, model, epoch=0, optimizer=None, best_loss=100, emb_model
     torch.save(checkpoint, save_path)
 
 
-def load_ckp(checkpoint_fpath, model, optimizer=None, remove_module=False, emb_model_only=False):
-    checkpoint = torch.load(checkpoint_fpath)
+def load_ckp(checkpoint_fpath, model, optimizer=None, remove_module=False, emb_model_only=False, device=None):
+    checkpoint = torch.load(checkpoint_fpath, map_location=device)
 
     pretrained_dict = checkpoint['model']
     if emb_model_only:
@@ -242,23 +242,6 @@ def seed_everything(seed=28):
     torch.backends.cudnn.deterministic = True
 
 
-def load_embedings(path_to_embedings):
-    data=np.load(path_to_embedings, allow_pickle=True)
-    embeddings = data.item().get('embeddings')
-    labels = data.item().get('labels')
-
-    return embeddings , labels
-
-
-def load_embedings_separate(path_to_embedings, path_to_labels=None):
-    embeddings = np.load(path_to_embedings)
-    if path_to_labels is None:
-        return embeddings
-
-    labels = np.load(path_to_labels)
-    return embeddings , labels
-
-
 def plot_tiles_similarity(similarity_matrix, save_path='./img.png'):
     similarities = similarity_matrix[0]
     fig, ax = plt.subplots( nrows=1, ncols=1 )
@@ -269,7 +252,7 @@ def plot_tiles_similarity(similarity_matrix, save_path='./img.png'):
     plt.close(fig)
 
 
-def plot_embeddings(embeddings, labels, save_dir='./', show=True, n_labels=-1, mapper=None,  method='fast_tsne', n_jobs=4):
+def plot_embeddings(embeddings, labels, save_path='./tsne.png', show=True, n_labels=-1, mapper=None,  method='fast_tsne', n_jobs=4):
     
     labels_set = list(set(labels))
     
@@ -304,11 +287,10 @@ def plot_embeddings(embeddings, labels, save_dir='./', show=True, n_labels=-1, m
     if show:
         fig.show()
 
-    save_name = save_dir / 'tsne.png'
-    fig.savefig(save_name)
+    fig.savefig(save_path)
 
 
-def plot_embeddings_interactive(embeddings, labels, save_dir='./', n_labels=-1, mapper=None, save_name=None, method='fast_tsne', n_jobs=4, n_components=2):
+def plot_embeddings_interactive(embeddings, labels, save_dir='./', n_labels=-1, mapper=None, save_name=None, method='fast_tsne', n_jobs=4, n_components=2, random_state=28):
     import plotly.graph_objects as go
     
     labels_set = list(set(labels))
@@ -333,6 +315,10 @@ def plot_embeddings_interactive(embeddings, labels, save_dir='./', n_labels=-1, 
         from MulticoreTSNE import MulticoreTSNE as TSNE
         tsne = TSNE(n_jobs=n_jobs, n_components=n_components)
         tsne_train = tsne.fit_transform(embeddings)
+    elif method=='open_tsne':
+        print('Use openTSNE')
+        from openTSNE import TSNE
+        tsne_train = TSNE(random_state=random_state, n_jobs=n_jobs, n_components=n_components).fit(embeddings)
     elif method=='umap':
         from umap import UMAP
         umap = UMAP(n_jobs=n_jobs, n_components=n_components, init='random', random_state=28)
@@ -388,12 +374,13 @@ def plot_embeddings_interactive(embeddings, labels, save_dir='./', n_labels=-1, 
     fig.write_html(save_name)
 
 
-def cosine_similarity_chunks(X, Y, n_chunks=5, top_n=5):
+def cosine_similarity_chunks(X, Y, n_chunks=5, top_n=5, sparse=False):
     ch_sz = X.shape[0]//n_chunks
 
     best_top_n_vals = None
     best_top_n_idxs = None
 
+    
     for i in tqdm(range(n_chunks)):
         chunk = X[i*ch_sz:,:] if i==n_chunks-1 else X[i*ch_sz:(i+1)*ch_sz,:]
         cosine_sim_matrix_i = cosine_similarity(chunk, Y)

@@ -6,7 +6,7 @@ import numpy as np
 import argparse
 from pathlib import Path
 from src.utils import plot_embeddings, show_images
-
+from tqdm import tqdm
 
 def get_image(image_path):
     image = cv2.imread(str(image_path))
@@ -23,6 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type=str, default='', help='save path')
     args = parser.parse_args()
     save_path = Path(args.save_path)
+    save_path.mkdir(exist_ok=True, parents=True)
     dataset_path = Path(args.dataset_path)
     gt_dataset_path = Path(args.gt_dataset_path)
 
@@ -42,7 +43,7 @@ if __name__ == '__main__':
 
     intersect_labels = np.intersect1d(all_classes, gt_all_classes)
 
-    for l in intersect_labels:
+    for l in tqdm(intersect_labels):
         l = str(l)
 
         embeddings_i = embeddings[classes==l]
@@ -55,15 +56,12 @@ if __name__ == '__main__':
             gt_images_i = [get_image(gt_dataset_path / f_name) for f_name in gt_f_names_i]
 
             embgs = np.concatenate([embeddings_i, gt_embeddings_i]) 
-            print(embgs.shape)
             images = images_i + gt_images_i
             lbls = [1] * len(images_i) + [0] * len(gt_images_i)
 
-            show_images(images_i, save_name=save_path/'images.png')
-            show_images(gt_images_i, save_name=save_path/'images_gt.png')
+            show_images(images_i, save_name=save_path/f'{l}_images.png')
+            show_images(gt_images_i, save_name=save_path/f'{l}_images_gt.png')
             plot_embeddings(embgs, 
                             lbls,
                             method='tsne',
-                            save_dir=save_path)
-            break
-        break
+                            save_path=save_path/f'{l}_tsne.png')

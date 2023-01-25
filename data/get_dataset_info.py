@@ -7,7 +7,7 @@ import json
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='find dublicates')
+    parser = argparse.ArgumentParser(description='get dataset information file')
     parser.add_argument('--dataset_path', default="./", help="path to the dataset")
     parser.add_argument('--hashes_path', default=None, help="path to the hases json file")
     parser.add_argument('--min_size', type=int, default=100, help="minimal image size")

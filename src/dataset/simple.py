@@ -23,6 +23,8 @@ class MetricDataset(BaseDataset):
             root_dir,
             df_names,   
             transform=None,
+            label_column='label_id',
+            fname_column='file_name',
             return_filenames=False):
 
         self.images_paths = []
@@ -30,21 +32,21 @@ class MetricDataset(BaseDataset):
         self.return_filenames = return_filenames
         
         if isinstance(root_dir, list) and isinstance(df_names, list):
-            lines = [df_nms['file_name'].tolist() for df_nms in df_names]
-            labels = [df_nms['label_id'].tolist() for df_nms in df_names]
+            lines = [df_nms[fname_column].tolist() for df_nms in df_names]
+            labels = [df_nms[label_column].tolist() for df_nms in df_names]
             for ln_idx, lns in enumerate(lines):
                 self.images_paths += [join(root_dir[ln_idx], str(i)) for i in lns]
             for lab_idx, lbl in enumerate(labels):
                 self.labels += lbl
                 
         else:
-            lines = df_names['file_name'].tolist()
+            lines = df_names[fname_column].tolist()
             imgs_pth = Path(root_dir) / 'images'
             if imgs_pth.is_dir():
                 self.images_paths = [join(root_dir, 'images', str(i)) for i in lines]
             else:
                 self.images_paths = [join(root_dir, str(i)) for i in lines]
-            self.labels = df_names['label_id'].tolist()
+            self.labels = df_names[label_column].tolist()
         
         self.file_names = lines
         self.augmentation = transform

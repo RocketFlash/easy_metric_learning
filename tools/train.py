@@ -64,8 +64,10 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         n_s_train = n_s_total
         n_s_valid = 0
         classes_counts = train_dataset.classes_counts
-
     
+    if n_s_valid==0:
+        VALIDATE = False
+        
     CONFIGS['MODEL']['N_CLASSES'] = n_cl_total
     CONFIGS['TRAIN']['N_CLASSES'] = n_cl_total
 

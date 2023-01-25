@@ -15,20 +15,21 @@ from src.model import get_model_embeddings
 from tqdm import tqdm
 import torch
 
-def main(CONFIGS, args):
+def main(args):
+    save_path = Path(args.save_path)
+    save_path.mkdir(exist_ok=True)
+
     weights = args.weights
     dataset_csv = args.dataset_csv
     dataset_path = args.dataset_path
     save_path = args.save_path 
     bs = args.bs
 
-    if dataset_path:
-        CONFIGS["DATA"]["DIR"] = dataset_path
 
     save_path = Path(save_path)
     save_path.mkdir(exist_ok=True)
 
-    device = torch.device(CONFIGS['GENERAL']['DEVICE'])
+    device = torch.device(args.device)
 
     df = pd.read_csv(dataset_csv, dtype={'label': str,
                                          'file_name': str,
@@ -37,20 +38,14 @@ def main(CONFIGS, args):
                                          'label_id': int})
     
     data_loader, dataset = get_loader(df,
-                              data_config=CONFIGS["DATA"],
+                              root_dir=dataset_path,
                               split='val',
                               batch_size=bs,
                               label_column='label',
                               fname_column='file_name',
                               return_filenames=True)
-
-    if args.oml:
-        from oml.models.vit.vit import ViTExtractor
-        model = ViTExtractor("vits16_dino", "vits16", 
-                             normalise_features=False)
-    else:
-        model = get_model_embeddings(model_config=CONFIGS['MODEL'])
-        model = load_ckp(weights, model, emb_model_only=True)
+    
+    model = torch.jit.load(args.weights, map_location=device)
     model.to(device)
 
 
@@ -84,19 +79,12 @@ def main(CONFIGS, args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='', help='path to cfg.yaml')
     parser.add_argument('--weights', type=str, default='', help='weights path')
     parser.add_argument('--save_path', type=str, default='', help='save path')
     parser.add_argument('--dataset_path', type=str, default='', help='path to dataset')
     parser.add_argument('--dataset_csv', type=str, default='', help='path to dataset csv file')
-    parser.add_argument('--oml', action='store_true', help='Use open metric learning model')
+    parser.add_argument('--device', type=str, default='cpu', help='device')
     parser.add_argument('--bs',type=int, default=8, help='batch size')
     args = parser.parse_args()
 
-    assert os.path.isfile(args.config)
-    CONFIGS = load_config(args.config)
-
-    save_path = Path(args.save_path)
-    save_path.mkdir(exist_ok=True)
-
-    main(CONFIGS, args)
+    main(args)

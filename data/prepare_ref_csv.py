@@ -3,21 +3,22 @@ from pathlib import Path
 import json
 from utils import get_labels_to_ids_map, get_stratified_kfold, make_all_training, make_all_testing
 import argparse
-
+from tqdm import tqdm
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='prepare dataset for training using csv')
     # arguments from command line
     parser.add_argument('--dataset_csv', default="./", help="path to the csv file describing dataset")
-    parser.add_argument('--k', default=5, type=int, help="number of folds")
+    parser.add_argument('--n', default=3, type=int, help="number of reference images")
     parser.add_argument('--random_seed', default=28, help='random seed')
-    parser.add_argument('--save_name', default="folds", help="name of saved files")
+    parser.add_argument('--save_name', default="ref", help="name of saved files")
 
     args = parser.parse_args()
 
     DATASET_CSV = Path(args.dataset_csv)
     DATASET_PATH = DATASET_CSV.parents[0]
     RANDOM_STATE = args.random_seed
+    N_REF = args.n
 
     df = pd.read_csv(DATASET_CSV, dtype={'label': str,
                                         'file_name': str,
@@ -29,27 +30,21 @@ if __name__ == '__main__':
                               'frequency':counts.values})
     print(counts_df.describe())
 
-    labels = df['label'].unique()
+    df_groups = df.groupby('label') 
+    dfs_ref = []
+    dfs_test = []
 
-    labels_to_ids, ids_to_labels = get_labels_to_ids_map(labels)
-    with open(DATASET_PATH / f'{args.save_name}_labels_to_ids.json', 'w') as fp:
-        json.dump(labels_to_ids, fp)
+    for lbl, gr in tqdm(df_groups):
+        dfs_ref.append(gr[:N_REF])
+        dfs_test.append(gr[N_REF:])
     
-    with open(DATASET_PATH / f'{args.save_name}_ids_to_labels.json', 'w') as fp:
-        json.dump(ids_to_labels, fp)
+    df_ref = pd.concat(dfs_ref)
+    df_test = pd.concat(dfs_test)
+    print('N ref images', len(df_ref))
+    print('N test images', len(df_test))
 
-    df['label_id'] = df['label'].map(labels_to_ids)
-
-    if args.k>0:
-        df_folds_train = make_all_training(df)
-        df_folds_test = make_all_testing(df)
-
-        df_folds_train.to_csv(DATASET_PATH / f'{args.save_name}_train_only.csv', index=False)
-        df_folds_test.to_csv(DATASET_PATH / f'{args.save_name}_test_only.csv', index=False)
-
-        df = get_stratified_kfold(df, k=args.k, random_state=RANDOM_STATE)
-
-    df.to_csv(DATASET_PATH / f'{args.save_name}.csv', index=False)
-    print(df)
+    df_ref.to_csv(DATASET_PATH / f'{args.save_name}.csv', index=False)
+    df_test.to_csv(DATASET_PATH / f'{args.save_name}_test.csv', index=False)
+    
 
     

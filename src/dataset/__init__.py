@@ -28,6 +28,8 @@ def get_loader(df_names=None,
                use_cache=False,
                balanced_smplr=True,
                calc_cl_count=False,
+               label_column='label_id',
+               fname_column='file_name',
                return_filenames=False):
 
     if data_config is not None:
@@ -55,6 +57,7 @@ def get_loader(df_names=None,
         dataset = MetricDataset(root_dir=root_dir,
                                 df_names=df_names,      
                                 transform=transform,
+                                label_column=label_column,
                                 return_filenames=return_filenames)
     
     drop_last = split=='train'
