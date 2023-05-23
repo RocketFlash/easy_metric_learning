@@ -15,12 +15,14 @@ import torch
 def filter_embeddings(fname_to_embeddings, df):
     embeddings = []
     labels = []
+    f_names = []
     for smpl in df.file_name:
         if smpl in fname_to_embeddings:
             lbl, em = fname_to_embeddings[smpl]
             embeddings.append(em)
             labels.append(lbl)
-    return np.array(embeddings), np.array(labels)
+            f_names.append(smpl)
+    return np.array(embeddings), np.array(labels), np.array(f_names)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -77,8 +79,8 @@ if __name__ == '__main__':
     print('N train samples', len(train_df))
     print('N test samples', len(test_df))
 
-    train_embeddings, train_labels = filter_embeddings(fname_to_embeddings, train_df)
-    test_embeddings, test_labels = filter_embeddings(fname_to_embeddings, test_df)
+    train_embeddings, train_labels, train_fnames = filter_embeddings(fname_to_embeddings, train_df)
+    test_embeddings, test_labels, test_fnames = filter_embeddings(fname_to_embeddings, test_df)
 
     print('N train embeddings', train_embeddings.shape)
     print('N test  embeddings', test_embeddings.shape)
@@ -97,6 +99,7 @@ if __name__ == '__main__':
 
     all_predictions = []
     all_gts = []
+    all_fnames = []
     total_n_test_samples = 0
     correct_predictions = 0
     correct_predictions_top_n = 0
@@ -121,16 +124,17 @@ if __name__ == '__main__':
         best_top_n_vals, best_top_n_idxs = cosine_similarity_chunks(train_embeddings, test_embeddings, n_chunks=args.n_chunks, top_n=args.top_n)
         best_top_n_idxs = best_top_n_idxs.T
 
-    for btni, test_label in zip(best_top_n_idxs, test_labels):
+    for btni, test_label, test_fname in zip(best_top_n_idxs, test_labels, test_fnames):
         predicts = train_labels[btni]
 
         all_predictions.append(predicts)
         all_gts.append(test_label)
+        all_fnames.append(test_fname)
         if test_label in predicts:
             correct_predictions+=1
         total_n_test_samples+=1
 
-    df = pd.DataFrame(list(zip(all_gts, all_predictions)), columns =['gt', 'prediction'])
+    df = pd.DataFrame(list(zip(all_fnames, all_gts, all_predictions)), columns =['file_name', 'gt', 'prediction'])
     df.to_csv(save_path / f'{args.save_name}_top{args.top_n}.csv', index=False)
 
     print(f'Total accuracy: {(correct_predictions/total_n_test_samples)*100} %')
