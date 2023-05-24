@@ -1,5 +1,5 @@
 GENERAL:
-    RANDOM_STATE : 28
+    RANDOM_STATE : 28 # random seed
     DEBUG : False     # if True train and validate only on first 10 batches, jist to check if everything works 
     DEVICE: 0         # GPU index or cpu
     USE_WANDB : True  # if True (recommended) will use wandb for training and validation process logging 
@@ -15,7 +15,7 @@ DATA:
     TRAIN_AUG: 'soft'        # training augmentation type. Select one from src.transform.get_transform or add anything you want in get_transform function 
     FOLD: 0                  # fold for testing
     IMG_SIZE: 170            # input image size
-    BATCH_SIZE: 500          # barch size
+    BATCH_SIZE: 500          # batch size
     WORKERS: 8               # number of workers
     BALANCED_SAMPLER: False  # if True will use m_per_class sampler from https://github.com/KevinMusgrave/pytorch-metric-learning
 

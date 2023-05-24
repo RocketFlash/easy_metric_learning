@@ -20,13 +20,15 @@ if __name__ == '__main__':
     RANDOM_STATE = args.random_seed
 
     df = pd.read_csv(DATASET_CSV, dtype={'label': str,
-                                        'file_name': str,
-                                        'width': int,
-                                        'height': int})
+                                         'file_name': str,
+                                         'width': int,
+                                         'height': int})
 
     counts = df['label'].value_counts()
-    counts_df = pd.DataFrame({'label':counts.index, 
-                              'frequency':counts.values})
+    counts_df = pd.DataFrame({
+                              'label':counts.index, 
+                              'frequency':counts.values
+                             })
     print(counts_df.describe())
 
     labels = df['label'].unique()

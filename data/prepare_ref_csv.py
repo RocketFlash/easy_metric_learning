@@ -20,14 +20,18 @@ if __name__ == '__main__':
     RANDOM_STATE = args.random_seed
     N_REF = args.n
 
-    df = pd.read_csv(DATASET_CSV, dtype={'label': str,
-                                        'file_name': str,
-                                        'width': int,
-                                        'height': int})
+    df = pd.read_csv(DATASET_CSV, dtype={
+                                         'label': str,
+                                         'file_name': str,
+                                         'width': int,
+                                         'height': int
+                                        })
 
     counts = df['label'].value_counts()
-    counts_df = pd.DataFrame({'label':counts.index, 
-                              'frequency':counts.values})
+    counts_df = pd.DataFrame({
+                              'label':counts.index, 
+                              'frequency':counts.values
+                             })
     print(counts_df.describe())
 
     df_groups = df.groupby('label') 
