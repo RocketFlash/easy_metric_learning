@@ -9,9 +9,11 @@ from ..transform import get_transform
 from ..utils import worker_init_fn
 from collections import Counter
 
+
 def collate_fn(batch):
     batch = list(filter(lambda x: x is not None, batch))
     return torch.utils.data.dataloader.default_collate(batch)
+
 
 def get_loader(df_names=None,
                data_config=None,
@@ -28,9 +30,10 @@ def get_loader(df_names=None,
                use_cache=False,
                balanced_smplr=True,
                calc_cl_count=False,
-               label_column='label_id',
+               label_column='label',
                fname_column='file_name',
-               return_filenames=False):
+               return_filenames=False,
+               labels_to_ids=None):
 
     if data_config is not None:
         root_dir       = data_config["DIR"]
@@ -58,7 +61,8 @@ def get_loader(df_names=None,
                                 df_names=df_names,      
                                 transform=transform,
                                 label_column=label_column,
-                                return_filenames=return_filenames)
+                                return_filenames=return_filenames,
+                                labels_to_ids=labels_to_ids)
     
     drop_last = split=='train'
     shuffle = split=='train' and not balanced_smplr
@@ -66,10 +70,10 @@ def get_loader(df_names=None,
     sampler = None
     if balanced_smplr and split=='train':
         sampler = get_sampler('balanced',
-                              labels=dataset.labels,
+                              labels=dataset.label_ids,
                               m=1,
                               batch_size=batch_size, 
-                              length_before_new_iter=len(dataset.labels))
+                              length_before_new_iter=len(dataset.label_ids))
 
     data_loader = DataLoader(dataset=dataset,
                              sampler=sampler,

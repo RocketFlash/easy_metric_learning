@@ -17,7 +17,7 @@ def parse_args():
 
 
 def min_size_filtering(df, min_size=100):
-    corrupted_images = df[(df['width']<min_size) | (df['height']<min_size)].index.tolist()
+    corrupted_images = df[(df['width']<min_size) | (df['height']<min_size)]
     corrupted_indexes = corrupted_images.index.tolist()
     print(f'Total number of removed images: {len(corrupted_indexes)}')
     return df.drop(corrupted_indexes, axis=0)
@@ -25,7 +25,6 @@ def min_size_filtering(df, min_size=100):
 
 def max_size_filtering(df, max_size=1000):
     corrupted_images = df[(df['width']>max_size) | (df['height']>max_size)]
-    print(corrupted_images)
     corrupted_indexes = corrupted_images.index.tolist()
     print(f'Total number of removed images: {len(corrupted_indexes)}')
     return df.drop(corrupted_indexes, axis=0)
@@ -36,21 +35,19 @@ def duplicates_removal_filtering(df):
     total_n_samples = 0
     total_n_duplicates = 0
     duplicates_list = []
-    labels_ = df.label.unique()
     classes_dict = defaultdict(dict)
 
-    for label in tqdm(labels_):
-        for index, row in df[df['label'] == label].iterrows():
-            file_name = row['file_name']
-            hash_v = row['hash']
-            classes_dict[label][file_name] = hash_v
+    labels_groups = df.groupby('label')
+    for label, label_group in tqdm(labels_groups):
+        classes_dict[label] = pd.Series(label_group.hash.values,
+                                        index=label_group.file_name).to_dict()
     
     progress_bar = tqdm(classes_dict.items(), 
                         total=len(classes_dict))
 
     for cl_name, cl_imgs in progress_bar:
         duplicates = phasher.find_duplicates_to_remove(encoding_map=cl_imgs,
-                                                    max_distance_threshold=THRESHOLD)
+                                                       max_distance_threshold=THRESHOLD)
 
         for duplicate in duplicates:
             duplicates_list.append(str(duplicate)+'\n')

@@ -9,8 +9,6 @@ DATA:
     DATA_TYPE : 'general'                                       # [general, faces]
     DIR: "/my/dataset/path/"                                    # dataset path
     SPLIT_FILE: "/my/dataset/path/folds.csv"                    # split file path
-    LABELS_TO_IDS_FILE : "/my/dataset/path/labels_to_ids.json"  # path to original labels to label ids mapper (for example {apple:0, orange:1})
-    IDS_TO_LABELS_FILE : "/my/dataset/path/ids_to_labels.json"  # path to label ids to original labels mapper (for example {0:apple, 1:orange})
     
     TRAIN_AUG: 'soft'        # training augmentation type. Select one from src.transform.get_transform or add anything you want in get_transform function 
     FOLD: 0                  # fold for testing

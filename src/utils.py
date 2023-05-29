@@ -125,17 +125,26 @@ def get_train_val_split(data_config=None, split_file=None, fold=0):
     if isinstance(split_file, list):
         df_train = []
         df_valid = []
-        df_folds = []
+        df_full = []
         for sf in split_file:
-            df_folds.append(pd.read_csv(sf))
+            df_folds = pd.read_csv(sf, dtype={'label': str,
+                                              'file_name': str,
+                                              'width': int,
+                                              'height': int})
+            df_full.append(df_folds)
             df_train.append(df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)])
             df_valid.append(df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)])
+        df_full = pd.concat(df_full, ignore_index=True, sort=False)
     else:
-        df_folds = pd.read_csv(split_file)
+        df_folds = pd.read_csv(split_file, dtype={'label': str,
+                                                  'file_name': str,
+                                                  'width': int,
+                                                  'height': int})
         df_train = df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)]
         df_valid = df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)]
+        df_full = df_folds
 
-    return df_train, df_valid, df_folds
+    return df_train, df_valid, df_full
 
 
 def get_cp_save_paths(config):

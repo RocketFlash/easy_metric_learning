@@ -7,6 +7,7 @@ from os.path import isfile
 from shutil import copyfile
 
 import numpy as np
+import pandas as pd
 import torch
 from torch.cuda import amp
 import time
@@ -44,19 +45,36 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
     if VALIDATE:
         df_train, df_valid, df_full = get_train_val_split(data_config=CONFIGS["DATA"])
 
-        train_loader, train_dataset = get_loader(df_train, data_config=CONFIGS["DATA"], split='train')
-        valid_loader, valid_dataset = get_loader(df_valid, data_config=CONFIGS["DATA"], split='val')
+        train_loader, train_dataset = get_loader(df_train, 
+                                                 data_config=CONFIGS["DATA"], 
+                                                 split='train')
+        labels_to_ids = train_dataset.get_labels_to_ids()
+        
+        with open(Path(CONFIGS["MISC"]['WORK_DIR']) / f'labels_to_ids.json', 'w') as fp:
+            json.dump(labels_to_ids, fp)
 
-        n_cl_total = df_full['label_id'].nunique()
-        n_cl_train = df_train['label_id'].nunique()
-        n_cl_valid = df_valid['label_id'].nunique()
+        valid_loader, valid_dataset = get_loader(df_valid, 
+                                                 data_config=CONFIGS["DATA"], 
+                                                 split='val',
+                                                 labels_to_ids=labels_to_ids)
+
+        if isinstance(df_train, list):
+            df_train = pd.concat(df_train, ignore_index=True, sort=False)
+        if isinstance(df_valid, list):
+            df_valid = pd.concat(df_valid, ignore_index=True, sort=False)
+        
+        n_cl_total = df_full['label'].nunique()
+        n_cl_train = df_train['label'].nunique()
+        n_cl_valid = df_valid['label'].nunique()
         n_s_total = len(df_full)
         n_s_train = len(df_train)
         n_s_valid = len(df_valid)
 
-        classes_counts = dict(df_full['label_id'].value_counts())
+        classes_counts = dict(df_full['label'].value_counts())
     else:
-        train_loader, train_dataset = get_loader(data_config=CONFIGS["DATA"], split='train',  calc_cl_count=CONFIGS['MODEL']['DYNAMIC_MARGIN'])
+        train_loader, train_dataset = get_loader(data_config=CONFIGS["DATA"], 
+                                                 split='train',  
+                                                 calc_cl_count=CONFIGS['MODEL']['DYNAMIC_MARGIN'])
         n_cl_total = train_dataset.num_classes
         n_cl_train = n_cl_total
         n_cl_valid = 0 

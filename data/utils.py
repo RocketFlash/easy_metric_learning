@@ -32,23 +32,9 @@ def chunk(l, n):
 		yield l[i: i + n]
 
 
-def get_labels_to_ids_map(labels):
-    labels_to_ids = {}
-    ids_to_labels = {}
-    idx = 0
-
-    for label in labels:
-        if label not in labels_to_ids:
-            labels_to_ids[label] = idx
-            ids_to_labels[idx] = label
-            idx+=1
-    
-    return labels_to_ids, ids_to_labels
-
-
 def get_stratified_kfold(df, k=5, random_state=28):
     skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=random_state)
-    for fold, (train_index, test_index) in enumerate(skf.split(df['file_name'], df['label_id'])):
+    for fold, (train_index, test_index) in enumerate(skf.split(df['file_name'], df['label'])):
         df.loc[test_index, 'fold'] = fold
     df['fold'] = df['fold'].astype(int)
     return df
@@ -59,7 +45,7 @@ def make_all_training(df):
     train_df['fold'] = -1
 
     train_df['fold'] = train_df['fold'].astype(int)
-    return train_df[['file_name', 'label','label_id', 'fold']]
+    return train_df[['file_name', 'label', 'fold']]
 
 
 def make_all_testing(df):
@@ -67,4 +53,4 @@ def make_all_testing(df):
     train_df['fold'] = -2
 
     train_df['fold'] = train_df['fold'].astype(int)
-    return train_df[['file_name', 'label','label_id', 'fold']]
+    return train_df[['file_name', 'label', 'fold']]

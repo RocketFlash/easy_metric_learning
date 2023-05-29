@@ -8,14 +8,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='split dataset on training and testing parts')
     # arguments from command line
     parser.add_argument('--dataset_csv', default="./", help="path to the dataset")
-    parser.add_argument('--threshold', type=int, default=50, help="max n of samples to select class for training")
+    parser.add_argument('--max_n_samples', type=int, default=50, help="max n of samples to select class for training")
     parser.add_argument('--min_n_samples', type=int, default=3, help="min n of samples to be in training set")
 
     args = parser.parse_args()
 
     DATASET_CSV = Path(args.dataset_csv)
     DATASET_PATH = DATASET_CSV.parents[0]
-    THRESHOLD = args.threshold
+    THRESHOLD = args.max_n_samples
     MIN_N_SAMPLES = args.min_n_samples
 
     df = pd.read_csv(DATASET_CSV, dtype={

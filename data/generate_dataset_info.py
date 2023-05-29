@@ -10,7 +10,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description='get dataset information file')
     parser.add_argument('--dataset_path', default="./", help="path to the dataset")
     parser.add_argument('--hashes', action='store_true', help='calculate hashes')
-    parser.add_argument('--min_size', type=int, default=0, help="minimal image size")
     return parser.parse_args()
 
 
