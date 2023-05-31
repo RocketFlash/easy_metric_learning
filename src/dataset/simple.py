@@ -59,7 +59,7 @@ class MetricDataset(BaseDataset):
             self.labels_to_ids = labels_to_ids
             self.ids_to_labels = {v:k for k,v in self.labels_to_ids.items()}
             
-        self.label_ids = [self.labels_to_ids[l] for l in self.labels]
+        self.label_ids = np.array([self.labels_to_ids[l] for l in self.labels])
         
         self.file_names = lines
         self.augmentation = transform

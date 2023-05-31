@@ -1,8 +1,9 @@
 import torch.optim as optim
+from .sophia_g import SophiaG
 
 
 def get_optimizer(model, optimizer_config):
-    optimizer_type = optimizer_config['OPTIMIZER_TYPE']
+    optimizer_type = optimizer_config['OPTIMIZER_TYPE'].lower()
 
     if optimizer_type == 'radam':
         try:
@@ -21,7 +22,18 @@ def get_optimizer(model, optimizer_config):
     elif optimizer_type == 'adamw':
         optimizer = optim.AdamW([{'params': model.parameters()}],
                                   lr=optimizer_config['LR'],
+                                  eps=1e-8,
                                   weight_decay=optimizer_config['WEIGHT_DECAY'])
+    elif optimizer_type == 'lion':
+        from lion_pytorch import Lion
+        optimizer = Lion(model.parameters(), 
+                         lr = optimizer_config['LR'], 
+                         weight_decay = optimizer_config['WEIGHT_DECAY'])
+    elif optimizer_type == 'sophia_g':
+        optimizer = SophiaG(model.parameters(), 
+                            lr = optimizer_config['LR'], 
+                            rho=0.04,
+                            weight_decay = optimizer_config['WEIGHT_DECAY'])
     else:
         optimizer = optim.SGD([{'params': model.parameters()}],
                                 lr=optimizer_config['LR'],

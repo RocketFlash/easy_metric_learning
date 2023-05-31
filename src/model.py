@@ -69,9 +69,12 @@ class EmbeddigsNet(nn.Module):
             in_features = self.backbone.head.fc.in_features
             self.backbone.head.fc = nn.Identity()
             self.pooling = None
-        elif 'swin' in model_name or 'vit' in model_name:
+        elif 'swin' in model_name:
             in_features = self.backbone.head.in_features
             self.backbone.head = nn.Identity()
+            self.pooling = None
+        elif 'vit' in model_name:
+            in_features = self.backbone.embed_dim
             self.pooling = None
         elif 'efficientnet' in model_name:
             in_features = self.backbone.classifier.in_features

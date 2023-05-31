@@ -6,7 +6,7 @@ import math
 
 
 class CombinedMargin(nn.Module):
-
+    # adapted from insightface (https://github.com/deepinsight/insightface)
     def __init__(self,
                  in_features, 
                  out_features,

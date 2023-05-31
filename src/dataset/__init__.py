@@ -61,6 +61,7 @@ def get_loader(df_names=None,
                                 df_names=df_names,      
                                 transform=transform,
                                 label_column=label_column,
+                                fname_column=fname_column,
                                 return_filenames=return_filenames,
                                 labels_to_ids=labels_to_ids)
     

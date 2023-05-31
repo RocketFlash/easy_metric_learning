@@ -9,6 +9,13 @@ DATA:
     DATA_TYPE : 'general'                                       # [general, faces]
     DIR: "/my/dataset/path/"                                    # dataset path
     SPLIT_FILE: "/my/dataset/path/folds.csv"                    # split file path
+    # It is also possible to use multiple datasets using list yaml stucture:
+    # DIR: 
+    #     - "/my/dataset1/path/"
+    #     - "/my/dataset2/path/"                                   
+    # SPLIT_FILE: 
+    #     - "/my/dataset1/path/folds.csv" 
+    #     - "/my/dataset2/path/folds.csv"    
     
     TRAIN_AUG: 'soft'        # training augmentation type. Select one from src.transform.get_transform or add anything you want in get_transform function 
     FOLD: 0                  # fold for testing

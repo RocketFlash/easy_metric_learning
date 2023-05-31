@@ -16,13 +16,13 @@ DATA:
     
     TRAIN_AUG: 'soft'        
     FOLD: 0                 
-    IMG_SIZE: 170            
+    IMG_SIZE: 224            
     BATCH_SIZE: 500        
     WORKERS: 30               
     BALANCED_SAMPLER: False 
 
 MODEL:
-    ENCODER_NAME: 'tf_efficientnetv2_b1.in1k' 
+    ENCODER_NAME: 'vit_base_patch16_224.dino' 
     MARGIN_TYPE: 'arcface'                 
     EMBEDDINGS_SIZE: 512                   
     S : 64                                 
@@ -50,18 +50,18 @@ TRAIN:
     LOAD_EMBEDDER:               
 
     OPTIMIZER:
-        OPTIMIZER_TYPE: 'sgd'   
-        LR: 0.1                 
+        OPTIMIZER_TYPE: 'adamw'   
+        LR: 1e-3                
         MOMENTUM: 0.9           
-        WEIGHT_DECAY: 1e-4      
+        WEIGHT_DECAY: 1e-2    
         
     SCHEDULER:
         SHEDULER_TYPE: 'cosine' 
         T_MAX: 30               
-        ETA_MIN: 1e-5           
+        ETA_MIN: 1e-6           
     
     AMP: True                   
-    WARMUP: False               
+    WARMUP: True               
     GRADIENT_ACC_STEPS: 5    
 
 MISC:

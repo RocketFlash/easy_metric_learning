@@ -2,6 +2,25 @@
 
 Simple framework for metric learning training. Just create configuration file and start training.
 
+## Models <a name="models"></a>
+
+### Backbones <a name="backbones"></a>
+
+It's possible to use any model from [timm](https://github.com/huggingface/pytorch-image-models) library as a backbone
+
+### Margins <a name="margins"></a>
+ - softmax
+ - arcface [paper](https://arxiv.org/abs/1801.07698)
+ - adacos [paper](https://arxiv.org/abs/1905.00292)
+ - adaface [paper](https://arxiv.org/abs/2204.00964)
+ - combined (arcface + cosface)
+ - cosface [paper](https://arxiv.org/abs/1801.09414)
+ - curricularface [paper](https://arxiv.org/abs/2004.00288)
+ - elasticface [paper](https://arxiv.org/abs/2109.09416)
+ - sphereface [paper](https://arxiv.org/abs/1704.08063)
+ - subcenter arcface [paper](https://www.ecva.net/papers/eccv_2020/papers_ECCV/papers/123560715.pdf)
+ 
+
 # Install requirements
 
 ## Conda environment
@@ -117,3 +136,9 @@ First create your configuration yaml file (use [example_config.yaml](https://git
 ```python
 python tools/train.py --config {CONFIG FILE}
 ```
+
+## TODO
+
+- [ ] Add VPL [paper](https://openaccess.thecvf.com/content/CVPR2021/papers/Deng_Variational_Prototype_Learning_for_Deep_Face_Recognition_CVPR_2021_paper.pdf)
+- [ ] Add CLIP
+- [ ] Add text embeddings

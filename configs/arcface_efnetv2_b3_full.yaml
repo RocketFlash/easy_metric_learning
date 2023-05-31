@@ -7,18 +7,22 @@ GENERAL:
 DATA:
     DATASET_TYPE : 'simple'                                     
     DATA_TYPE : 'general'                                      
-    DIR: "/datasets/metric_learning/mksp"                                   
-    SPLIT_FILE: "/datasets/metric_learning/mksp/folds.csv" 
+    DIR: 
+        - "/datasets/metric_learning/product_recognition"
+        - "/datasets/metric_learning/mksp_170x170"                                   
+    SPLIT_FILE: 
+        - "/datasets/metric_learning/product_recognition/folds.csv" 
+        - "/datasets/metric_learning/mksp_170x170/folds.csv"                  
     
     TRAIN_AUG: 'soft'        
     FOLD: 0                 
     IMG_SIZE: 170            
-    BATCH_SIZE: 500          
-    WORKERS: 30             
+    BATCH_SIZE: 500        
+    WORKERS: 30               
     BALANCED_SAMPLER: False 
 
 MODEL:
-    ENCODER_NAME: 'efficientnet_b1_pruned' 
+    ENCODER_NAME: 'tf_efficientnetv2_b3.in1k' 
     MARGIN_TYPE: 'arcface'                 
     EMBEDDINGS_SIZE: 512                   
     S : 64                                 
@@ -54,14 +58,14 @@ TRAIN:
     SCHEDULER:
         SHEDULER_TYPE: 'cosine' 
         T_MAX: 30               
-        ETA_MIN: 1e-3           
+        ETA_MIN: 1e-5           
     
     AMP: True                   
     WARMUP: False               
-    GRADIENT_ACC_STEPS: 5       
+    GRADIENT_ACC_STEPS: 5    
 
 MISC:
-    RUN_INFO: 'mksp_only'             
-    DATASET_INFO: 'mksp'
+    RUN_INFO: 'full_dataset'             
+    DATASET_INFO: 'full'
     PROJECT_NAME: 'product_recognition'
     TMP: "./work_dirs/"

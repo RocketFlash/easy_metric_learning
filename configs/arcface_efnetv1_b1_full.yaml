@@ -17,12 +17,12 @@ DATA:
     TRAIN_AUG: 'soft'        
     FOLD: 0                 
     IMG_SIZE: 170            
-    BATCH_SIZE: 500        
+    BATCH_SIZE: 1000        
     WORKERS: 30               
     BALANCED_SAMPLER: False 
 
 MODEL:
-    ENCODER_NAME: 'tf_efficientnetv2_b1.in1k' 
+    ENCODER_NAME: 'efficientnet_b1_pruned.in1k' 
     MARGIN_TYPE: 'arcface'                 
     EMBEDDINGS_SIZE: 512                   
     S : 64                                 

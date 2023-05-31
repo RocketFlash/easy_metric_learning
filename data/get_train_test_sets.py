@@ -4,14 +4,17 @@ import pandas as pd
 from tqdm.auto import tqdm
 import argparse
 
-if __name__ == '__main__':
+
+def parse_args():
     parser = argparse.ArgumentParser(description='split dataset on training and testing parts')
-    # arguments from command line
     parser.add_argument('--dataset_csv', default="./", help="path to the dataset")
     parser.add_argument('--max_n_samples', type=int, default=50, help="max n of samples to select class for training")
     parser.add_argument('--min_n_samples', type=int, default=3, help="min n of samples to be in training set")
+    return parser.parse_args()
 
-    args = parser.parse_args()
+
+if __name__ == '__main__':
+    args = parse_args()
 
     DATASET_CSV = Path(args.dataset_csv)
     DATASET_PATH = DATASET_CSV.parents[0]
