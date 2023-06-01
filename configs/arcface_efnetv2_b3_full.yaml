@@ -50,15 +50,15 @@ TRAIN:
     LOAD_EMBEDDER:               
 
     OPTIMIZER:
-        OPTIMIZER_TYPE: 'sgd'   
-        LR: 0.1                 
+        OPTIMIZER_TYPE: 'adamw'   
+        LR: 1e-3                
         MOMENTUM: 0.9           
-        WEIGHT_DECAY: 1e-4      
+        WEIGHT_DECAY: 1e-2    
         
     SCHEDULER:
         SHEDULER_TYPE: 'cosine' 
         T_MAX: 30               
-        ETA_MIN: 1e-5           
+        ETA_MIN: 1e-6           
     
     AMP: True                   
     WARMUP: False               

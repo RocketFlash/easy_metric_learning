@@ -1,19 +1,19 @@
 import pandas as pd
 from pathlib import Path
-import json
-from utils import get_labels_to_ids_map, get_stratified_kfold, make_all_training, make_all_testing
 import argparse
 from tqdm import tqdm
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='prepare dataset for training using csv')
-    # arguments from command line
+def parse_args():
+    parser = argparse.ArgumentParser(description='prepare dataset for testing using csv')
     parser.add_argument('--dataset_csv', default="./", help="path to the csv file describing dataset")
     parser.add_argument('--n', default=3, type=int, help="number of reference images")
     parser.add_argument('--random_seed', default=28, help='random seed')
     parser.add_argument('--save_name', default="ref", help="name of saved files")
+    return parser.parse_args()
 
-    args = parser.parse_args()
+
+if __name__ == '__main__':
+    args = parse_args()
 
     DATASET_CSV = Path(args.dataset_csv)
     DATASET_PATH = DATASET_CSV.parents[0]
@@ -44,8 +44,11 @@ if __name__ == '__main__':
     
     df_ref = pd.concat(dfs_ref)
     df_test = pd.concat(dfs_test)
-    print('N ref images', len(df_ref))
-    print('N test images', len(df_test))
+
+    print('N labels ref :', len(df_ref.label.unique()))
+    print('N labels test:', len(df_test.label.unique()))
+    print('N ref images :', len(df_ref))
+    print('N test images:', len(df_test))
 
     df_ref.to_csv(DATASET_PATH / f'{args.save_name}.csv', index=False)
     df_test.to_csv(DATASET_PATH / f'{args.save_name}_test.csv', index=False)

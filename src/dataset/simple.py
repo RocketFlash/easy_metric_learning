@@ -69,6 +69,10 @@ class MetricDataset(BaseDataset):
         return self.labels_to_ids
     
 
+    def get_ids_to_labels(self):
+        return self.ids_to_labels
+    
+
     def __getitem__(self, i):
         image_path = self.images_paths[i]
         try:

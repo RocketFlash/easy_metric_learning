@@ -154,7 +154,6 @@ def get_model_embeddings(model_config=None,
                          freeze_backbone=False):
     if model_config is not None:
         model_name      = model_config['ENCODER_NAME'] 
-        margin_type     = model_config['MARGIN_TYPE']
         embeddings_size = model_config['EMBEDDINGS_SIZE']   
         dropout         = model_config['DROPOUT_PROB']
         pool_type       = model_config['POOL_TYPE']

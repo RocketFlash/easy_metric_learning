@@ -22,7 +22,7 @@ DATA:
     BALANCED_SAMPLER: False 
 
 MODEL:
-    ENCODER_NAME: 'tf_efficientnetv2_b3.in1k' 
+    ENCODER_NAME: 'tf_efficientnetv2_s.in21k_ft_in1k' 
     MARGIN_TYPE: 'arcface'                 
     EMBEDDINGS_SIZE: 512                   
     S : 64                                 
@@ -65,7 +65,7 @@ TRAIN:
     GRADIENT_ACC_STEPS: 5    
 
 MISC:
-    RUN_INFO: 'full_dataset_adamw'             
+    RUN_INFO: 'full_dataset'             
     DATASET_INFO: 'full'
     PROJECT_NAME: 'product_recognition'
     TMP: "./work_dirs/"
