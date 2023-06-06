@@ -241,9 +241,6 @@ if __name__=="__main__":
     if args.resume:
         CONFIGS['TRAIN']['RESUME'] = args.resume
 
-    CONFIGS['TRAIN']["OPTIMIZER"]["WEIGHT_DECAY"] = float(CONFIGS['TRAIN']["OPTIMIZER"]["WEIGHT_DECAY"])
-    CONFIGS['TRAIN']["OPTIMIZER"]["LR"] = float(CONFIGS['TRAIN']["OPTIMIZER"]["LR"])
-
     CONFIGS["MISC"]['RUN_NAME'] = '{}_{}_{}_{}'.format(CONFIGS['MISC']['DATASET_INFO'],
                                                        CONFIGS['MODEL']['MARGIN_TYPE'],
                                                        CONFIGS['MODEL']['ENCODER_NAME'],

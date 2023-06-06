@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WORK_DIR_PATH="/home/ubuntu/easy_metric_learning/work_dirs/full_arcface_tf_efficientnetv2_b1.in1k_dynamic_margin_fold0/"
+WORK_DIR_PATH="/home/ubuntu/easy_metric_learning/work_dirs/full_arcface_tf_efficientnetv2_b1.in1k_incremental_margin_linear_m_0_3_fold0/"
 DATASET_NAME="product_recognition"
 DATASET_PATH="/datasets/metric_learning/$DATASET_NAME/"
 DATASET_CSV="$DATASET_PATH/dataset_test.csv"

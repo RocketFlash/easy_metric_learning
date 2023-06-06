@@ -52,6 +52,10 @@ TRAIN:
     LOAD_WEIGHTS:               # if non empty: path to the .pt weights file just to load model weights without loading last epoch stats
     LOAD_EMBEDDER:              # if non empty: path to the .pt weights file (only embedder) 
 
+    INCREMENTAL_MARGIN: # If parameters are set margin parameter will increase during training from MIN_M up to M
+        # TYPE  : 'linear'      # type of incremention [linear, log]
+        # MIN_M : 0.0           # minimal M value
+
     OPTIMIZER:
         OPTIMIZER_TYPE: 'sgd'   # optimizer type [sgd, adam, radam, adamw]
         LR: 0.1                 # initial learning rate

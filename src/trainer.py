@@ -124,7 +124,7 @@ class MLTrainer:
             tqdm_train.set_postfix(epoch=self.epoch, 
                                    train_loss=train_loss.avg ,
                                    train_acc=train_acc.avg,
-                                   lr=self.optimizer.param_groups[0]['lr'],
+                                   lr=self.optimizer.param_groups[-1]['lr'],
                                    m=self.model.margin.m)
 
         return train_loss.avg, train_acc.avg, images_wdb
