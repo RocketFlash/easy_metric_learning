@@ -28,6 +28,7 @@ def parse_args():
     parser.add_argument('--save_path', default="", help='tmp')
     parser.add_argument('--save_name', default="nearest", help='tmp')
     parser.add_argument('--no_faiss', action='store_true', help='Do not use faiss')
+    parser.add_argument('--faiss_gpu', action='store_true', help='use faiss gpu')
     return parser.parse_args()
 
 
@@ -110,7 +111,7 @@ if __name__ == '__main__':
         faiss.omp_set_num_threads(args.n_jobs)
 
         index = faiss.IndexFlatIP(vector_dimension)
-        if torch.cuda.is_available():
+        if args.faiss_gpu:
             print('Use FAISS GPU')
             res = faiss.StandardGpuResources()
             index = faiss.index_cpu_to_gpu(res, 0, index)

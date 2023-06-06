@@ -110,9 +110,11 @@ def calculate_autoscale(train_n_classes):
     return np.sqrt(2) * np.log(train_n_classes-1) 
  
 
-def calculate_dynamic_margin(dynamic_margin_config, classes_counts):
+def calculate_dynamic_margin(dynamic_margin_config, classes_counts, labels_to_ids=None):
     dynamic_margin = {}
     for class_id, class_cnt in classes_counts.items():
+        if labels_to_ids is not None:
+            class_id = labels_to_ids[class_id]
         dynamic_margin[class_id] = dynamic_margin_config['HB']*class_cnt**(-dynamic_margin_config['LAMBDA']) + dynamic_margin_config['LB']
     return dynamic_margin
 
@@ -179,7 +181,14 @@ class Logger():
         scale_size = config['MODEL']['S']
         margin_m = config['MODEL']['M']
         is_autoscalse = config['MODEL']['AUTO_SCALE_SIZE']
-        sc_s = f'autoscale {scale_size:.2f}' if config['MODEL']['AUTO_SCALE_SIZE'] else f'{scale_size:.2f}'
+        is_incremental_margin = config['TRAIN']['INCREMENTAL_MARGIN'] is not None
+        sc_s = f'autoscale {scale_size:.2f}' if is_autoscalse else f'{scale_size:.2f}'
+        sc_m = margin_m if not isinstance(margin_m, dict) else 'dynamic'
+
+        if is_incremental_margin:
+            incremention_type = config['TRAIN']['INCREMENTAL_MARGIN']['TYPE']
+            m_min = config['TRAIN']['INCREMENTAL_MARGIN']['MIN_M']
+            sc_m = f'incremental {incremention_type} : [ {m_min} - {sc_m} ]'
 
         self.logger.info(f'''
         ============   DATA INFO             ============
@@ -195,7 +204,7 @@ class Logger():
         Margin type               : {margin_type}
         Embeddings size           : {embeddings_size}
         Scale size s              : {sc_s}
-        Margin m                  : {margin_m if not isinstance(margin_m, dict) else 'dynamic'}
+        Margin m                  : {sc_m}
         =================================================''')
 
     def epoch_train_info(self, epoch, train_loss, train_acc, valid_loss=None, valid_acc=None, gap_val=None):

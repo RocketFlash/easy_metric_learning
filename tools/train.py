@@ -42,6 +42,7 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
     best_cp_sp, last_cp_sp, best_emb_cp_sp = get_cp_save_paths(CONFIGS)
     VALIDATE = CONFIGS["DATA"]['SPLIT_FILE'] is not None
 
+    labels_to_ids = None
     if VALIDATE:
         df_train, df_valid, df_full = get_train_val_split(data_config=CONFIGS["DATA"])
 
@@ -92,8 +93,10 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
     if CONFIGS['MODEL']['AUTO_SCALE_SIZE']:
         CONFIGS['MODEL']['S'] = calculate_autoscale(n_cl_total)  
 
-    if CONFIGS['MODEL']['DYNAMIC_MARGIN']:
-        CONFIGS['MODEL']['M'] = calculate_dynamic_margin(CONFIGS['MODEL']['DYNAMIC_MARGIN'], classes_counts)
+    if CONFIGS['MODEL']['DYNAMIC_MARGIN'] is not None:
+        CONFIGS['MODEL']['M'] = calculate_dynamic_margin(CONFIGS['MODEL']['DYNAMIC_MARGIN'], 
+                                                         classes_counts,
+                                                         labels_to_ids=labels_to_ids)
 
     logger.data_info(CONFIGS, n_cl_total, n_cl_train, n_cl_valid, n_s_total, n_s_train, n_s_valid) 
 
@@ -144,23 +147,31 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
     if model.margin.m != CONFIGS['MODEL']['M']:
         model.margin.update(CONFIGS['MODEL']['M'])
 
+    n_train_epochs = CONFIGS['TRAIN']['EPOCHS'] - start_epoch + 1
+
     trainer = MLTrainer(model=model, 
                         optimizer=optimizer, 
                         loss_func=loss_func, 
                         logger=logger, 
-                        configs=CONFIGS, 
-                        device=device, 
-                        epoch=start_epoch, 
+                        device=device,
+                        epoch=start_epoch,
                         amp_scaler=scaler,
                         warmup_scheduler=warmup_scheduler,
                         wandb_available=WANDB_AVAILABLE, 
-                        is_debug=CONFIGS['GENERAL']['DEBUG'])
+                        is_debug=CONFIGS['GENERAL']['DEBUG'],
+                        calculate_GAP=CONFIGS['TRAIN']['CALCULATE_GAP'],
+                        grad_accum_steps=CONFIGS['TRAIN']['GRADIENT_ACC_STEPS'],
+                        incremental_margin=CONFIGS['TRAIN']['INCREMENTAL_MARGIN'],
+                        work_dir=CONFIGS["MISC"]['WORK_DIR'],
+                        n_epochs=n_train_epochs)
 
     start_time = time.time()
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):
         train_loss, train_acc, images_wdb_train = trainer.train_epoch(train_loader)
+
         if VALIDATE:
-            valid_loss, valid_acc, gap_val, images_wdb_valid = trainer.valid_epoch(valid_loader, calculate_GAP=CONFIGS['TRAIN']['CALCULATE_GAP'])
+            valid_info = trainer.valid_epoch(valid_loader)
+            valid_loss, valid_acc, gap_val, images_wdb_valid = valid_info
         else:
             valid_loss, valid_acc, gap_val = None, None, None
         trainer.update_epoch()

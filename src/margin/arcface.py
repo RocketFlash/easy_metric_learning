@@ -65,7 +65,6 @@ class ArcMarginProduct(nn.Module):
             sin_m_i = torch.Tensor(sin_m_i).to(label.device)
             th_i = torch.Tensor(th_i).to(label.device)
             mm_i = torch.Tensor(mm_i).to(label.device)
-
         else:
             cos_m_i = self.cos_m
             sin_m_i = self.sin_m
