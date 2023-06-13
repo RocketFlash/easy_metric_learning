@@ -22,7 +22,7 @@ DATA:
     BALANCED_SAMPLER: False 
 
 MODEL:
-    ENCODER_NAME: 'tf_efficientnetv2_b1.in1k' 
+    ENCODER_NAME: 'tf_efficientnetv2_s.in21k_ft_in1k' 
     MARGIN_TYPE: 'arcface'                 
     EMBEDDINGS_SIZE: 512                   
     S : 30                                 

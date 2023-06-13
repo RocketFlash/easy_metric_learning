@@ -54,13 +54,14 @@ TRAIN:
 
     INCREMENTAL_MARGIN: # If parameters are set margin parameter will increase during training from MIN_M up to M
         # TYPE  : 'linear'      # type of incremention [linear, log]
-        # MIN_M : 0.0           # minimal M value
+        # MIN_M : 0.3           # minimal M value
 
     OPTIMIZER:
-        OPTIMIZER_TYPE: 'sgd'   # optimizer type [sgd, adam, radam, adamw]
-        LR: 0.1                 # initial learning rate
-        MOMENTUM: 0.9           # momentum
-        WEIGHT_DECAY: 1e-4      # weight decay
+        OPTIMIZER_TYPE: 'sgd'    # optimizer type [sgd, adam, radam, adamw]
+        LR: 0.1                  # initial learning rate
+        MOMENTUM: 0.9            # momentum
+        WEIGHT_DECAY: 1e-4       # weight decay
+        BACKBONE_LR_SCALER : 0.1 # learning rate scaling factor for bacbone (lr_backbone = lr * BACKBONE_LR_SCALER)
         
     SCHEDULER:
         SHEDULER_TYPE: 'cosine' # learning rate scheduler type [cosine, cyclic, plato] add additional parameters in config if needed (see src.schedulers.get_scheduler)

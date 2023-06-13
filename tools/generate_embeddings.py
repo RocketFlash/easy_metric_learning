@@ -21,6 +21,7 @@ def main(CONFIGS, args):
     save_path = args.save_path 
     bs = args.bs
     emb_size = args.emb_size
+    n_workers=args.n_jobs
 
     if dataset_path:
         CONFIGS["DATA"]["DIR"] = dataset_path
@@ -35,24 +36,20 @@ def main(CONFIGS, args):
                                          'width': int,
                                          'height': int})
     
+    CONFIGS['DATA']['USE_CATEGORIES'] = False
     data_loader, dataset = get_loader(df,
                                       data_config=CONFIGS["DATA"],
                                       split='val',
                                       batch_size=bs,
+                                      num_thread=n_workers,
                                       label_column='label',
                                       fname_column='file_name',
                                       return_filenames=True)
     ids_to_labels = dataset.get_ids_to_labels()
 
-    if args.oml:
-        from oml.models.vit.vit import ViTExtractor
-        model = ViTExtractor("vits16_dino", "vits16", 
-                             normalise_features=False)
-    else:
-        model = get_model_embeddings(model_config=CONFIGS['MODEL'])
-        model = load_ckp(weights, model, emb_model_only=True)
+    model = get_model_embeddings(model_config=CONFIGS['MODEL'])
+    model = load_ckp(weights, model, emb_model_only=True)
     model.to(device)
-
 
     embeddings = np.zeros((len(df), emb_size), dtype=np.float32)
     labels = np.zeros(len(df), dtype=object)
@@ -93,8 +90,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type=str, default='', help='save path')
     parser.add_argument('--dataset_path', type=str, default='', help='path to dataset')
     parser.add_argument('--dataset_csv', type=str, default='', help='path to dataset csv file')
-    parser.add_argument('--oml', action='store_true', help='Use open metric learning model')
     parser.add_argument('--bs',type=int, default=8, help='batch size')
+    parser.add_argument('--n_jobs', type=int, default=4, help='number of parallel jobs')
     parser.add_argument('--emb_size',type=int, default=512, help='embeddings size')
     args = parser.parse_args()
 

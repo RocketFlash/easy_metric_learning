@@ -33,7 +33,8 @@ def get_loader(df_names=None,
                label_column='label',
                fname_column='file_name',
                return_filenames=False,
-               labels_to_ids=None):
+               labels_to_ids=None,
+               use_categories=False):
 
     if data_config is not None:
         root_dir       = data_config["DIR"]
@@ -45,11 +46,16 @@ def get_loader(df_names=None,
         data_type      = data_config["DATA_TYPE"]
         balanced_smplr = data_config["BALANCED_SAMPLER"] if "BALANCED_SAMPLER" in data_config else True
         use_cache      = data_config["USE_CACHE"] if "USE_CACHE" in data_config else False
+        use_categories = data_config['USE_CATEGORIES'] if 'USE_CATEGORIES' in data_config else use_categories
 
     if test is False:
-        transform = get_transform(transform_name, data_type=data_type, image_size=(img_size,img_size))
+        transform = get_transform(transform_name, 
+                                  data_type=data_type, 
+                                  image_size=(img_size,img_size))
     else:
-        transform = get_transform('test_aug', data_type=data_type, image_size=(img_size,img_size))
+        transform = get_transform('test_aug', 
+                                  data_type=data_type, 
+                                  image_size=(img_size,img_size))
     
     if dataset_type=='mxdataset':
         dataset = MXDataset(root_dir=root_dir, 
@@ -63,7 +69,8 @@ def get_loader(df_names=None,
                                 label_column=label_column,
                                 fname_column=fname_column,
                                 return_filenames=return_filenames,
-                                labels_to_ids=labels_to_ids)
+                                labels_to_ids=labels_to_ids,
+                                use_categories=use_categories)
     
     drop_last = split=='train'
     shuffle = split=='train' and not balanced_smplr

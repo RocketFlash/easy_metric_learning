@@ -24,14 +24,14 @@ DATA:
 MODEL:
     ENCODER_NAME: 'tf_efficientnetv2_b1.in1k' 
     MARGIN_TYPE: 'arcface'                 
-    EMBEDDINGS_SIZE: 512                   
-    S : 30                                 
-    M : 0.5                              
+    EMBEDDINGS_SIZE: 64                 
+    S : 64                                 
+    M : 0.1                                
     K : 10                                 
     DROPOUT_PROB : 0.1                     
     LS_PROB : 0.1                          
     POOL_TYPE : 'avg'                      
-    AUTO_SCALE_SIZE : False                
+    AUTO_SCALE_SIZE : True                 
     EASY_MARGIN : False                    
     FREEZE_BACKBONE : False                
 
@@ -44,7 +44,7 @@ TRAIN:
     LOSS_TYPE : 'cross_entropy' 
     CALCULATE_GAP : False        
     FOCAL_GAMMA : 0.1           
-    EPOCHS : 30                 
+    EPOCHS : 15                 
     RESUME :                    
     LOAD_WEIGHTS:               
     LOAD_EMBEDDER: 
@@ -57,12 +57,12 @@ TRAIN:
         OPTIMIZER_TYPE: 'adamw'   
         LR: 1e-3                
         MOMENTUM: 0.9           
-        WEIGHT_DECAY: 1e-2    
-        BACKBONE_LR_SCALER : 
+        WEIGHT_DECAY: 1e-2  
+        BACKBONE_LR_SCALER :     
         
     SCHEDULER:
         SHEDULER_TYPE: 'cosine' 
-        T_MAX: 30               
+        T_MAX: 15               
         ETA_MIN: 1e-6           
     
     AMP: True                   
@@ -70,7 +70,7 @@ TRAIN:
     GRADIENT_ACC_STEPS: 5    
 
 MISC:
-    RUN_INFO: 'm_0_5_s_30'             
+    RUN_INFO: 'full_dataset'             
     DATASET_INFO: 'full'
     PROJECT_NAME: 'product_recognition'
     TMP: "./work_dirs/"

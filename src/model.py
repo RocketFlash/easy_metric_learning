@@ -10,6 +10,7 @@ import math
 from .margin import get_margin
 from .backbone import get_backbone
 
+
 class GeM(nn.Module):
     """GeM pooling: https://arxiv.org/pdf/1711.02512.pdf """
     def __init__(self, p=3, eps=1e-6):
@@ -61,6 +62,26 @@ class EmbeddigsNet(nn.Module):
 
         if 'iresnet' in model_name:
             self.backbone = get_backbone(model_name)
+        elif 'openclip' in model_name:
+            import open_clip
+
+            if model_name == 'openclip-ViT-H_laion2b':
+                m_name, p_name = 'ViT-H-14', 'laion2b_s32b_b79k'
+            elif model_name == 'openclip-ViT-L_laion2b':
+                m_name, p_name = 'ViT-L-14', 'laion2b_s32b_b82k'
+            elif model_name == 'openclip-ViT-B32_laion2b':
+                m_name, p_name = 'ViT-B-32', 'laion2b_s34b_b79k'
+            elif model_name == 'openclip-ViT-B16_laion2b':
+                m_name, p_name = 'ViT-B-16', 'laion2b_s34b_b88k'
+            elif model_name == 'openclip-ConvNext-Base':
+                m_name, p_name = 'convnext_base_w', 'laion2b_s13b_b82k_augreg'
+            
+            clip_model, _, _ = open_clip.create_model_and_transforms(m_name, 
+                                                                     pretrained=p_name)
+            clip_model = clip_model.visual
+
+            self.backbone = clip_model
+            
         else:
             self.backbone = timm.create_model(model_name, pretrained=pretrained, 
                                                           scriptable=True)                               
@@ -80,11 +101,16 @@ class EmbeddigsNet(nn.Module):
             in_features = self.backbone.classifier.in_features
             self.backbone.classifier = nn.Identity()
             self.backbone.global_pool = nn.Identity()
+        elif 'clip' in model_name:
+            if 'ViT' in model_name:
+                in_features = self.backbone.output_dim
+            else:
+                in_features = self.backbone.head.proj.in_features
+                self.backbone.head.proj = nn.Identity()
         else:
             in_features = self.backbone.fc.in_features
             self.backbone.fc = nn.Identity()
             self.backbone.global_pool = nn.Identity()
-
 
         self.dropout = nn.Dropout(p=dropout)
         self.n_features = embeddings_size
@@ -132,16 +158,30 @@ class MLNet(nn.Module):
     margin
         margin module
     """
-    def __init__(self, embeddings_net, margin):
+    def __init__(self, 
+                 embeddings_net, 
+                 margin,
+                 n_categories=None):
         super(MLNet, self).__init__()
 
         self.embeddings_net = embeddings_net
         self.margin = margin
+        self.n_categories = n_categories
+    
+        if self.n_categories is not None:
+            self.category_net =  nn.Linear(self.embeddings_net.n_features,
+                                           self.n_categories)
+        else:
+            self.category_net = None
 
 
     def forward(self, x, label):
-        x = self.embeddings_net(x)
-        x = self.margin(x, label)
+        x_emb = self.embeddings_net(x)
+        if self.n_categories is not None:
+            x = self.margin(x_emb, label[0])
+            x_category = self.category_net(x_emb)
+            return [x, x_category]
+        x = self.margin(x_emb, label)
         return x
 
 
@@ -179,7 +219,8 @@ def get_model(model_config=None,
               m=100,
               K=1,
               easy_margin=False,
-              ls_eps=0.0):
+              ls_eps=0.0,
+              n_categories=None):
 
     if model_config is not None:
         model_name      = model_config['ENCODER_NAME'] 
@@ -193,6 +234,7 @@ def get_model(model_config=None,
         K               = model_config['K']
         easy_margin     = model_config['EASY_MARGIN']
         ls_eps          = model_config['LS_PROB']
+        n_categories    = model_config['N_CATEGORIES']
 
     embeddings_model = get_model_embeddings(model_name=model_name, 
                                             pool_type=pool_type,
@@ -209,5 +251,7 @@ def get_model(model_config=None,
                         easy_margin=easy_margin,
                         ls_eps=ls_eps)
     
-    model = MLNet(embeddings_model, margin)
+    model = MLNet(embeddings_model, 
+                  margin,
+                  n_categories)
     return model

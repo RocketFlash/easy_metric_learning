@@ -39,10 +39,16 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
                                reinit=True)
         wandb_run.config.update(CONFIGS)
 
-    best_cp_sp, last_cp_sp, best_emb_cp_sp = get_cp_save_paths(CONFIGS)
+    best_cp_sp, last_cp_sp, best_emb_cp_sp, last_emb_cp_sp = get_cp_save_paths(CONFIGS)
     VALIDATE = CONFIGS["DATA"]['SPLIT_FILE'] is not None
 
+    if 'USE_CATEGORIES' in CONFIGS["DATA"]:
+        USE_CATEGORIES = CONFIGS["DATA"]['USE_CATEGORIES']
+    else:
+        USE_CATEGORIES = False
+
     labels_to_ids = None
+    n_categories = None
     if VALIDATE:
         df_train, df_valid, df_full = get_train_val_split(data_config=CONFIGS["DATA"])
 
@@ -70,8 +76,13 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         n_s_total = len(df_full)
         n_s_train = len(df_train)
         n_s_valid = len(df_valid)
-
         classes_counts = dict(df_full['label'].value_counts())
+
+        if USE_CATEGORIES:
+            categories_to_ids = train_dataset.get_categories_to_ids()
+            with open(Path(CONFIGS["MISC"]['WORK_DIR']) / f'categories_to_ids.json', 'w') as fp:
+                json.dump(categories_to_ids, fp)
+            n_categories = len(categories_to_ids)
     else:
         train_loader, train_dataset = get_loader(data_config=CONFIGS["DATA"], 
                                                  split='train',  
@@ -89,6 +100,9 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         
     CONFIGS['MODEL']['N_CLASSES'] = n_cl_total
     CONFIGS['TRAIN']['N_CLASSES'] = n_cl_total
+    CONFIGS['MODEL']['N_CATEGORIES'] = n_categories
+    CONFIGS['TRAIN']['N_CATEGORIES'] = n_categories
+
 
     if CONFIGS['MODEL']['AUTO_SCALE_SIZE']:
         CONFIGS['MODEL']['S'] = calculate_autoscale(n_cl_total)  
@@ -98,7 +112,14 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
                                                          classes_counts,
                                                          labels_to_ids=labels_to_ids)
 
-    logger.data_info(CONFIGS, n_cl_total, n_cl_train, n_cl_valid, n_s_total, n_s_train, n_s_valid) 
+    logger.data_info(CONFIGS, 
+                     n_cl_total, 
+                     n_cl_train, 
+                     n_cl_valid, 
+                     n_s_total, 
+                     n_s_train, 
+                     n_s_valid,
+                     n_categories) 
 
     device = get_device(CONFIGS['GENERAL']['DEVICE'])
     model  = get_model(model_config=CONFIGS['MODEL']).to(device)
@@ -118,7 +139,8 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
 
     if CONFIGS['TRAIN']['RESUME'] is not None:
         logger.info('resume training from: {}'.format(CONFIGS['TRAIN']['RESUME']))
-        model, optimizer, start_epoch, best_loss = load_ckp(CONFIGS['TRAIN']['RESUME'], model, optimizer)
+        model, optimizer, epoch_resume, best_loss = load_ckp(CONFIGS['TRAIN']['RESUME'], model, optimizer)
+        start_epoch = epoch_resume + 1
     
     if CONFIGS["TRAIN"]["LOAD_WEIGHTS"]:
         if isfile(CONFIGS["TRAIN"]["LOAD_WEIGHTS"]):
@@ -163,20 +185,21 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
                         grad_accum_steps=CONFIGS['TRAIN']['GRADIENT_ACC_STEPS'],
                         incremental_margin=CONFIGS['TRAIN']['INCREMENTAL_MARGIN'],
                         work_dir=CONFIGS["MISC"]['WORK_DIR'],
+                        visualize_batch=False,
                         n_epochs=n_train_epochs)
 
     start_time = time.time()
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):
-        train_loss, train_acc, images_wdb_train = trainer.train_epoch(train_loader)
+        stats_train = trainer.train_epoch(train_loader)
 
+        stats_valid = None
         if VALIDATE:
-            valid_info = trainer.valid_epoch(valid_loader)
-            valid_loss, valid_acc, gap_val, images_wdb_valid = valid_info
-        else:
-            valid_loss, valid_acc, gap_val = None, None, None
+            stats_valid = trainer.valid_epoch(valid_loader)
+            
         trainer.update_epoch()
         
         save_ckp(last_cp_sp, model, epoch, optimizer, best_loss)
+        save_ckp(last_emb_cp_sp, model.embeddings_net, emb_model_only=True)
 
         if warmup_scheduler is not None:
             with warmup_scheduler.dampening():
@@ -184,7 +207,7 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         else:
             scheduler.step()
         
-        check_loss = valid_loss if VALIDATE else train_loss
+        check_loss = stats_valid.loss if VALIDATE else stats_train.loss
         
         if check_loss < best_loss:
             logger.info('Saving best model')
@@ -193,24 +216,35 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
             save_ckp(best_emb_cp_sp, model.embeddings_net, emb_model_only=True)
 
         if CONFIGS['GENERAL']['USE_WANDB'] and not CONFIGS['GENERAL']['DEBUG']:
-            metrics['train_loss'] = train_loss
-            metrics['train_acc']  = train_acc
-            metrics['learning_rate'] = optimizer.param_groups[0]['lr']
+            metrics['train_loss'] = stats_train.loss
+            metrics['train_acc']  = stats_train.acc
+            metrics['learning_rate'] = optimizer.param_groups[-1]['lr']
+            if stats_train.f1_cat is not None: metrics['train_f1_cat'] = stats_train.f1_cat
+            if stats_train.loss_cat is not None: metrics['train_loss_cat'] = stats_train.loss_cat
+            if stats_train.loss_margin is not None: metrics['train_loss_margin'] = stats_train.loss_margin
 
-            if images_wdb_train:
-                metrics["training batch"] = images_wdb_train
+            if stats_train.images_wdb:
+                metrics["training batch"] = stats_train.images_wdb
                 
             if VALIDATE:
-                if images_wdb_valid:
-                    metrics["validation batch"] = images_wdb_valid
-                metrics['valid_loss'] = valid_loss
-                metrics['valid_acc']  = valid_acc
-                if gap_val is not None: metrics['gap_val'] = gap_val
+                if stats_valid.images_wdb:
+                    metrics["validation batch"] = stats_valid.images_wdb
+                metrics['valid_loss'] = stats_valid.loss
+                metrics['valid_acc']  = stats_valid.acc
+                if stats_valid.gap is not None: metrics['gap'] = stats_valid.gap
+                if stats_valid.f1_cat is not None: metrics['valid_f1_cat'] = stats_valid.f1_cat
+                if stats_valid.loss_cat is not None: metrics['valid_loss_cat'] = stats_valid.loss_cat
+                if stats_valid.loss_margin is not None: metrics['valid_loss_margin'] = stats_valid.loss_margin
             wandb.log(metrics, step=epoch)
         
-        logger.epoch_train_info(epoch, train_loss, train_acc, valid_loss, valid_acc, gap_val)
-        logger.epoch_time_info(start_time, start_epoch, epoch, num_epochs=CONFIGS["TRAIN"]["EPOCHS"], 
-                                                               workdir_path=CONFIGS["MISC"]['WORK_DIR'])
+        logger.epoch_train_info(epoch, 
+                                stats_train,
+                                stats_valid)
+        logger.epoch_time_info(start_time, 
+                               start_epoch, 
+                               epoch, 
+                               num_epochs=CONFIGS["TRAIN"]["EPOCHS"], 
+                               workdir_path=CONFIGS["MISC"]['WORK_DIR'])
 
     logger.info("Training done, all results saved to {}".format(CONFIGS["MISC"]['WORK_DIR']))
 

@@ -3,12 +3,14 @@ from albumentations.pytorch import ToTensorV2
 
 mean_vals = {
         'general' : [0.485, 0.456, 0.406],
-        'faces'   : [0.5,   0.5,   0.5]
+        'faces'   : [0.5,   0.5,   0.5],
+        'clip'    : [0.48145466, 0.4578275, 0.40821073]
     }
 
 std_vals = {
     'general' : [0.229, 0.224, 0.225],
-    'faces'   : [0.5,   0.5,   0.5]
+    'faces'   : [0.5,   0.5,   0.5],
+    'clip'    : [0.26862954, 0.26130258, 0.27577711]
 }
 
 def get_transform(aug_name='soft', data_type='general', image_size=(400, 400)):

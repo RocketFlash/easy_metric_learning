@@ -132,7 +132,9 @@ def get_train_val_split(data_config=None, split_file=None, fold=0):
             df_folds = pd.read_csv(sf, dtype={'label': str,
                                               'file_name': str,
                                               'width': int,
-                                              'height': int})
+                                              'height': int,
+                                              'hash' : str,
+                                              'category' : str})
             df_full.append(df_folds)
             df_train.append(df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)])
             df_valid.append(df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)])
@@ -141,7 +143,9 @@ def get_train_val_split(data_config=None, split_file=None, fold=0):
         df_folds = pd.read_csv(split_file, dtype={'label': str,
                                                   'file_name': str,
                                                   'width': int,
-                                                  'height': int})
+                                                  'height': int,
+                                                  'hash' : str,
+                                                  'category' : str})
         df_train = df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)]
         df_valid = df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)]
         df_full = df_folds
@@ -153,10 +157,12 @@ def get_cp_save_paths(config):
     best_weights_name = 'debug_best.pt' if config['GENERAL']['DEBUG'] else 'best.pt'
     last_weights_name = 'debug_last.pt' if config['GENERAL']['DEBUG'] else 'last.pt'
     best_embeddings_weights_name = 'debug_best_emb.pt' if config['GENERAL']['DEBUG'] else 'best_emb.pt'
+    last_embeddings_weights_name = 'debug_last_emb.pt' if config['GENERAL']['DEBUG'] else 'last_emb.pt'
     best_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], best_weights_name)
     last_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], last_weights_name)
     best_emb_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], best_embeddings_weights_name)
-    return best_cp_sp, last_cp_sp, best_emb_cp_sp
+    last_emb_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], last_embeddings_weights_name)
+    return best_cp_sp, last_cp_sp, best_emb_cp_sp, last_emb_cp_sp
 
 
 class Logger():
@@ -173,7 +179,15 @@ class Logger():
     def info(self, txt):
         self.logger.info(txt)
 
-    def data_info(self, config, n_cl_total, n_cl_train=0, n_cl_valid=0, n_s_total=0, n_s_train=0, n_s_valid=0):
+    def data_info(self, 
+                  config, 
+                  n_cl_total, 
+                  n_cl_train=0, 
+                  n_cl_valid=0, 
+                  n_s_total=0, 
+                  n_s_train=0, 
+                  n_s_valid=0,
+                  n_categories=None):
 
         encoder_type = config['MODEL']['ENCODER_NAME']
         margin_type = config['MODEL']['MARGIN_TYPE']
@@ -184,6 +198,7 @@ class Logger():
         is_incremental_margin = config['TRAIN']['INCREMENTAL_MARGIN'] is not None
         sc_s = f'autoscale {scale_size:.2f}' if is_autoscalse else f'{scale_size:.2f}'
         sc_m = margin_m if not isinstance(margin_m, dict) else 'dynamic'
+        sc_categories = f'Total N categories        : {n_categories}' if n_categories is not None else ''
 
         if is_incremental_margin:
             incremention_type = config['TRAIN']['INCREMENTAL_MARGIN']['TYPE']
@@ -198,7 +213,7 @@ class Logger():
         Total N samples           : {n_s_total}
         Total N training samples  : {n_s_train}
         Total N validation samples: {n_s_valid}
-
+        {sc_categories}
         ============   TRAINING PARAMETERS   ============
         Encoder type              : {encoder_type}
         Margin type               : {margin_type}
@@ -207,12 +222,12 @@ class Logger():
         Margin m                  : {sc_m}
         =================================================''')
 
-    def epoch_train_info(self, epoch, train_loss, train_acc, valid_loss=None, valid_acc=None, gap_val=None):
-        epoch_info_str = f'Epoch: {epoch} Train Loss: {train_loss:.5f} Train Acc: {train_acc:.5f}\n'
-        if valid_loss is not None:
-            epoch_info_str += f'{" "*37} Valid Loss: {valid_loss:.5f} Valid Acc: {valid_acc:.5f}'
-        if gap_val is not None:
-            epoch_info_str += f'\n{" "*37} GAP value : {gap_val:.5f}'
+    def epoch_train_info(self, epoch, stats_train, stats_valid):
+        epoch_info_str = f'Epoch: {epoch} Train Loss: {stats_train.loss:.5f} Train Acc: {stats_train.acc:.5f}\n'
+        if stats_valid is not None:
+            epoch_info_str += f'{" "*37} Valid Loss: {stats_valid.loss:.5f} Valid Acc: {stats_valid.acc:.5f}'
+            if stats_valid.gap is not None:
+                epoch_info_str += f'\n{" "*37} GAP value : {stats_valid.gap:.5f}'
         self.logger.info(epoch_info_str)
     
     def epoch_time_info(self, start_time, start_epoch, epoch, num_epochs, workdir_path):

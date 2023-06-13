@@ -26,7 +26,7 @@ MODEL:
     MARGIN_TYPE: 'arcface'                 
     EMBEDDINGS_SIZE: 512                   
     S : 30                                 
-    M : 0.5                              
+    M : 0.8                              
     K : 10                                 
     DROPOUT_PROB : 0.1                     
     LS_PROB : 0.1                          
@@ -44,25 +44,25 @@ TRAIN:
     LOSS_TYPE : 'cross_entropy' 
     CALCULATE_GAP : False        
     FOCAL_GAMMA : 0.1           
-    EPOCHS : 30                 
+    EPOCHS : 15                 
     RESUME :                    
     LOAD_WEIGHTS:               
     LOAD_EMBEDDER: 
 
     INCREMENTAL_MARGIN:
-        # TYPE  : 'linear'
-        # MIN_M : 0.0                
+        TYPE  : 'linear'
+        MIN_M : 0.3                
 
     OPTIMIZER:
         OPTIMIZER_TYPE: 'adamw'   
         LR: 1e-3                
         MOMENTUM: 0.9           
         WEIGHT_DECAY: 1e-2    
-        BACKBONE_LR_SCALER : 
+        BACKBONE_LR_SCALER : 1e-1
         
     SCHEDULER:
         SHEDULER_TYPE: 'cosine' 
-        T_MAX: 30               
+        T_MAX: 15               
         ETA_MIN: 1e-6           
     
     AMP: True                   
@@ -70,7 +70,7 @@ TRAIN:
     GRADIENT_ACC_STEPS: 5    
 
 MISC:
-    RUN_INFO: 'm_0_5_s_30'             
+    RUN_INFO: 'm_0_8_s_30_incr_m_backbone_lr_scaler'             
     DATASET_INFO: 'full'
     PROJECT_NAME: 'product_recognition'
     TMP: "./work_dirs/"
