@@ -34,7 +34,8 @@ def get_loader(df_names=None,
                fname_column='file_name',
                return_filenames=False,
                labels_to_ids=None,
-               use_categories=False):
+               use_categories=False,
+               categories_to_ids=None):
 
     if data_config is not None:
         root_dir       = data_config["DIR"]
@@ -70,7 +71,8 @@ def get_loader(df_names=None,
                                 fname_column=fname_column,
                                 return_filenames=return_filenames,
                                 labels_to_ids=labels_to_ids,
-                                use_categories=use_categories)
+                                use_categories=use_categories,
+                                categories_to_ids=categories_to_ids)
     
     drop_last = split=='train'
     shuffle = split=='train' and not balanced_smplr

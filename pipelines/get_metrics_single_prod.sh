@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WORK_DIR_PATH="/home/ubuntu/easy_metric_learning/work_dirs/full_arcface_openclip-ViT-B32_laion2b_m_0_5_s_30_backbone_lr_scaler_with_categories_fold0/"
+WORK_DIR_PATH="/home/ubuntu/easy_metric_learning/work_dirs/full_arcface_tf_efficientnetv2_s.in21k_m_0_5_s_30_backbone_lr_scaler_with_categories_fold0/"
 DATASET_NAME="product_recognition"
 DATASET_PATH="/datasets/metric_learning/$DATASET_NAME/"
 DATASET_CSV="$DATASET_PATH/dataset_test.csv"

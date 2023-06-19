@@ -48,6 +48,7 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         USE_CATEGORIES = False
 
     labels_to_ids = None
+    categories_to_ids = None
     n_categories = None
     if VALIDATE:
         df_train, df_valid, df_full = get_train_val_split(data_config=CONFIGS["DATA"])
@@ -60,10 +61,17 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         with open(Path(CONFIGS["MISC"]['WORK_DIR']) / f'labels_to_ids.json', 'w') as fp:
             json.dump(labels_to_ids, fp)
 
+        if USE_CATEGORIES:
+            categories_to_ids = train_dataset.get_categories_to_ids()
+            with open(Path(CONFIGS["MISC"]['WORK_DIR']) / f'categories_to_ids.json', 'w') as fp:
+                json.dump(categories_to_ids, fp)
+            n_categories = len(categories_to_ids)
+
         valid_loader, valid_dataset = get_loader(df_valid, 
                                                  data_config=CONFIGS["DATA"], 
                                                  split='val',
-                                                 labels_to_ids=labels_to_ids)
+                                                 labels_to_ids=labels_to_ids,
+                                                 categories_to_ids=categories_to_ids)
 
         if isinstance(df_train, list):
             df_train = pd.concat(df_train, ignore_index=True, sort=False)
@@ -78,11 +86,7 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         n_s_valid = len(df_valid)
         classes_counts = dict(df_full['label'].value_counts())
 
-        if USE_CATEGORIES:
-            categories_to_ids = train_dataset.get_categories_to_ids()
-            with open(Path(CONFIGS["MISC"]['WORK_DIR']) / f'categories_to_ids.json', 'w') as fp:
-                json.dump(categories_to_ids, fp)
-            n_categories = len(categories_to_ids)
+        
     else:
         train_loader, train_dataset = get_loader(data_config=CONFIGS["DATA"], 
                                                  split='train',  

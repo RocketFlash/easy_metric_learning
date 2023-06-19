@@ -51,7 +51,7 @@ class MLTrainer:
         self.n_epochs = n_epochs
         self.visualize_batch = visualize_batch
         self.loss_cat = torch.nn.BCEWithLogitsLoss()
-        self.cat_loss_weight = 10
+        self.cat_loss_weight = 100
         
         if incremental_margin is not None:
             m_min  = incremental_margin['MIN_M']
