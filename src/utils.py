@@ -16,6 +16,36 @@ from pathlib import Path
 import torchvision
 from torchvision import transforms
 from sklearn.metrics.pairwise import cosine_similarity
+from .transform import get_transform
+
+
+
+def get_sample(image_path, 
+               img_h=170, 
+               img_w=170,
+               data_type='general'):
+    image = cv2.imread(image_path)
+    transform = get_transform('test_aug',
+                              data_type=data_type, 
+                              image_size=(img_h, img_w))
+    augmented = transform(image=image)
+    img_torch = augmented['image']
+    return img_torch.unsqueeze(0)
+
+
+
+def get_images_paths(path):
+    pathlib_path = Path(path)
+    return [l for l in list(pathlib_path.glob('**/*.jpeg')) + \
+                       list(pathlib_path.glob('**/*.jpg')) + \
+                       list(pathlib_path.glob('**/*.png'))]
+
+
+def get_value_if_exist(config, name, default_value=False):
+    if name in config:
+        return config[name]
+    else:
+        return default_value
 
 
 def get_image(image_path):
@@ -119,6 +149,20 @@ def calculate_dynamic_margin(dynamic_margin_config, classes_counts, labels_to_id
     return dynamic_margin
 
 
+def read_pd(file_path):
+    file_path = Path(file_path)
+    if file_path.suffix=='.feather':
+        df = pd.read_feather(file_path)
+    else:
+        df = pd.read_csv(file_path, dtype={ 'label': str,
+                                            'file_name': str,
+                                            'width': int,
+                                            'height': int,
+                                            'hash' : str,
+                                            'category' : str})
+    return df
+
+
 def get_train_val_split(data_config=None, split_file=None, fold=0):
     if data_config is not None:
         split_file = data_config["SPLIT_FILE"]
@@ -129,23 +173,13 @@ def get_train_val_split(data_config=None, split_file=None, fold=0):
         df_valid = []
         df_full = []
         for sf in split_file:
-            df_folds = pd.read_csv(sf, dtype={'label': str,
-                                              'file_name': str,
-                                              'width': int,
-                                              'height': int,
-                                              'hash' : str,
-                                              'category' : str})
+            df_folds = read_pd(sf)
             df_full.append(df_folds)
             df_train.append(df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)])
             df_valid.append(df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)])
         df_full = pd.concat(df_full, ignore_index=True, sort=False)
     else:
-        df_folds = pd.read_csv(split_file, dtype={'label': str,
-                                                  'file_name': str,
-                                                  'width': int,
-                                                  'height': int,
-                                                  'hash' : str,
-                                                  'category' : str})
+        df_folds = read_pd(split_file)
         df_train = df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)]
         df_valid = df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)]
         df_full = df_folds

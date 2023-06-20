@@ -60,7 +60,10 @@ if __name__ == '__main__':
     
     all_predictions = []
     all_gts = []
-    best_top_n_vals, best_top_n_idxs = cosine_similarity_chunks(train_embeddings, test_embeddings, n_chunks=args.n_chunks, top_n=args.top_n)
+    best_top_n_vals, best_top_n_idxs = cosine_similarity_chunks(train_embeddings, 
+                                                                test_embeddings, 
+                                                                n_chunks=args.n_chunks, 
+                                                                top_n=args.top_n)
     best_top_n_idxs = best_top_n_idxs.T
 
     for btni, test_label in zip(best_top_n_idxs, test_labels):

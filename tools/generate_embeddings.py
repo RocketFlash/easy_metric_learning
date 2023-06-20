@@ -40,6 +40,7 @@ def main(CONFIGS, args):
     data_loader, dataset = get_loader(df,
                                       data_config=CONFIGS["DATA"],
                                       split='val',
+                                      test=True,
                                       batch_size=bs,
                                       num_thread=n_workers,
                                       label_column='label',

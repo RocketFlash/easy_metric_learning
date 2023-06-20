@@ -78,9 +78,7 @@ class EmbeddigsNet(nn.Module):
             
             clip_model, _, _ = open_clip.create_model_and_transforms(m_name, 
                                                                      pretrained=p_name)
-            clip_model = clip_model.visual
-
-            self.backbone = clip_model
+            self.backbone = clip_model.visual
             
         else:
             self.backbone = timm.create_model(model_name, pretrained=pretrained, 
@@ -161,12 +159,14 @@ class MLNet(nn.Module):
     def __init__(self, 
                  embeddings_net, 
                  margin,
-                 n_categories=None):
+                 n_categories=None,
+                 use_text_embeddings=False):
         super(MLNet, self).__init__()
 
         self.embeddings_net = embeddings_net
         self.margin = margin
         self.n_categories = n_categories
+        self.use_text_embeddings = use_text_embeddings
     
         if self.n_categories is not None:
             self.category_net =  nn.Linear(self.embeddings_net.n_features,
@@ -181,7 +181,15 @@ class MLNet(nn.Module):
             x = self.margin(x_emb, label[0])
             x_category = self.category_net(x_emb)
             return [x, x_category]
-        x = self.margin(x_emb, label)
+        if self.use_text_embeddings:
+            t_emb = label[1]
+            i_emb = x_emb
+            # i_emb = i_emb / i_emb.norm(dim=-1, keepdim=True)
+            # t_emb = t_emb / t_emb.norm(dim=-1, keepdim=True)
+            emb = torch.cat([i_emb, t_emb], 1)
+            x = self.margin(emb, label[0])
+        else:
+            x = self.margin(x_emb, label)
         return x
 
 
@@ -220,7 +228,8 @@ def get_model(model_config=None,
               K=1,
               easy_margin=False,
               ls_eps=0.0,
-              n_categories=None):
+              n_categories=None,
+              use_text_embeddings=False):
 
     if model_config is not None:
         model_name      = model_config['ENCODER_NAME'] 
@@ -235,6 +244,7 @@ def get_model(model_config=None,
         easy_margin     = model_config['EASY_MARGIN']
         ls_eps          = model_config['LS_PROB']
         n_categories    = model_config['N_CATEGORIES']
+        use_text_embeddings = model_config['USE_TEXT_EMBEDDINGS']
 
     embeddings_model = get_model_embeddings(model_name=model_name, 
                                             pool_type=pool_type,
@@ -242,6 +252,9 @@ def get_model(model_config=None,
                                             pretrained=pretrained, 
                                             dropout=dropout)
     
+    if use_text_embeddings:
+        embeddings_size = embeddings_size * 2
+
     margin = get_margin(margin_type=margin_type,
                         embeddings_size=embeddings_size,
                         out_features=out_features,
@@ -253,5 +266,6 @@ def get_model(model_config=None,
     
     model = MLNet(embeddings_model, 
                   margin,
-                  n_categories)
+                  n_categories,
+                  use_text_embeddings=use_text_embeddings)
     return model

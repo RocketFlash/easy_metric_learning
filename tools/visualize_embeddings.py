@@ -32,7 +32,8 @@ if __name__ == '__main__':
 
     print('Load embeddings')
     
-    data = np.load(args.embeddings)
+    data = np.load(args.embeddings,
+                   allow_pickle=True)
     embeddings = data['embeddings']
     labels = data['labels']
     file_names = data['file_names']

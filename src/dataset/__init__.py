@@ -35,7 +35,8 @@ def get_loader(df_names=None,
                return_filenames=False,
                labels_to_ids=None,
                use_categories=False,
-               categories_to_ids=None):
+               categories_to_ids=None,
+               use_text_embeddings=False):
 
     if data_config is not None:
         root_dir       = data_config["DIR"]
@@ -48,12 +49,14 @@ def get_loader(df_names=None,
         balanced_smplr = data_config["BALANCED_SAMPLER"] if "BALANCED_SAMPLER" in data_config else True
         use_cache      = data_config["USE_CACHE"] if "USE_CACHE" in data_config else False
         use_categories = data_config['USE_CATEGORIES'] if 'USE_CATEGORIES' in data_config else use_categories
+        use_text_embeddings = data_config['USE_TEXT_EMBEDDINGS'] if 'USE_TEXT_EMBEDDINGS' in data_config else use_text_embeddings
 
     if test is False:
         transform = get_transform(transform_name, 
                                   data_type=data_type, 
                                   image_size=(img_size,img_size))
     else:
+        use_text_embeddings = False
         transform = get_transform('test_aug', 
                                   data_type=data_type, 
                                   image_size=(img_size,img_size))
@@ -72,7 +75,8 @@ def get_loader(df_names=None,
                                 return_filenames=return_filenames,
                                 labels_to_ids=labels_to_ids,
                                 use_categories=use_categories,
-                                categories_to_ids=categories_to_ids)
+                                categories_to_ids=categories_to_ids,
+                                use_text_embeddings=use_text_embeddings)
     
     drop_last = split=='train'
     shuffle = split=='train' and not balanced_smplr

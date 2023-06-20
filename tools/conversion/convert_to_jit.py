@@ -1,5 +1,5 @@
 import sys
-sys.path.append("./")
+sys.path.append("../../")
 
 import os
 import torch
@@ -39,7 +39,7 @@ if __name__ == '__main__':
                                     image_size=(CONFIGS['DATA']['IMG_SIZE'],
                                                 CONFIGS['DATA']['IMG_SIZE']))
     
-    sample = transform_test(image=np.zeros((1000,1000,3), np.uint8))
+    sample = transform_test(image=np.zeros((170,170,3), np.uint8))
     example = sample['image']
     example = example.unsqueeze(0).to(device)
 

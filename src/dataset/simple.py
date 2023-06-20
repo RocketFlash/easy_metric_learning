@@ -33,14 +33,18 @@ class MetricDataset(BaseDataset):
             return_filenames=False,
             labels_to_ids=None,
             use_categories=False,
+            use_text_embeddings=False,
             category_column='category',
+            text_embeddings_column='text_embeddings',
             categories_to_ids=None):
 
         self.images_paths = []
         self.labels = []
         self.categories = []
+        self.text_embeddings = []
         self.return_filenames = return_filenames
         self.use_categories = use_categories
+        self.use_text_embeddings = use_text_embeddings
         
         if isinstance(root_dir, list) and isinstance(df_names, list):
             lines = [df_nms[fname_column].tolist() for df_nms in df_names]
@@ -53,6 +57,10 @@ class MetricDataset(BaseDataset):
                 categories = [df_nms[category_column].tolist() for df_nms in df_names]
                 for cat in categories:
                     self.categories += cat
+            if use_text_embeddings:
+                text_embeddings = [df_nms[text_embeddings_column].tolist() for df_nms in df_names]
+                for text_emb in text_embeddings:
+                    self.text_embeddings += text_emb
         else:
             lines = df_names[fname_column].tolist()
             imgs_pth = Path(root_dir) / 'images'
@@ -137,7 +145,11 @@ class MetricDataset(BaseDataset):
                                                 dtype=torch.long), 
                                     num_classes=self.n_categories).sum(dim=0).float()
                 data = (data, cat_id)
-            
+
+            if self.use_text_embeddings:
+                text_emb = torch.tensor(self.text_embeddings[i],
+                                        dtype=torch.float32)
+                data = (data, text_emb)
                 
             if self.return_filenames:
                 return image, data, self.file_names[i]

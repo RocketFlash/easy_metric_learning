@@ -25,6 +25,7 @@ from src.utils import load_config, Logger, get_train_val_split
 
 from src.utils import  seed_everything, calculate_time, get_device
 from src.utils import calculate_autoscale, calculate_dynamic_margin
+from src.utils import get_value_if_exist
 from src.trainer import MLTrainer
 
 
@@ -40,12 +41,10 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         wandb_run.config.update(CONFIGS)
 
     best_cp_sp, last_cp_sp, best_emb_cp_sp, last_emb_cp_sp = get_cp_save_paths(CONFIGS)
+    
     VALIDATE = CONFIGS["DATA"]['SPLIT_FILE'] is not None
-
-    if 'USE_CATEGORIES' in CONFIGS["DATA"]:
-        USE_CATEGORIES = CONFIGS["DATA"]['USE_CATEGORIES']
-    else:
-        USE_CATEGORIES = False
+    USE_CATEGORIES      = get_value_if_exist(CONFIGS["DATA"], 'USE_CATEGORIES')
+    USE_TEXT_EMBEDDINGS = get_value_if_exist(CONFIGS["DATA"], 'USE_TEXT_EMBEDDINGS')
 
     labels_to_ids = None
     categories_to_ids = None
@@ -106,7 +105,7 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
     CONFIGS['TRAIN']['N_CLASSES'] = n_cl_total
     CONFIGS['MODEL']['N_CATEGORIES'] = n_categories
     CONFIGS['TRAIN']['N_CATEGORIES'] = n_categories
-
+    CONFIGS['MODEL']['USE_TEXT_EMBEDDINGS'] = USE_TEXT_EMBEDDINGS
 
     if CONFIGS['MODEL']['AUTO_SCALE_SIZE']:
         CONFIGS['MODEL']['S'] = calculate_autoscale(n_cl_total)  
@@ -223,9 +222,10 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
             metrics['train_loss'] = stats_train.loss
             metrics['train_acc']  = stats_train.acc
             metrics['learning_rate'] = optimizer.param_groups[-1]['lr']
-            if stats_train.f1_cat is not None: metrics['train_f1_cat'] = stats_train.f1_cat
-            if stats_train.loss_cat is not None: metrics['train_loss_cat'] = stats_train.loss_cat
-            if stats_train.loss_margin is not None: metrics['train_loss_margin'] = stats_train.loss_margin
+            if USE_CATEGORIES:
+                if stats_train.f1_cat is not None: metrics['train_f1_cat'] = stats_train.f1_cat
+                if stats_train.loss_cat is not None: metrics['train_loss_cat'] = stats_train.loss_cat
+                if stats_train.loss_margin is not None: metrics['train_loss_margin'] = stats_train.loss_margin
 
             if stats_train.images_wdb:
                 metrics["training batch"] = stats_train.images_wdb
@@ -236,9 +236,10 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
                 metrics['valid_loss'] = stats_valid.loss
                 metrics['valid_acc']  = stats_valid.acc
                 if stats_valid.gap is not None: metrics['gap'] = stats_valid.gap
-                if stats_valid.f1_cat is not None: metrics['valid_f1_cat'] = stats_valid.f1_cat
-                if stats_valid.loss_cat is not None: metrics['valid_loss_cat'] = stats_valid.loss_cat
-                if stats_valid.loss_margin is not None: metrics['valid_loss_margin'] = stats_valid.loss_margin
+                if USE_CATEGORIES:
+                    if stats_valid.f1_cat is not None: metrics['valid_f1_cat'] = stats_valid.f1_cat
+                    if stats_valid.loss_cat is not None: metrics['valid_loss_cat'] = stats_valid.loss_cat
+                    if stats_valid.loss_margin is not None: metrics['valid_loss_margin'] = stats_valid.loss_margin
             wandb.log(metrics, step=epoch)
         
         logger.epoch_train_info(epoch, 

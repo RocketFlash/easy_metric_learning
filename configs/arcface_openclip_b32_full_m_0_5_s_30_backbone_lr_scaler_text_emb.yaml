@@ -1,0 +1,77 @@
+GENERAL:
+    RANDOM_STATE : 28 
+    DEBUG : False   
+    DEVICE: 0         
+    USE_WANDB : True   
+
+DATA:
+    DATASET_TYPE : 'simple'                                     
+    DATA_TYPE : 'clip'                                      
+    DIR: 
+        - "/datasets/metric_learning/product_recognition"
+        # - "/datasets/metric_learning/mksp_170x170"                                   
+    SPLIT_FILE: 
+        - "/datasets/metric_learning/product_recognition/folds_categories_text_emb.feather" 
+        # - "/datasets/metric_learning/mksp_170x170/folds.csv"                  
+    
+    TRAIN_AUG: 'soft'        
+    FOLD: 0                 
+    IMG_SIZE: 224           
+    BATCH_SIZE: 500      
+    WORKERS: 30               
+    BALANCED_SAMPLER: False 
+    USE_TEXT_EMBEDDINGS: True
+
+MODEL:
+    ENCODER_NAME: 'openclip-ViT-B32_laion2b' 
+    MARGIN_TYPE: 'arcface'                 
+    EMBEDDINGS_SIZE: 512                  
+    S : 30                                 
+    M : 0.5                              
+    K : 10                                 
+    DROPOUT_PROB : 0.1                     
+    LS_PROB : 0.1                          
+    POOL_TYPE :                      
+    AUTO_SCALE_SIZE : False                
+    EASY_MARGIN : False                    
+    FREEZE_BACKBONE : False              
+
+    DYNAMIC_MARGIN:     
+    #     HB : 0.5
+    #     LB : 0.05
+    #     LAMBDA : 0.25
+
+TRAIN:
+    LOSS_TYPE : 'cross_entropy' 
+    CALCULATE_GAP : False        
+    FOCAL_GAMMA : 0.1           
+    EPOCHS : 15                
+    RESUME :                    
+    LOAD_WEIGHTS:               
+    LOAD_EMBEDDER: 
+
+    INCREMENTAL_MARGIN:
+        # TYPE  : 'linear'
+        # MIN_M : 0.0                
+
+    OPTIMIZER:
+        OPTIMIZER_TYPE: 'adamw'   
+        LR: 1e-3                
+        MOMENTUM: 0.9           
+        WEIGHT_DECAY: 1e-5    
+        BACKBONE_LR_SCALER : 1e-3
+        
+    SCHEDULER:
+        SHEDULER_TYPE: 'cosine' 
+        T_MAX: 15               
+        ETA_MIN: 1e-5         
+    
+    AMP: True                   
+    WARMUP: False               
+    GRADIENT_ACC_STEPS: 5    
+
+MISC:
+    RUN_INFO: 'm_0_5_s_30_backbone_lr_scaler_text_embeddings'             
+    DATASET_INFO: 'full'
+    PROJECT_NAME: 'product_recognition'
+    TMP: "./work_dirs/"

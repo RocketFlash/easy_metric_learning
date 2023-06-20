@@ -19,3 +19,6 @@ imagededup
 imagesize
 lion-pytorch
 open_clip_torch
+onnx
+onnxruntime
+onnxruntime-gpu

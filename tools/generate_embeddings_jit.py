@@ -25,17 +25,18 @@ def main(args):
     save_path = args.save_path 
     bs = args.bs
 
-
     save_path = Path(save_path)
     save_path.mkdir(exist_ok=True)
 
     device = torch.device(args.device)
 
-    df = pd.read_csv(dataset_csv, dtype={'label': str,
+    df = pd.read_csv(dataset_csv, dtype={
+                                         'label': str,
                                          'file_name': str,
                                          'width': int,
                                          'height': int,
-                                         'label_id': int})
+                                         'label_id': int
+                                         })
     
     data_loader, dataset = get_loader(df,
                               root_dir=dataset_path,

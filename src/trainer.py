@@ -113,6 +113,8 @@ class MLTrainer:
                         loss_m /= self.grad_accum_steps
                         loss_c /= self.grad_accum_steps
                     else:
+                        if isinstance(targets, list):
+                            targets = targets[0]
                         loss_m = self.loss_func(output, targets)
                         loss = loss_m
                         acc = accuracy(output, targets)
@@ -136,6 +138,8 @@ class MLTrainer:
                     loss_m /= self.grad_accum_steps
                     loss_c /= self.grad_accum_steps
                 else:
+                    if isinstance(targets, list):
+                        targets = targets[0]
                     loss_m = self.loss_func(output, targets)
                     loss = loss_m
                     acc = accuracy(output, targets)
@@ -237,6 +241,8 @@ class MLTrainer:
                     acc_cat = f_score(output[1], targets[1])
                     g_out = output[0]
                 else:
+                    if isinstance(targets, list):
+                        targets = targets[0]
                     loss_m = self.loss_func(output, targets)
                     loss = loss_m
                     acc = accuracy(output, targets)

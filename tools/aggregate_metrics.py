@@ -39,6 +39,8 @@ if __name__ == '__main__':
             all_metrics.append(df)
     
     all_metrics = pd.concat(all_metrics)
+    all_metrics = all_metrics.sort_values(by='Acc top1',
+                                          ascending = False)
     print(all_metrics)
     all_metrics.to_csv(save_path / f'{dataset_name}_metrics.csv')
     
