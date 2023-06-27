@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 from ..samplers import get_sampler
 from ..transform import get_transform
 from ..utils import worker_init_fn
-from collections import Counter
 
 
 def collate_fn(batch):

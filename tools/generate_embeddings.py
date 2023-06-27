@@ -14,6 +14,22 @@ from tqdm import tqdm
 import torch
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--work_folder', type=str, default='', help='path to trained model working directory')
+    parser.add_argument('--config', type=str, default='', help='path to cfg.yaml')
+    parser.add_argument('--weights', type=str, default='', help='weights path')
+    parser.add_argument('--save_path', type=str, default='', help='save path')
+    parser.add_argument('--dataset_path', type=str, default='', help='path to dataset')
+    parser.add_argument('--dataset_csv', type=str, default='', help='path to dataset csv file')
+    parser.add_argument('--dataset_type', type=str, default='general', help='dataset type one of [general, cars, sop]')
+    parser.add_argument('--bs',type=int, default=8, help='batch size')
+    parser.add_argument('--n_jobs', type=int, default=4, help='number of parallel jobs')
+    parser.add_argument('--emb_size',type=int, default=512, help='embeddings size')
+    parser.add_argument('--use_bboxes', action='store_true', help='use regions from bboxes')
+    return parser.parse_args()
+
+
 def main(CONFIGS, args):
     weights = args.weights
     dataset_csv = args.dataset_csv
@@ -40,8 +56,12 @@ def main(CONFIGS, args):
     df = pd.read_csv(dataset_csv, 
                      dtype=df_dtype)
     
-    if args.dataset_type in ['cars', 'sop']:
+    eval_status = None
+    if args.dataset_type in ['cars', 'sop', 'cub']:
         df = df[df['is_test'] == 1].reset_index()
+    elif args.dataset_type in ['inshop']:
+        df = df[df['is_test'] == 1].reset_index()
+        eval_status = df['evaluation_status'].values
     
     CONFIGS['DATA']['USE_CATEGORIES'] = False
     data_loader, dataset = get_loader(df,
@@ -89,22 +109,11 @@ def main(CONFIGS, args):
     np.savez(save_path / 'embeddings.npz', 
              embeddings=embeddings, 
              labels=labels,
-             file_names=file_names)
+             file_names=file_names,
+             eval_status=eval_status)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--work_folder', type=str, default='', help='path to trained model working directory')
-    parser.add_argument('--config', type=str, default='', help='path to cfg.yaml')
-    parser.add_argument('--weights', type=str, default='', help='weights path')
-    parser.add_argument('--save_path', type=str, default='', help='save path')
-    parser.add_argument('--dataset_path', type=str, default='', help='path to dataset')
-    parser.add_argument('--dataset_csv', type=str, default='', help='path to dataset csv file')
-    parser.add_argument('--dataset_type', type=str, default='general', help='dataset type one of [general, cars, sop]')
-    parser.add_argument('--bs',type=int, default=8, help='batch size')
-    parser.add_argument('--n_jobs', type=int, default=4, help='number of parallel jobs')
-    parser.add_argument('--emb_size',type=int, default=512, help='embeddings size')
-    parser.add_argument('--use_bboxes', action='store_true', help='use regions from bboxes')
-    args = parser.parse_args()
+    args = parse_args()
 
     if args.work_folder:
         args.work_folder = Path(args.work_folder)

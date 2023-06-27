@@ -22,3 +22,4 @@ open_clip_torch
 onnx
 onnxruntime
 onnxruntime-gpu
+wget

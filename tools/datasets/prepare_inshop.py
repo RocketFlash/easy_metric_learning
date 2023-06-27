@@ -1,11 +1,6 @@
 import argparse
-import cv2
 import pandas as pd
 from pathlib import Path
-from tqdm import tqdm
-import numpy as np
-import wget
-import zipfile
 from utils import add_image_sizes, download_dataset
 
 
@@ -23,7 +18,7 @@ def parse_args():
                         action='store_true', 
                         help='Dowload images')
     return parser.parse_args()
-    
+
 
 if __name__ == '__main__':
     args = parse_args()
@@ -31,24 +26,25 @@ if __name__ == '__main__':
     if args.download:
         save_path = Path(args.save_path)
         save_path.mkdir(exist_ok=True)
-        download_dataset(save_path, dataset='sop')
-        dataset_path = save_path / 'Stanford_Online_Products'
+        download_dataset(save_path, dataset='inshop')
+        dataset_path = save_path / 'inshop'
     else:
         dataset_path = Path(args.dataset_path)
     save_path = dataset_path
 
-    df_info  = pd.read_csv(save_path / 'Ebay_info.txt', sep=' ')
-    df_train = pd.read_csv(save_path / 'Ebay_train.txt', sep=' ')
-    df_test  = pd.read_csv(save_path / 'Ebay_test.txt', sep=' ')
-    
-    df_info['label'] = df_info['path'].apply(lambda x: x.split('/')[0])
-    df_info['is_test'] = df_info.path.isin(df_test.path).astype(int)
-    df_info = df_info.rename(columns={'path' : 'file_name'})
-    df_info = add_image_sizes(df_info, dataset_path)
+    df_info   = pd.read_csv(save_path / 'list_eval_partition.txt', 
+                              sep='\s+', 
+                              skiprows=1)
+    df_info = df_info.rename(columns={'image_name' : 'file_name',
+                                      'item_id' : 'label'})
+    df_info = df_info.assign(is_test=[0 if x == 'train' else 1 for x in df_info['evaluation_status']])
+    df_info = add_image_sizes(df_info, 
+                              dataset_path)
     df_info = df_info[['file_name', 
                        'label', 
                        'width', 
                        'height',
+                       'evaluation_status',
                        'is_test']]
     
     df_info.to_csv(save_path / 'dataset_info.csv', index=False) 

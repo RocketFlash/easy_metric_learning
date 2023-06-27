@@ -4,8 +4,8 @@ import cv2
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
-import imagesize
 import numpy as np
+from utils import add_image_sizes
 
 
 def get_images(images, 
@@ -19,7 +19,6 @@ def get_images(images,
     images_bar = tqdm(images)
     images_bar.set_description(split)
     image_names = []
-    image_sizes = []
 
     for image_id, image in enumerate(images_bar):
         image_name = f'{image_id}.jpg'
@@ -30,11 +29,8 @@ def get_images(images,
             image = cv2.cvtColor(image.numpy(), 
                                  cv2.COLOR_BGR2RGB)
             cv2.imwrite(str(image_path), image)
-            
-        width, height = imagesize.get(image_path)
-        image_sizes.append([width, height])
     
-    return image_names, image_sizes
+    return image_names
 
 
 def parse_args():
@@ -69,40 +65,34 @@ if __name__ == '__main__':
     bboxes_train = [' '.join(list(bbox.astype(str))) for bbox in bboxes_train]
     bboxes_test  = [' '.join(list(bbox.astype(str))) for bbox in bboxes_test]
 
-    img_paths_train, img_sizes_train = get_images(images_train, 
-                                                  split='train',
-                                                  dataset_path=dataset_path,
-                                                  download=args.download)
+    img_paths_train = get_images(images_train, 
+                                split='train',
+                                dataset_path=dataset_path,
+                                download=args.download)
     
-    img_paths_test,  img_sizes_test  = get_images(images_test, 
-                                                  split='test',
-                                                  dataset_path=dataset_path,
-                                                  download=args.download)
+    img_paths_test  = get_images(images_test, 
+                                split='test',
+                                dataset_path=dataset_path,
+                                download=args.download)
     
     img_paths = img_paths_train + img_paths_test
-    img_sizes = img_sizes_train + img_sizes_test
-    img_sizes = np.array(img_sizes)
-    img_widths  = list(img_sizes[:, 0])
-    img_heights = list(img_sizes[:, 1])
     labels = labels_train + labels_test
     bboxes = bboxes_train +  bboxes_test
 
     n_train_classes = 98
     is_test = [0 if l<98 else 1 for l in labels]
 
-    df = pd.DataFrame(list(zip(img_paths, 
-                               labels, 
-                               img_widths,
-                               img_heights,
+    df_info = pd.DataFrame(list(zip(img_paths, 
+                               labels,    
                                bboxes,
                                is_test)),
                       columns =['file_name', 
                                 'label',
-                                'width', 
-                                'height',
                                 'bbox',
                                 'is_test'])
+    df_info = add_image_sizes(df_info, 
+                              dataset_path)
     
-    df.to_csv(dataset_path / 'dataset_info.csv', index=False) 
+    df_info.to_csv(dataset_path / 'dataset_info.csv', index=False) 
 
     

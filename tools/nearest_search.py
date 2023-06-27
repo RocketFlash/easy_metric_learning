@@ -39,8 +39,9 @@ def read_embeddings(embeddings_path):
     embeddings = data['embeddings']
     labels = data['labels']
     file_names = data['file_names']
+    eval_status = data['eval_status']
     print('Embeddings were loaded')
-    return embeddings, labels, file_names
+    return embeddings, labels, file_names, eval_status
 
 
 def get_embeddings_dict(embeddings, labels, file_names):
@@ -73,15 +74,14 @@ if __name__ == '__main__':
     save_path.mkdir(exist_ok=True, 
                     parents=True)
 
-    embeddings, labels, file_names = read_embeddings(args.embeddings)
+    embeddings, labels, file_names, eval_status = read_embeddings(args.embeddings)
+    df, train_df, test_df = None, None, None
 
     if args.ref_csv:
         df = pd.read_csv(args.ref_csv, dtype={'label': str,
-                                            'file_name': str,
-                                            'width': int,
-                                            'height': int})
-    else:
-        df = None
+                                              'file_name': str,
+                                              'width': int,
+                                              'height': int})
         
     if args.use_test and df is not None:
         train_df = df[(df.is_test != 1)]
@@ -90,43 +90,44 @@ if __name__ == '__main__':
         if args.fold<0:
             train_df = df
             test_df  = pd.read_csv(args.test_csv, dtype={'label': str,
-                                                        'file_name': str,
-                                                        'width': int,
-                                                        'height': int})
+                                                         'file_name': str,
+                                                         'width': int,
+                                                         'height': int})
         else:
             train_df = df[(df.fold != args.fold)]
             test_df  = df[(df.fold == args.fold)]
-    else:
-        train_df = None
-        test_df  = None
 
-    
+    is_inner = False
     if train_df is not None:
-        is_inner = False
         embeddings_dict = get_embeddings_dict(embeddings, labels, file_names)
-        print('N train samples', len(train_df))
-        print('N test samples', len(test_df))
         train_embeddings, train_labels, train_fnames = filter_embeddings(embeddings_dict, train_df)
         test_embeddings, test_labels, test_fnames    = filter_embeddings(embeddings_dict, test_df)
     else:
-        print('Inner embeddings similarity')
-        is_inner = True
-        train_embeddings, train_labels, train_fnames = embeddings, labels, file_names
-        test_embeddings, test_labels, test_fnames    = embeddings, labels, file_names
+        if eval_status.shape:
+            print('Split on gallery and query')
+            mask_gallery = eval_status == 'gallery'
+            mask_query   = eval_status == 'query'
+            train_embeddings, train_labels, train_fnames = embeddings[mask_gallery], labels[mask_gallery], file_names[mask_gallery]
+            test_embeddings, test_labels, test_fnames    = embeddings[mask_query], labels[mask_query], file_names[mask_query]
+        else:
+            print('Inner embeddings similarity')
+            is_inner = True
+            train_embeddings, train_labels, train_fnames = embeddings, labels, file_names
+            test_embeddings, test_labels, test_fnames    = embeddings, labels, file_names
 
-    print('N train embeddings', train_embeddings.shape)
-    print('N test  embeddings', test_embeddings.shape)
+    print('N gallery embeddings', train_embeddings.shape)
+    print('N query   embeddings', test_embeddings.shape)
 
     if args.filter_labels:
         train_labels_set = list(set(train_labels))
         test_embeddings  = test_embeddings[np.isin(test_labels, train_labels_set)]
         test_labels = test_labels[np.isin(test_labels, train_labels_set)]
 
-    print(f'Number of train samples: {len(train_embeddings)}')
-    print(f'Number of test  samples: {len(test_embeddings)}')
+    print(f'Number of gallery samples: {len(train_embeddings)}')
+    print(f'Number of query   samples: {len(test_embeddings)}')
 
-    print(f'Number of train labels: {len(set(train_labels))}')
-    print(f'Number of test  labels: {len(set(test_labels))}')
+    print(f'Number of gallery labels: {len(set(train_labels))}')
+    print(f'Number of query   labels: {len(set(test_labels))}')
 
     K = args.top_n 
     if is_inner:
