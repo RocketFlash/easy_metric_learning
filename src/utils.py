@@ -17,7 +17,11 @@ import torchvision
 from torchvision import transforms
 from sklearn.metrics.pairwise import cosine_similarity
 from .transform import get_transform
-
+from PIL import Image
+import io
+import base64
+from io import BytesIO as _BytesIO
+from jinja2 import Template
 
 
 def get_sample(image_path, 
@@ -31,7 +35,6 @@ def get_sample(image_path,
     augmented = transform(image=image)
     img_torch = augmented['image']
     return img_torch.unsqueeze(0)
-
 
 
 def get_images_paths(path):
@@ -357,14 +360,32 @@ def plot_embeddings(embeddings, labels, save_path='./tsne.png', show=True, n_lab
     fig.savefig(save_path)
 
 
-def plot_embeddings_interactive(embeddings, labels, save_dir='./', n_labels=-1, mapper=None, save_name=None, method='fast_tsne', n_jobs=4, n_components=2, random_state=28):
+def np_image_to_base64(im_matrix):
+    im = Image.fromarray(im_matrix)
+    buffer = io.BytesIO()
+    im.save(buffer, format="jpeg")
+    encoded_image = base64.b64encode(buffer.getvalue()).decode()
+    im_url = "data:image/jpeg;base64, " + encoded_image
+    return im_url
+
+
+def plot_embeddings_interactive(embeddings, 
+                                labels, 
+                                file_names=None,
+                                save_dir='./', 
+                                n_labels=-1, 
+                                mapper=None, 
+                                save_name=None,
+                                dataset_path='', 
+                                method='fast_tsne', 
+                                n_jobs=4, 
+                                n_components=2, 
+                                random_state=28):
     import plotly.graph_objects as go
     
     labels_set = list(set(labels))
     if n_labels>0:
         labels_set = random.sample(labels_set, n_labels)
-        embeddings = embeddings[np.isin(labels, labels_set)]
-        labels = labels[np.isin(labels, labels_set)]
     else:
         labels_dict = {}
         for l in labels:
@@ -374,8 +395,48 @@ def plot_embeddings_interactive(embeddings, labels, save_dir='./', n_labels=-1, 
                 labels_dict[l]+=1
         labels_set = [k for k in labels_dict if labels_dict[k] >= -n_labels]
         print(f'total number of labels to visualize: {len(labels_set)}')
-        embeddings = embeddings[np.isin(labels, labels_set)]
-        labels = labels[np.isin(labels, labels_set)]
+    
+    labels_mask = np.isin(labels, labels_set)
+    embeddings = embeddings[labels_mask]
+    labels = labels[labels_mask]
+    if file_names is not None:
+        file_names = file_names[labels_mask]
+
+        label_to_fname = {}
+        for lbl, fnm in zip(labels, file_names):
+            if lbl not in label_to_fname:
+                label_to_fname[lbl] = fnm
+
+        label_to_image = {}
+        if dataset_path:
+            dataset_path = Path(dataset_path)
+            for k, v in label_to_fname.items():
+                img_path = str(dataset_path/v)
+                img = cv2.imread(img_path)
+                img = cv2.resize(img, (100, 100))
+                img = Image.fromarray(img)
+                buff = _BytesIO()
+                img.save(buff, format='png')
+                encoded = base64.b64encode(buff.getvalue()).decode("utf-8")
+                label_to_image[k] = encoded
+
+        # Define the HTML legend container outside the plot
+        legend_html = '<div class="legend-container">'
+
+        # Loop through each class and create legend items with preview images
+        for label, img_data_base64 in label_to_image.items():
+            # Convert image data to base64
+            img_src = f'data:image/png;base64,{img_data_base64}'
+            
+            # Add legend item with the label and image
+            legend_html += f"""
+            <div class="legend-item">
+                <img src="{img_src}" width="100" height="100">
+                <span>{label}</span>
+            </div>
+            """
+
+        legend_html += '</div>'
 
     print(f'Fit data using {method}')
     if method=='fast_tsne':
@@ -424,21 +485,73 @@ def plot_embeddings_interactive(embeddings, labels, save_dir='./', n_labels=-1, 
                                                 size=5),
                                     text=point_text,
                                     name=point_text))
+    
+    # def update_point(trace, points, selector):
+    #     c = list(scatter.marker.color)
+    #     s = list(scatter.marker.size)
+    #     for i in points.point_inds:
+    #         c[i] = '#bae2be'
+    #         s[i] = 20
+    #         with f.batch_update():
+    #             scatter.marker.color = c
+    #             scatter.marker.size = s
+
     fig.update_layout(
         title=go.layout.Title(text=f"{method} plot",
                               xref="paper",
                               x=0),
         autosize=False,
         width=1000,
-        height=1000
+        height=1000,
+        showlegend=False
     )
+
+    fig.add_annotation(
+                    x=0,
+                    y=1,
+                    showarrow=False,
+                    text=legend_html,
+                    xref="paper",
+                    yref="paper",
+                    align="left",
+                    bordercolor="black",
+                    borderwidth=1,
+                    borderpad=4,
+                    bgcolor="rgba(255, 255, 255, 0.7)",
+                    opacity=0.8,
+                )
+
 
     if save_name:
         save_name = save_dir / f'{save_name}.html'
     else:
         save_name = save_dir / f'{method}_{n_components}components.html'
-    print('Plot data')
-    fig.write_html(save_name)
+    # print('Plot data')
+    # fig.write_html(save_name)
+    # Save the plot as an HTML file with embedded images
+    template = Template('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Plot with Images</title>
+    </head>
+    <body>
+        <div>
+            {{ plot_div }}
+        </div>
+    </body>
+    </html>
+    ''')
+
+    # Generate the plotly div
+    plot_div = fig.to_html(full_html=False)
+
+    # Combine the plot div and the template
+    html_content = template.render(plot_div=plot_div)
+
+    # Save the HTML content to a file
+    with open(save_name, 'w') as file:
+        file.write(html_content)
 
 
 def cosine_similarity_chunks(X, Y, n_chunks=5, top_n=5, sparse=False):

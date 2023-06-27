@@ -10,9 +10,9 @@ import pandas as pd
 from src.utils import load_ckp, load_config
 from src.dataset import get_loader
 from src.model import get_model_embeddings
-
 from tqdm import tqdm
 import torch
+
 
 def main(CONFIGS, args):
     weights = args.weights
@@ -31,10 +31,17 @@ def main(CONFIGS, args):
 
     device = torch.device(CONFIGS['GENERAL']['DEVICE'])
 
-    df = pd.read_csv(dataset_csv, dtype={'label': str,
-                                         'file_name': str,
-                                         'width': int,
-                                         'height': int})
+    df_dtype = {'label': str,
+                'file_name': str,
+                'width': int,
+                'height': int,
+                'is_test':int}  
+
+    df = pd.read_csv(dataset_csv, 
+                     dtype=df_dtype)
+    
+    if args.dataset_type in ['cars', 'sop']:
+        df = df[df['is_test'] == 1].reset_index()
     
     CONFIGS['DATA']['USE_CATEGORIES'] = False
     data_loader, dataset = get_loader(df,
@@ -45,7 +52,8 @@ def main(CONFIGS, args):
                                       num_thread=n_workers,
                                       label_column='label',
                                       fname_column='file_name',
-                                      return_filenames=True)
+                                      return_filenames=True,
+                                      use_bboxes=args.use_bboxes)
     ids_to_labels = dataset.get_ids_to_labels()
 
     model = get_model_embeddings(model_config=CONFIGS['MODEL'])
@@ -91,9 +99,11 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type=str, default='', help='save path')
     parser.add_argument('--dataset_path', type=str, default='', help='path to dataset')
     parser.add_argument('--dataset_csv', type=str, default='', help='path to dataset csv file')
+    parser.add_argument('--dataset_type', type=str, default='general', help='dataset type one of [general, cars, sop]')
     parser.add_argument('--bs',type=int, default=8, help='batch size')
     parser.add_argument('--n_jobs', type=int, default=4, help='number of parallel jobs')
     parser.add_argument('--emb_size',type=int, default=512, help='embeddings size')
+    parser.add_argument('--use_bboxes', action='store_true', help='use regions from bboxes')
     args = parser.parse_args()
 
     if args.work_folder:

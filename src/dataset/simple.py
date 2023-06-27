@@ -36,15 +36,18 @@ class MetricDataset(BaseDataset):
             use_text_embeddings=False,
             category_column='category',
             text_embeddings_column='text_embeddings',
-            categories_to_ids=None):
+            categories_to_ids=None,
+            use_bboxes=False):
 
         self.images_paths = []
         self.labels = []
         self.categories = []
         self.text_embeddings = []
+        self.bboxes = []
         self.return_filenames = return_filenames
         self.use_categories = use_categories
         self.use_text_embeddings = use_text_embeddings
+        self.use_bboxes = use_bboxes
         
         if isinstance(root_dir, list) and isinstance(df_names, list):
             lines = [df_nms[fname_column].tolist() for df_nms in df_names]
@@ -61,6 +64,12 @@ class MetricDataset(BaseDataset):
                 text_embeddings = [df_nms[text_embeddings_column].tolist() for df_nms in df_names]
                 for text_emb in text_embeddings:
                     self.text_embeddings += text_emb
+            if self.use_bboxes:
+                if 'bbox' in  df_names[0]:
+                    bboxes = [df_nms['bbox'].tolist() for df_nms in df_names]
+                    for bbxs in bboxes:
+                        bbxs = [bbox.split(' ') for bbox in bbxs]
+                        self.bboxes += bbxs
         else:
             lines = df_names[fname_column].tolist()
             imgs_pth = Path(root_dir) / 'images'
@@ -71,6 +80,10 @@ class MetricDataset(BaseDataset):
             self.labels = df_names[label_column].tolist()
             if use_categories:
                 self.categories = df_names[label_column].tolist()
+            if self.use_bboxes:
+                if 'bbox' in  df_names:
+                    bboxes = df_names['bbox'].tolist()
+                    self.bboxes = [bbox.split(' ') for bbox in bboxes]
 
         self.labels = np.array(self.labels, dtype=str)
         if labels_to_ids is None:
@@ -80,6 +93,9 @@ class MetricDataset(BaseDataset):
             self.labels_to_ids = labels_to_ids
             self.ids_to_labels = {v:k for k,v in self.labels_to_ids.items()}
         self.label_ids = np.array([self.labels_to_ids[l] for l in self.labels])
+
+        if self.use_bboxes:
+            self.bboxes = [[int(b) for b in bbox] for bbox in self.bboxes]
 
         if use_categories:
             self.categories = [str(cat).split('##') for cat in self.categories]
@@ -101,7 +117,7 @@ class MetricDataset(BaseDataset):
                 curr_cat = np.array(curr_cat)
                 self.category_ids.append(curr_cat)
             self.n_categories = len(self.categories_to_ids)
-            
+        
         self.file_names = lines
         self.augmentation = transform
     
@@ -125,13 +141,18 @@ class MetricDataset(BaseDataset):
     def __getitem__(self, i):
         image_path = self.images_paths[i]
         try:
-            # read data
             if Path(image_path).suffix == '.gif':
                 image =  plt.imread(image_path)
             else:
                 image = cv2.imread(image_path)
+
             image = image[:,:,:3]
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+            if self.bboxes:
+                bbox = self.bboxes[i]
+                x1, y1, w, h = bbox
+                image = image[y1:(y1+h), x1:(x1+w), :]
             
             if self.augmentation:
                 sample = self.augmentation(image=image)

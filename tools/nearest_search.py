@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument('--n_chunks', type=int, default=100, help='number of chunks')
     parser.add_argument('--filter_labels', action='store_true', help='test samples only on labels presented in test set')
     parser.add_argument('--fold', type=int, default=-1, help='tmp')
+    parser.add_argument('--use_test', action='store_true', help='use is_test column')
     parser.add_argument('--save_path', default="", help='tmp')
     parser.add_argument('--save_name', default="nearest", help='tmp')
     parser.add_argument('--no_faiss', action='store_true', help='Do not use faiss')
@@ -32,13 +33,17 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_embeddings_dict(embeddings_path):
+def read_embeddings(embeddings_path):
     print('Load embeddings...')
     data = np.load(embeddings_path, allow_pickle=True)
     embeddings = data['embeddings']
     labels = data['labels']
     file_names = data['file_names']
     print('Embeddings were loaded')
+    return embeddings, labels, file_names
+
+
+def get_embeddings_dict(embeddings, labels, file_names):
     fname_to_embeddings = {}
     for f_n, l_n, em in zip(file_names, labels, embeddings):
         fname_to_embeddings[f_n] = (l_n, em)
@@ -68,27 +73,46 @@ if __name__ == '__main__':
     save_path.mkdir(exist_ok=True, 
                     parents=True)
 
-    embeddings_dict = get_embeddings_dict(args.embeddings)
+    embeddings, labels, file_names = read_embeddings(args.embeddings)
 
-    df = pd.read_csv(args.ref_csv, dtype={'label': str,
-                                          'file_name': str,
-                                          'width': int,
-                                          'height': int})
-
-    if args.fold<0:
-        train_df = df
-        test_df  = pd.read_csv(args.test_csv, dtype={'label': str,
-                                                     'file_name': str,
-                                                     'width': int,
-                                                     'height': int})
+    if args.ref_csv:
+        df = pd.read_csv(args.ref_csv, dtype={'label': str,
+                                            'file_name': str,
+                                            'width': int,
+                                            'height': int})
     else:
-        train_df = df[(df.fold != args.fold)]
-        test_df  = df[(df.fold == args.fold)]
+        df = None
+        
+    if args.use_test and df is not None:
+        train_df = df[(df.is_test != 1)]
+        test_df  = df[(df.is_test == 1)]
+    elif args.test_csv and df is not None:
+        if args.fold<0:
+            train_df = df
+            test_df  = pd.read_csv(args.test_csv, dtype={'label': str,
+                                                        'file_name': str,
+                                                        'width': int,
+                                                        'height': int})
+        else:
+            train_df = df[(df.fold != args.fold)]
+            test_df  = df[(df.fold == args.fold)]
+    else:
+        train_df = None
+        test_df  = None
 
-    print('N train samples', len(train_df))
-    print('N test samples', len(test_df))
-    train_embeddings, train_labels, train_fnames = filter_embeddings(embeddings_dict, train_df)
-    test_embeddings, test_labels, test_fnames    = filter_embeddings(embeddings_dict, test_df)
+    
+    if train_df is not None:
+        is_inner = False
+        embeddings_dict = get_embeddings_dict(embeddings, labels, file_names)
+        print('N train samples', len(train_df))
+        print('N test samples', len(test_df))
+        train_embeddings, train_labels, train_fnames = filter_embeddings(embeddings_dict, train_df)
+        test_embeddings, test_labels, test_fnames    = filter_embeddings(embeddings_dict, test_df)
+    else:
+        print('Inner embeddings similarity')
+        is_inner = True
+        train_embeddings, train_labels, train_fnames = embeddings, labels, file_names
+        test_embeddings, test_labels, test_fnames    = embeddings, labels, file_names
 
     print('N train embeddings', train_embeddings.shape)
     print('N test  embeddings', test_embeddings.shape)
@@ -103,6 +127,10 @@ if __name__ == '__main__':
 
     print(f'Number of train labels: {len(set(train_labels))}')
     print(f'Number of test  labels: {len(set(test_labels))}')
+
+    K = args.top_n 
+    if is_inner:
+        K += 1
 
     if not args.no_faiss:
         print('Calculate similarity using FAISS')
@@ -119,7 +147,7 @@ if __name__ == '__main__':
         faiss.normalize_L2(train_embeddings)
         index.add(train_embeddings)
         faiss.normalize_L2(test_embeddings)
-        distances, best_top_n_idxs = index.search(test_embeddings, k=args.top_n)
+        distances, best_top_n_idxs = index.search(test_embeddings, k=K)
         end = time.time()
         print(f'FAISS search time: {end - start} seconds')
     else:
@@ -130,6 +158,10 @@ if __name__ == '__main__':
         best_top_n_idxs = best_top_n_idxs.T
         distances = best_top_n_vals.T
 
+    if is_inner:
+        best_top_n_idxs = best_top_n_idxs[:, 1:]
+        distances = distances[:, 1:]
+        
     all_pred = []
     all_gts  = []
     all_fnms = []

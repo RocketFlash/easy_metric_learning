@@ -9,7 +9,10 @@ from src.utils import (get_images_paths,
                        get_sample)
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+    USE_CPU = True
+    if USE_CPU:
+        os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+        
     model_path = '/home/ubuntu/easy_metric_learning/work_dirs/full_arcface_openclip-ViT-B32_laion2b_m_0_6_s_30_backbone_lr_scaler_fold0/weights/arcface_openclip-ViT-B32_laion2b_im224_emb512.tf/arcface_openclip-ViT-B32_laion2b_im224_emb512_simp_float16.tflite'
     interpreter = tf.lite.Interpreter(model_path=model_path)
     tf_lite_model = interpreter.get_signature_runner()

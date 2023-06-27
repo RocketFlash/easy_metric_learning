@@ -36,7 +36,8 @@ def get_loader(df_names=None,
                labels_to_ids=None,
                use_categories=False,
                categories_to_ids=None,
-               use_text_embeddings=False):
+               use_text_embeddings=False,
+               use_bboxes=False):
 
     if data_config is not None:
         root_dir       = data_config["DIR"]
@@ -76,7 +77,8 @@ def get_loader(df_names=None,
                                 labels_to_ids=labels_to_ids,
                                 use_categories=use_categories,
                                 categories_to_ids=categories_to_ids,
-                                use_text_embeddings=use_text_embeddings)
+                                use_text_embeddings=use_text_embeddings,
+                                use_bboxes=use_bboxes)
     
     drop_last = split=='train'
     shuffle = split=='train' and not balanced_smplr

@@ -20,6 +20,8 @@ if __name__ == '__main__':
     parser.add_argument('--mapper', type=str, default='', help='file path to json mapper from ids to labels')
     parser.add_argument('--save_path', default="./results", help='tmp')
     parser.add_argument('--save_name', default=None, help='save_name')
+    parser.add_argument('--show_images', action='store_true', help='show images on dots')
+    parser.add_argument('--dataset_path', default="", help='tmp')
     args = parser.parse_args()
 
     mapper = None
@@ -39,10 +41,15 @@ if __name__ == '__main__':
     file_names = data['file_names']
     print('Embeddings were loaded')
 
+    dataset_path = args.dataset_path
 
     if args.interactive:
         n_components = 3 if args.plot_3d else 2
-        plot_embeddings_interactive(embeddings, labels, save_path, 
+        plot_embeddings_interactive(embeddings, 
+                                    labels,
+                                    file_names, 
+                                    save_path, 
+                                    dataset_path=dataset_path,
                                     n_labels=args.n_labels, 
                                     mapper=mapper, 
                                     n_jobs=args.n_jobs,
