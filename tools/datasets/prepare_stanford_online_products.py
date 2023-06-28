@@ -41,7 +41,7 @@ if __name__ == '__main__':
     df_train = pd.read_csv(save_path / 'Ebay_train.txt', sep=' ')
     df_test  = pd.read_csv(save_path / 'Ebay_test.txt', sep=' ')
     
-    df_info['label'] = df_info['path'].apply(lambda x: x.split('/')[0])
+    df_info['label'] = df_info['class_id'].apply(lambda x: f'sop_{x}')
     df_info['is_test'] = df_info.path.isin(df_test.path).astype(int)
     df_info = df_info.rename(columns={'path' : 'file_name'})
     df_info = add_image_sizes(df_info, dataset_path)

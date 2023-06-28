@@ -53,7 +53,10 @@ class MetricDataset(BaseDataset):
             lines = [df_nms[fname_column].tolist() for df_nms in df_names]
             labels = [df_nms[label_column].tolist() for df_nms in df_names]
             for ln_idx, lns in enumerate(lines):
-                self.images_paths += [join(root_dir[ln_idx], str(i)) for i in lns]
+                root_dir_i = root_dir[ln_idx]
+                if (Path(root_dir_i) / 'images').is_dir():
+                    root_dir_i = str(Path(root_dir_i)  / 'images')
+                self.images_paths += [join(root_dir_i, str(i)) for i in lns]
             for lab_idx, lbl in enumerate(labels):
                 self.labels += lbl  
             if use_categories:

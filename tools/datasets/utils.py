@@ -5,6 +5,7 @@ import gdown
 import wget
 import tarfile
 import shutil
+import os
 
 
 def download_dataset(save_path, dataset='inshop'):
@@ -58,6 +59,59 @@ def download_dataset(save_path, dataset='inshop'):
                     ds_path   / 'attributes.txt')
 
         save_tar_file.unlink()
+        print(f'Dataset was downloaded and extracted')
+    elif dataset=='shopee':
+        # install kaggle python package first and prepare kaggle.json file and put it in ~/.kaggle/kaggle.json
+        dataset_path = save_path / 'shopee'
+        dataset_path.mkdir(exist_ok=True)
+
+        try:
+            print(f'Downloading dataset...')
+            os.system(f"kaggle competitions download -c shopee-product-matching -p {str(dataset_path)}")
+
+            z_file = dataset_path / 'shopee-product-matching.zip'
+            with zipfile.ZipFile(z_file, 'r') as z_f:
+                z_f.extractall(str(dataset_path))
+
+            z_file.unlink()
+            print(f'Dataset was downloaded and extracted')
+        except:
+            print('In order to download Shopee dataset you must have kaggle account and generated kaggle.json file in ~/.kaggle/kaggle.json ')
+    
+    elif dataset=='met':
+        IMAGES_URL = 'http://ptak.felk.cvut.cz/met/dataset/MET.tar.gz'
+        dataset_path = save_path / 'met'
+        dataset_path.mkdir(exist_ok=True)
+
+        print(f'Download images from : {IMAGES_URL}')
+        save_tar_file = dataset_path / 'MET.tar.gz'
+        wget.download(IMAGES_URL, out=str(save_tar_file))
+
+        with tarfile.open(save_tar_file) as tar:
+            tar.extractall(dataset_path)
+
+        save_tar_file.unlink()
+
+        ANNOTATIONS_URL = 'http://ptak.felk.cvut.cz/met/dataset/ground_truth.tar.gz'
+        print(f'Download annotations from : {ANNOTATIONS_URL}')
+        save_tar_file = dataset_path / 'ground_truth.tar.gz'
+        wget.download(ANNOTATIONS_URL, out=str(save_tar_file))
+
+        with tarfile.open(save_tar_file) as tar:
+            tar.extractall(dataset_path)
+
+        save_tar_file.unlink()
+
+        TEST_IMAGES_URL = 'http://ptak.felk.cvut.cz/met/dataset/test_met.tar.gz'
+        print(f'Download test images from : {TEST_IMAGES_URL}')
+        save_tar_file = dataset_path / 'test_met.tar.gz'
+        wget.download(TEST_IMAGES_URL, out=str(save_tar_file))
+
+        with tarfile.open(save_tar_file) as tar:
+            tar.extractall(dataset_path)
+
+        save_tar_file.unlink()
+
         print(f'Dataset was downloaded and extracted')
     else:
         print('Unknown dataset')

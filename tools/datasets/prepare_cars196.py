@@ -82,6 +82,7 @@ if __name__ == '__main__':
     n_train_classes = 98
     is_test = [0 if l<98 else 1 for l in labels]
 
+    labels = [f'cars_{l}' for l in labels]
     df_info = pd.DataFrame(list(zip(img_paths, 
                                labels,    
                                bboxes,

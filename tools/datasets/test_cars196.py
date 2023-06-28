@@ -27,7 +27,7 @@ def get_images(images,
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_path', 
+    parser.add_argument('--dataset_csv', 
                         type=str, 
                         default='./results', 
                         help='save path')
@@ -36,22 +36,33 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    save_path = Path(args.save_path)
-    save_path.mkdir(exist_ok=True)
 
-    ds_train = deeplake.load("hub://activeloop/stanford-cars-train")
+    df_dtype = {'label': str,
+                'file_name': str,
+                'width': int,
+                'height': int,
+                'is_test':int}  
+
+    df = pd.read_csv(args.dataset_csv, 
+                     dtype=df_dtype)
+    
+    dataset_csv = Path(args.dataset_csv)
+    df['label'] = df['label'].apply(lambda x: f'cars_{x}')
+    df.to_csv(dataset_csv, index=False) 
+
+    # ds_train = deeplake.load("hub://activeloop/stanford-cars-train")
     # ds_test  = deeplake.load("hub://activeloop/stanford-cars-test")
 
-    images_train = ds_train.images
+    # images_train = ds_train.images
     # images_test  = ds_test.images
 
-    bboxes_train = list(ds_train.boxes.numpy().astype(int).squeeze(1))
+    # bboxes_train = list(ds_train.boxes.numpy().astype(int).squeeze(1))
     # bboxes_test  = list(ds_test.boxes.numpy().astype(int).squeeze(1))
 
 
-    img_paths_train, img_sizes_train = get_images(images_train, 
-                                                  bboxes_train,
-                                                  save_path=save_path)
+    # img_paths_train, img_sizes_train = get_images(images_train, 
+    #                                               bboxes_train,
+    #                                               save_path=save_path)
     
     # img_paths_test,  img_sizes_test  = get_images(images_test, 
     #                                               bboxes_test,

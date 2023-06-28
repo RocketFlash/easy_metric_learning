@@ -162,6 +162,7 @@ def read_pd(file_path):
                                             'width': int,
                                             'height': int,
                                             'hash' : str,
+                                            'is_test':int,
                                             'category' : str})
     return df
 
@@ -177,15 +178,24 @@ def get_train_val_split(data_config=None, split_file=None, fold=0):
         df_full = []
         for sf in split_file:
             df_folds = read_pd(sf)
-            df_full.append(df_folds)
-            df_train.append(df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)])
-            df_valid.append(df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)])
+            if 'fold' in df_folds:
+                df_full.append(df_folds)
+                df_train.append(df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)])
+                df_valid.append(df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)])
+            elif 'is_test' in df_folds:
+                df_train_i = df_folds[df_folds['is_test']==0]
+                df_train.append(df_train_i)
+                df_full.append(df_train_i)
         df_full = pd.concat(df_full, ignore_index=True, sort=False)
     else:
         df_folds = read_pd(split_file)
-        df_train = df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)]
-        df_valid = df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)]
-        df_full = df_folds
+        if 'fold' in df_folds:
+            df_train = df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)]
+            df_valid = df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)]
+            df_full = df_folds
+        elif 'is_test' in df_folds:
+            df_train = df_folds[df_folds['is_test']==0]
+            df_full = df_train
 
     return df_train, df_valid, df_full
 
