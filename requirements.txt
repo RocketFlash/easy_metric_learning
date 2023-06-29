@@ -23,3 +23,4 @@ onnx
 onnxruntime
 onnxruntime-gpu
 wget
+gdown

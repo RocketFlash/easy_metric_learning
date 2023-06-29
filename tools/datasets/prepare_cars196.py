@@ -37,8 +37,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_path', 
                         type=str, 
-                        default='./', 
+                        default='', 
                         help='dataset path')
+    parser.add_argument('--save_path', 
+                        type=str, 
+                        default='', 
+                        help='save path')
     parser.add_argument('--download', 
                         action='store_true', 
                         help='Dowload images')
@@ -47,8 +51,14 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    dataset_path = Path(args.dataset_path)
-    dataset_path.mkdir(exist_ok=True)
+
+    if args.dataset_path:
+        dataset_path = Path(args.dataset_path)
+        dataset_path.mkdir(exist_ok=True)
+    else:
+        save_path = Path(args.save_path)
+        dataset_path = save_path / 'cars196'
+        dataset_path.mkdir(exist_ok=True)
 
     ds_train = deeplake.load("hub://activeloop/stanford-cars-train")
     ds_test  = deeplake.load("hub://activeloop/stanford-cars-test")

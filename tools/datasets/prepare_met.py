@@ -72,6 +72,8 @@ if __name__ == '__main__':
     
     df_info = pd.concat([df_info, df_test],
                         ignore_index=True)
+
+    df_info['label'] = df_info['label'].apply(lambda x: f'met_{x}')
     
     df_info = add_image_sizes(df_info, 
                               dataset_path)
