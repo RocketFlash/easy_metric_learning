@@ -17,7 +17,7 @@ DATA:
         # - "/datasets/metric_learning/shopee/"  
         - "/datasets/metric_learning/met/"
         # - "/datasets/metric_learning/products10k/"  
-        - "/datasets/metric_learning/rp2k/"     
+        # - "/datasets/metric_learning/rp2k/"     
         # - "/datasets/metric_learning/aliproducts/"                         
     SPLIT_FILE: 
         - "/datasets/metric_learning/product_recognition/folds.csv" 
@@ -29,7 +29,7 @@ DATA:
         # - "/datasets/metric_learning/shopee/dataset_info.csv" 
         - "/datasets/metric_learning/met/dataset_info.csv"  
         # - "/datasets/metric_learning/products10k/dataset_info.csv"  
-        - "/datasets/metric_learning/rp2k/dataset_info.csv" 
+        # - "/datasets/metric_learning/rp2k/dataset_info.csv" 
         # - "/datasets/metric_learning/aliproducts/dataset_info.csv"        
     
     TRAIN_AUG: 'soft'        
@@ -38,6 +38,9 @@ DATA:
     BATCH_SIZE: 400      
     WORKERS: 30               
     BALANCED_SAMPLER: False 
+    P_CUTMIX: 0.5
+    P_MIXUP: 0.5
+    VISUALIZE_BATCH: True
 
 MODEL:
     ENCODER_NAME: 'openclip-ViT-B32_laion2b' 
@@ -89,6 +92,6 @@ TRAIN:
 
 MISC:
     RUN_INFO: 'm_0_5_s_30_backbone_lr_scaler'             
-    DATASET_INFO: 'mixed_products_only'
+    DATASET_INFO: 'mixed_dataset_cutmix_mixup'
     PROJECT_NAME: 'product_recognition'
     TMP: "./work_dirs/"

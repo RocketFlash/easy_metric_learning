@@ -23,6 +23,9 @@ DATA:
     BATCH_SIZE: 500          # batch size
     WORKERS: 8               # number of workers
     BALANCED_SAMPLER: False  # if True will use m_per_class sampler from https://github.com/KevinMusgrave/pytorch-metric-learning
+    P_CUTMIX: 0.5            # probability of applying cutmix operation on batch
+    P_MIXUP: 0.5             # probability of applying mixup operation on batch
+    VISUALIZE_BATCH: False   # if True saves first training and validation batches in working folder
 
 MODEL:
     ENCODER_NAME: 'efficientnet_b1_pruned' # backbone model, could be any model from timm library

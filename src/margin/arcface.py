@@ -92,7 +92,12 @@ class ArcMarginProduct(nn.Module):
             phi = torch.where(cosine.float() > th_i, phi.float(), cosine.float() - mm_i)
 
         one_hot = torch.zeros_like(cosine)
-        one_hot.scatter_(1, label.view(-1, 1).long(), 1)
+        if isinstance(label, list):
+            label1, label2, lam = label
+            one_hot.scatter_(1, label1.view(-1, 1).long(), lam)
+            one_hot.scatter_(1, label2.view(-1, 1).long(), (1 - lam))
+        else:
+            one_hot.scatter_(1, label.view(-1, 1).long(), 1)
 
         if self.ls_eps > 0:
             one_hot = (1 - self.ls_eps) * one_hot + self.ls_eps / self.out_features

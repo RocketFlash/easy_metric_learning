@@ -17,6 +17,7 @@ import torch
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--work_folder', type=str, default='', help='path to trained model working directory')
+    parser.add_argument('--model_type', type=str, default='torch', help='path to cfg.yaml')
     parser.add_argument('--config', type=str, default='', help='path to cfg.yaml')
     parser.add_argument('--weights', type=str, default='', help='weights path')
     parser.add_argument('--save_path', type=str, default='', help='save path')
@@ -76,27 +77,66 @@ def main(CONFIGS, args):
                                       use_bboxes=args.use_bboxes)
     ids_to_labels = dataset.get_ids_to_labels()
 
-    model = get_model_embeddings(model_config=CONFIGS['MODEL'])
-    model = load_ckp(weights, model, emb_model_only=True)
-    model.to(device)
-
+    if args.model_type=='torch':
+        model = get_model_embeddings(model_config=CONFIGS['MODEL'])
+        model = load_ckp(weights, model, emb_model_only=True)
+        model.to(device)
+        model.eval()
+    elif args.model_type=='traced':
+        model = torch.jit.load(weights)
+        model.to(device)
+        model.eval()
+    elif args.model_type=='onnx':
+        import onnxruntime as ort
+        model = ort.InferenceSession(weights,
+                                     providers=['CUDAExecutionProvider', 
+                                                'CPUExecutionProvider'])
+    elif args.model_type in ['tf_32', 'tf_16', 'tf_int', 'tf_dyn']:
+        import tensorflow as tf
+        interpreter = tf.lite.Interpreter(model_path=weights)
+        model = interpreter.get_signature_runner()
+    elif args.model_type=='tf_full_int':
+        import tensorflow as tf
+        interpreter = tf.lite.Interpreter(model_path=weights)
+        input_details = interpreter.get_input_details()[0]
+        output_details = interpreter.get_output_details()[0]
+        model = interpreter.get_signature_runner()
+    
     embeddings = np.zeros((len(df), emb_size), dtype=np.float32)
     labels = np.zeros(len(df), dtype=object)
     file_names = np.zeros(len(df), dtype=object)
 
     tqdm_bar = tqdm(data_loader, total=int(len(data_loader)))
 
-    model.eval()
     with torch.no_grad():
         index = 0
         for batch_index, (data, targets, file_nms) in enumerate(tqdm_bar):
-            data = data.to(device)
-
-            output = model(data)
+            if args.model_type in ['torch', 'traced']:
+                data = data.to(device)
+                output = model(data)
+            elif args.model_type=='onnx':
+                output = model.run( None, {"input": data.numpy()})[0]
+            elif args.model_type in ['tf_32', 'tf_16', 'tf_int', 'tf_dyn']:
+                data_np = torch.permute(data, (0, 2, 3, 1)).numpy()
+                tf_data = tf.convert_to_tensor(data_np)
+                output  = model(input=tf_data)['output']
+            elif args.model_type=='tf_full_int':
+                data_np = torch.permute(data, (0, 2, 3, 1)).numpy()
+                input_scale, input_zero_point = input_details["quantization"]
+                output_scale, output_zero_point = output_details['quantization']
+                tf_sample_int8 = data_np / input_scale + input_zero_point
+                tf_sample_int8 = tf_sample_int8.astype(input_details["dtype"])
+                tf_sample_int8 = tf.convert_to_tensor(tf_sample_int8)
+                output = model(input=tf_sample_int8)
+                output = output_scale * (output['output'].astype(np.float32) - output_zero_point)
+                
             batch_size = output.shape[0]
 
+            if torch.is_tensor(output):
+                output = output.cpu().numpy()
+
             lbls = [ids_to_labels[t] for t in targets.cpu().numpy()]
-            embeddings[index:(index+batch_size), :] = output.cpu().numpy()
+            embeddings[index:(index+batch_size), :] = output
             labels[index:(index+batch_size)] = lbls
             file_names[index:(index+batch_size)] = file_nms
             index += batch_size
@@ -118,12 +158,48 @@ if __name__ == '__main__':
     if args.work_folder:
         args.work_folder = Path(args.work_folder)
         args.config = args.work_folder / 'config.yml'
-        args.weights = args.work_folder / 'best_emb.pt'
-        dataset_name = Path(args.dataset_path).name
-        args.save_path = args.work_folder / 'embeddings' / dataset_name
 
-    assert os.path.isfile(args.config)
-    CONFIGS = load_config(args.config)
+        assert os.path.isfile(args.config)
+        CONFIGS = load_config(args.config)
+
+        if not args.weights:
+            if args.model_type:
+                margin_type  = CONFIGS['MODEL']['MARGIN_TYPE']
+                encoder_type = CONFIGS['MODEL']['ENCODER_NAME']
+                img_size     = CONFIGS['DATA']['IMG_SIZE']
+                emb_size     = CONFIGS['MODEL']['EMBEDDINGS_SIZE']
+                model_name = f'{margin_type}_{encoder_type}_im{img_size}_emb{emb_size}'
+                WEIGHTS_PATH = args.work_folder / 'weights'
+                WEIGHTS_PATH_TF = WEIGHTS_PATH  / f'{model_name}.tf'
+
+                if args.model_type=='torch':
+                    WEIGHTS = args.work_folder / 'best_emb.pt'
+                elif args.model_type=='traced':
+                    WEIGHTS = WEIGHTS_PATH / f'{model_name}_traced.pt'
+                elif args.model_type=='onnx':
+                    WEIGHTS = WEIGHTS_PATH / f'{model_name}_simp.onnx'
+                elif args.model_type=='tf_32':
+                    WEIGHTS = str(WEIGHTS_PATH_TF / f'{model_name}_simp_float32.tflite')
+                elif args.model_type=='tf_16':
+                    WEIGHTS = str(WEIGHTS_PATH_TF / f'{model_name}_simp_float16.tflite')
+                elif args.model_type=='tf_dyn':
+                    WEIGHTS = str(WEIGHTS_PATH_TF  / f'{model_name}_simp_dynamic_range_quant.tflite')
+                elif args.model_type=='tf_int':
+                    WEIGHTS = str(WEIGHTS_PATH_TF / f'{model_name}_simp_integer_quant.tflite')
+                elif args.model_type=='tf_full_int':
+                    WEIGHTS = str(WEIGHTS_PATH_TF / f'{model_name}_simp_full_integer_quant.tflite')
+                else:
+                    raise ValueError('model_type malue must be one of [torch, traced, onnx, tf_32, tf_16, tf_dyn, tf_int, tf_full_int]')
+                args.weights = WEIGHTS
+            else:
+                args.weights = args.work_folder / 'best_emb.pt'
+
+        dataset_name = Path(args.dataset_path).name
+        if not args.save_path:
+            args.save_path = args.work_folder / 'embeddings' / dataset_name
+    else:
+        assert os.path.isfile(args.config)
+        CONFIGS = load_config(args.config)
 
     save_path = Path(args.save_path)
     save_path.mkdir(exist_ok=True, parents=True)

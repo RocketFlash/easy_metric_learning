@@ -15,6 +15,7 @@ import numpy as np
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--work_folder', type=str, default='', help='path to trained model working directory')
     parser.add_argument('--config', type=str, default='', help='path to cfg.yaml')
     parser.add_argument('--model', required=True, help='path to the trained model')
     parser.add_argument('--device', type=str, default='', help='device')
@@ -39,7 +40,9 @@ if __name__ == '__main__':
                                     image_size=(CONFIGS['DATA']['IMG_SIZE'],
                                                 CONFIGS['DATA']['IMG_SIZE']))
     
-    sample = transform_test(image=np.zeros((170,170,3), np.uint8))
+    sample = transform_test(image=np.zeros((CONFIGS['DATA']['IMG_SIZE'],
+                                            CONFIGS['DATA']['IMG_SIZE'],
+                                            3), np.uint8))
     example = sample['image']
     example = example.unsqueeze(0).to(device)
 

@@ -40,8 +40,6 @@ if __name__ == '__main__':
     predictions  = np.array([row.astype(str) for row in df['prediction'].to_numpy()])
     similarities = np.array([row for row in df['similarity'].to_numpy()])
     gts          = df['gt'].to_numpy()
-
-    print(similarities)
     
     accuracies = get_accuracies(predictions, gts)
     pprint.pprint(accuracies)

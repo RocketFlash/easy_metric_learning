@@ -10,7 +10,6 @@ from multiprocessing import Pool
 from multiprocessing import cpu_count
 import pandas as pd
 import faiss
-import torch
 import time
 from tqdm import tqdm
 
@@ -30,17 +29,16 @@ def parse_args():
     parser.add_argument('--save_name', default="nearest", help='tmp')
     parser.add_argument('--no_faiss', action='store_true', help='Do not use faiss')
     parser.add_argument('--faiss_gpu', action='store_true', help='use faiss gpu')
+    parser.add_argument('--verbose', action='store_true', help='print logs')
     return parser.parse_args()
 
 
 def read_embeddings(embeddings_path):
-    print('Load embeddings...')
     data = np.load(embeddings_path, allow_pickle=True)
     embeddings = data['embeddings']
     labels = data['labels']
     file_names = data['file_names']
     eval_status = data['eval_status']
-    print('Embeddings were loaded')
     return embeddings, labels, file_names, eval_status
 
 
@@ -66,7 +64,7 @@ def filter_embeddings(fname_to_embeddings, df):
 
 if __name__ == '__main__':
     args = parse_args()
-
+    
     if not args.save_path:
         args.save_path = Path(args.embeddings).parents[0]
 
@@ -104,44 +102,46 @@ if __name__ == '__main__':
         test_embeddings, test_labels, test_fnames    = filter_embeddings(embeddings_dict, test_df)
     else:
         if eval_status.shape:
-            print('Split on gallery and query')
+            if args.verbose: print('Split on gallery and query')
             mask_gallery = eval_status == 'gallery'
             mask_query   = eval_status == 'query'
             train_embeddings, train_labels, train_fnames = embeddings[mask_gallery], labels[mask_gallery], file_names[mask_gallery]
             test_embeddings, test_labels, test_fnames    = embeddings[mask_query], labels[mask_query], file_names[mask_query]
         else:
-            print('Inner embeddings similarity')
+            if args.verbose: print('Inner embeddings similarity')
             is_inner = True
             train_embeddings, train_labels, train_fnames = embeddings, labels, file_names
             test_embeddings, test_labels, test_fnames    = embeddings, labels, file_names
 
-    print('N gallery embeddings', train_embeddings.shape)
-    print('N query   embeddings', test_embeddings.shape)
+    if args.verbose:
+        print('N gallery embeddings', train_embeddings.shape)
+        print('N query   embeddings', test_embeddings.shape)
 
     if args.filter_labels:
         train_labels_set = list(set(train_labels))
         test_embeddings  = test_embeddings[np.isin(test_labels, train_labels_set)]
         test_labels = test_labels[np.isin(test_labels, train_labels_set)]
 
-    print(f'Number of gallery samples: {len(train_embeddings)}')
-    print(f'Number of query   samples: {len(test_embeddings)}')
+    if args.verbose:
+        print(f'Number of gallery samples: {len(train_embeddings)}')
+        print(f'Number of query   samples: {len(test_embeddings)}')
 
-    print(f'Number of gallery labels: {len(set(train_labels))}')
-    print(f'Number of query   labels: {len(set(test_labels))}')
+        print(f'Number of gallery labels: {len(set(train_labels))}')
+        print(f'Number of query   labels: {len(set(test_labels))}')
 
     K = args.top_n 
     if is_inner:
         K += 1
 
     if not args.no_faiss:
-        print('Calculate similarity using FAISS')
+        if args.verbose: print('Calculate similarity using FAISS')
         start = time.time()
         vector_dimension = train_embeddings.shape[1]
         faiss.omp_set_num_threads(args.n_jobs)
 
         index = faiss.IndexFlatIP(vector_dimension)
         if args.faiss_gpu:
-            print('Use FAISS GPU')
+            if args.verbose: print('Use FAISS GPU')
             res = faiss.StandardGpuResources()
             index = faiss.index_cpu_to_gpu(res, 0, index)
 
@@ -150,7 +150,7 @@ if __name__ == '__main__':
         faiss.normalize_L2(test_embeddings)
         distances, best_top_n_idxs = index.search(test_embeddings, k=K)
         end = time.time()
-        print(f'FAISS search time: {end - start} seconds')
+        if args.verbose: print(f'FAISS search time: {end - start} seconds')
     else:
         best_top_n_vals, best_top_n_idxs = cosine_similarity_chunks(train_embeddings, 
                                                                     test_embeddings, 
@@ -185,6 +185,6 @@ if __name__ == '__main__':
     start = time.time()
     df.to_feather(save_path / f'{args.save_name}_top{args.top_n}.feather')
     end = time.time()
-    print(f'Dataframe save time: {end - start} seconds')
+    if args.verbose: print(f'Dataframe save time: {end - start} seconds')
 
     

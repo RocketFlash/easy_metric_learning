@@ -175,8 +175,11 @@ class MLNet(nn.Module):
             self.category_net = None
 
 
-    def forward(self, x, label):
-        x_emb = self.embeddings_net(x)
+    def get_embeddings(self, x):
+        return self.embeddings_net(x)
+
+
+    def embeddings_to_margin(self, x_emb, label):
         if self.n_categories is not None:
             x = self.margin(x_emb, label[0])
             x_category = self.category_net(x_emb)
@@ -191,6 +194,11 @@ class MLNet(nn.Module):
         else:
             x = self.margin(x_emb, label)
         return x
+
+
+    def forward(self, x, label):
+        x_emb = self.get_embeddings(x)
+        return self.embeddings_to_margin(x_emb, label)
 
 
 def get_model_embeddings(model_config=None,

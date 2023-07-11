@@ -1,5 +1,6 @@
 import os
 from tqdm.auto import tqdm
+import numpy as np
 import torch
 import torchvision
 import torch.nn as nn
@@ -10,7 +11,8 @@ from .utils import AverageMeter
 from .utils import batch_grid
 from .metric import accuracy, GAP, f_score
 from .margin.utils import get_incremental_margin
-
+from .transform import cutmix, mixup
+from .loss import MixCriterion
 try:
     import wandb
 except ModuleNotFoundError:
@@ -34,7 +36,10 @@ class MLTrainer:
                  is_debug=False,
                  calculate_GAP=True,
                  incremental_margin=None,
-                 visualize_batch=False):
+                 visualize_batch=False,
+                 p_mixup=0.0,
+                 p_cutmix=0.0,
+                 model_teacher=None):
         self.model = model
         self.loss_func = loss_func
         self.optimizer = optimizer
@@ -51,7 +56,14 @@ class MLTrainer:
         self.n_epochs = n_epochs
         self.visualize_batch = visualize_batch
         self.loss_cat = torch.nn.BCEWithLogitsLoss()
+        self.loss_distill = nn.MSELoss()
         self.cat_loss_weight = 100
+        self.p_mixup  = p_mixup
+        self.p_cutmix = p_cutmix
+        self.mix_loss = MixCriterion(self.loss_func)
+        self.alpha_mixup  = 0.2
+        self.alpha_cutmix = 1
+        self.model_teacher = model_teacher
         
         if incremental_margin is not None:
             m_min  = incremental_margin['MIN_M']
@@ -72,6 +84,7 @@ class MLTrainer:
         meter_loss_total  = AverageMeter()
         meter_loss_margin = AverageMeter()
         meter_loss_cat    = AverageMeter()
+        meter_loss_dist   = AverageMeter()
         meter_acc         = AverageMeter()
         meter_acc_cat     = AverageMeter()
         
@@ -83,6 +96,39 @@ class MLTrainer:
         for batch_index, (data, targets) in enumerate(tqdm_train):
             if self.is_debug and batch_index>=10: break
 
+            p = np.random.rand()
+            is_mixed = False
+            if self.p_cutmix>0 or self.p_mixup>0:
+                if p < self.p_cutmix and p < self.p_mixup:
+                    p = np.random.rand()
+                    if p < 0.5:
+                        data, targets = cutmix(data, targets, self.alpha_cutmix)
+                    else:
+                        data, targets = mixup(data, targets, self.alpha_mixup)
+                    is_mixed = True
+                elif p < self.p_cutmix:
+                    data, targets = cutmix(data, targets, self.alpha_cutmix)
+                    is_mixed = True
+                elif p < self.p_mixup:
+                    data, targets = mixup(data, targets, self.alpha_mixup)
+                    is_mixed = True
+
+            if is_mixed:
+                criterion = self.mix_loss
+                targets[0] = targets[0].to(self.device)
+                targets[1] = targets[1].to(self.device)
+            else:
+                criterion = self.loss_func
+                if isinstance(targets, list):
+                    with_categories = True
+                    targets = [t.to(self.device) for t in targets]
+                else:
+                    targets = targets.to(self.device)
+            data = data.to(self.device)
+
+            if self.model_teacher is not None:
+                output_teacher = self.model_teacher(data)
+            
             if self.visualize_batch:
                 if not self.is_debug and self.wandb_available:
                     if self.epoch == 1 and batch_index == 0:
@@ -93,19 +139,14 @@ class MLTrainer:
                         images_wdb.append(wandb.Image(save_path, 
                                                     caption=f'train_batch_{batch_index}'))
 
-            data = data.to(self.device)
-            if isinstance(targets, list):
-                with_categories = True
-                targets = [t.to(self.device) for t in targets]
-            else:
-                targets = targets.to(self.device)
-
             loss_c = None
+            loss_dist = None
             if self.amp_scaler is not None:
                 with amp.autocast():
-                    output = self.model(data, targets)
+                    output_emb = self.model.get_embeddings(data)
+                    output = self.model.embeddings_to_margin(output_emb, targets)
                     if isinstance(output, list):
-                        loss_m = self.loss_func(output[0], targets[0])
+                        loss_m = criterion(output[0], targets[0])
                         loss_c = self.loss_cat(output[1], targets[1])
                         loss = loss_m + (loss_c * self.cat_loss_weight)
                         acc = accuracy(output[0], targets[0])
@@ -113,11 +154,16 @@ class MLTrainer:
                         loss_m /= self.grad_accum_steps
                         loss_c /= self.grad_accum_steps
                     else:
-                        if isinstance(targets, list):
-                            targets = targets[0]
-                        loss_m = self.loss_func(output, targets)
+                        # if isinstance(targets, list):
+                        #     targets = targets[0]
+                        loss_m = criterion(output, targets)
                         loss = loss_m
                         acc = accuracy(output, targets)
+
+                    if self.model_teacher is not None:
+                        loss_dist = self.loss_distill(output_emb, output_teacher)
+                        loss += loss_dist
+                    
                     loss /= self.grad_accum_steps
                 self.amp_scaler.scale(loss).backward()
 
@@ -128,9 +174,10 @@ class MLTrainer:
                     self.amp_scaler.update()
                     self.optimizer.zero_grad()
             else:
-                output = self.model(data, targets)
+                output_emb = self.model.get_embeddings(data)
+                output = self.model.embeddings_to_margin(output_emb, targets)
                 if isinstance(output, list):
-                    loss_m = self.loss_func(output[0], targets[0])
+                    loss_m = criterion(output[0], targets[0])
                     loss_c = self.loss_cat(output[1], targets[1])
                     loss = loss_m + (loss_c * self.cat_loss_weight)
                     acc = accuracy(output[0], targets[0])
@@ -140,9 +187,13 @@ class MLTrainer:
                 else:
                     if isinstance(targets, list):
                         targets = targets[0]
-                    loss_m = self.loss_func(output, targets)
+                    loss_m = criterion(output, targets)
                     loss = loss_m
                     acc = accuracy(output, targets)
+
+                if self.model_teacher is not None:
+                    loss_dist = self.loss_distill(output_emb, output_teacher)
+                    loss += loss_dist
                 loss /= self.grad_accum_steps
                 loss.backward()
 
@@ -153,10 +204,6 @@ class MLTrainer:
             
             meter_loss_total.update(loss.detach().item())
             meter_acc.update(acc)
-            if loss_c is not None:
-                meter_acc_cat.update(acc_cat.detach().item())
-                meter_loss_margin.update(loss_m.detach().item())
-                meter_loss_cat.update(loss_c.detach().item())
 
             if self.warmup_scheduler is not None:
                 if batch_index < len(tqdm_train)-1:
@@ -169,7 +216,15 @@ class MLTrainer:
                 lr=self.optimizer.param_groups[-1]['lr'],
                 m=self.model.margin.m
             )
+
+            if loss_dist is not None:
+                meter_loss_dist.update(loss_dist.detach().item())
+                info_params['loss_dist'] = meter_loss_dist.avg
+
             if loss_c is not None:
+                meter_acc_cat.update(acc_cat.detach().item())
+                meter_loss_margin.update(loss_m.detach().item())
+                meter_loss_cat.update(loss_c.detach().item())
                 info_params['f1_cat'] = meter_acc_cat.avg
                 info_params['loss_margin'] = meter_loss_margin.avg
                 info_params['loss_cat'] = meter_loss_cat.avg
@@ -182,13 +237,17 @@ class MLTrainer:
             images_wdb=images_wdb,
             f1_cat=None,
             loss_cat=None,
-            loss_margin=None
+            loss_margin=None,
+            loss_dist=None
         )
 
         if with_categories:
             stats['f1_cat'] = meter_acc_cat.avg
             stats['loss_cat'] = meter_loss_cat.avg
             stats['loss_margin'] = meter_loss_margin.avg
+        
+        if self.model_teacher is not None:
+            stats['loss_dist'] = meter_loss_dist.avg
 
         return edict(stats)
     

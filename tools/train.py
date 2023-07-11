@@ -23,13 +23,33 @@ from src.schedulers import get_scheduler
 from src.utils import load_ckp, save_ckp, get_cp_save_paths
 from src.utils import load_config, Logger, get_train_val_split
 
-from src.utils import  seed_everything, calculate_time, get_device
+from src.utils import seed_everything, get_device
 from src.utils import calculate_autoscale, calculate_dynamic_margin
 from src.utils import get_value_if_exist
 from src.trainer import MLTrainer
+from src.model import get_model_embeddings
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, default='', help='path to cfg.yaml')
+    parser.add_argument('--resume', default="", help='path to weights from which to resume')
+    parser.add_argument('--tmp', default="", help='tmp')
+    parser.add_argument('--debug', action='store_true', help='debug mode')
+    parser.add_argument('--device', type=str, default='', help='select device')
+    parser.add_argument('--teacher_config', 
+                        type=str, 
+                        default='', 
+                        help='Knowledge distillation, path to teacher network config')
+    parser.add_argument('--teacher_weights', 
+                        type=str, 
+                        default='', 
+                        help='Knowledge distillation, path to teacher network weights')
+    return parser.parse_args()
 
 
-def train(CONFIGS, WANDB_AVAILABLE=False):
+def train(CONFIGS, 
+          WANDB_AVAILABLE=False,
+          model_teacher=None):
     start_epoch = 1
     best_loss = 10000
     wandb_run = None
@@ -127,6 +147,10 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
     device = get_device(CONFIGS['GENERAL']['DEVICE'])
     model  = get_model(model_config=CONFIGS['MODEL']).to(device)
 
+    if model_teacher is not None:
+        model_teacher.to(device)
+        model_teacher.eval()
+
     loss_func = get_loss(train_config=CONFIGS['TRAIN']).to(device)
     optimizer = get_optimizer(model,     CONFIGS['TRAIN']["OPTIMIZER"])
     scheduler = get_scheduler(optimizer, CONFIGS['TRAIN']["SCHEDULER"])
@@ -173,6 +197,9 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
         model.margin.update(CONFIGS['MODEL']['M'])
 
     n_train_epochs = CONFIGS['TRAIN']['EPOCHS'] - start_epoch + 1
+    p_mixup   = get_value_if_exist(CONFIGS['DATA'], 'P_MIXUP',  0) 
+    p_cutmix  = get_value_if_exist(CONFIGS['DATA'], 'P_CUTMIX', 0) 
+    vis_batch = get_value_if_exist(CONFIGS['DATA'], 'VISUALIZE_BATCH') 
 
     trainer = MLTrainer(model=model, 
                         optimizer=optimizer, 
@@ -188,8 +215,11 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
                         grad_accum_steps=CONFIGS['TRAIN']['GRADIENT_ACC_STEPS'],
                         incremental_margin=CONFIGS['TRAIN']['INCREMENTAL_MARGIN'],
                         work_dir=CONFIGS["MISC"]['WORK_DIR'],
-                        visualize_batch=False,
-                        n_epochs=n_train_epochs)
+                        visualize_batch=vis_batch,
+                        n_epochs=n_train_epochs,
+                        p_mixup=p_mixup,
+                        p_cutmix=p_cutmix,
+                        model_teacher=model_teacher)
 
     start_time = time.time()
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):
@@ -258,14 +288,7 @@ def train(CONFIGS, WANDB_AVAILABLE=False):
 
 
 if __name__=="__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='', help='path to cfg.yaml')
-    parser.add_argument('--resume', default="", help='path to weights from which to resume')
-    parser.add_argument('--tmp', default="", help='tmp')
-    parser.add_argument('--debug', action='store_true', help='debug mode')
-    parser.add_argument('--device', type=str, default='', help='select device')
-    args = parser.parse_args()
-
+    args = parse_args()
     assert os.path.isfile(args.config)
     CONFIGS = load_config(args.config)
 
@@ -308,4 +331,17 @@ if __name__=="__main__":
     except ModuleNotFoundError:
         logger.info('wandb is not installed')
 
-    train(CONFIGS, WANDB_AVAILABLE)
+    model_teacher = None
+    if args.teacher_config and args.teacher_weights:
+        assert os.path.isfile(args.teacher_config)
+        CONFIGS_T = load_config(args.teacher_config)
+        model_teacher = get_model_embeddings(model_config=CONFIGS_T['MODEL'])
+        model_teacher = load_ckp(args.teacher_weights, 
+                                 model_teacher, 
+                                 emb_model_only=True)
+        for param in model_teacher.parameters():
+            param.requires_grad = False
+
+    train(CONFIGS, 
+          WANDB_AVAILABLE,
+          model_teacher)

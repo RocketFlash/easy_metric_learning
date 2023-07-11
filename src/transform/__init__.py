@@ -1,5 +1,8 @@
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+from .cutmix import cutmix
+from .mixup import mixup
+
 
 mean_vals = {
         'general' : [0.485, 0.456, 0.406],
@@ -32,10 +35,13 @@ def get_transform(aug_name='soft', data_type='general', image_size=(400, 400)):
                                        brightness_limit=(-0.15, 0.15),
                                        contrast_limit=(-0.15, 0.15)),
             A.Blur(p=0.1, blur_limit=(3, 5)),
-            A.Cutout(p=0.2,
-                     num_holes=5,
-                     max_h_size=30,
-                     max_w_size=30),
+            A.CoarseDropout(p=0.2,
+                            max_holes=8,
+                            min_holes=4,
+                            max_height=40,
+                            max_width=40,
+                            min_height=20,
+                            min_width=20),
             A.HueSaturationValue(p=0.1,
                                  hue_shift_limit=(-20, 20),
                                  sat_shift_limit=(-30, 30),

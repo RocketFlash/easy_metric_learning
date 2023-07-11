@@ -89,6 +89,6 @@ TRAIN:
 
 MISC:
     RUN_INFO: 'm_0_5_s_30_backbone_lr_scaler'             
-    DATASET_INFO: 'mixed_products_only'
+    DATASET_INFO: 'mixed_dataset5'
     PROJECT_NAME: 'product_recognition'
     TMP: "./work_dirs/"

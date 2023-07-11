@@ -1,5 +1,5 @@
 import torch.nn as nn
-from .cutmix import CutMixCollator, CutMixCriterion
+from .mix import MixCriterion
 from .focal import FocalLoss 
 from .soft_cross_entropy import SoftCrossEntropyLoss
 

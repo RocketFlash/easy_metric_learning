@@ -17,7 +17,7 @@ DATA:
         # - "/datasets/metric_learning/shopee/"  
         - "/datasets/metric_learning/met/"
         # - "/datasets/metric_learning/products10k/"  
-        - "/datasets/metric_learning/rp2k/"     
+        # - "/datasets/metric_learning/rp2k/"     
         # - "/datasets/metric_learning/aliproducts/"                         
     SPLIT_FILE: 
         - "/datasets/metric_learning/product_recognition/folds.csv" 
@@ -29,18 +29,18 @@ DATA:
         # - "/datasets/metric_learning/shopee/dataset_info.csv" 
         - "/datasets/metric_learning/met/dataset_info.csv"  
         # - "/datasets/metric_learning/products10k/dataset_info.csv"  
-        - "/datasets/metric_learning/rp2k/dataset_info.csv" 
-        # - "/datasets/metric_learning/aliproducts/dataset_info.csv"        
+        # - "/datasets/metric_learning/rp2k/dataset_info.csv" 
+        # - "/datasets/metric_learning/aliproducts/dataset_info.csv"               
     
     TRAIN_AUG: 'soft'        
     FOLD: 0                 
     IMG_SIZE: 224           
-    BATCH_SIZE: 400      
+    BATCH_SIZE: 200      
     WORKERS: 30               
     BALANCED_SAMPLER: False 
 
 MODEL:
-    ENCODER_NAME: 'openclip-ViT-B32_laion2b' 
+    ENCODER_NAME: 'openclip-ConvNext-Base' 
     MARGIN_TYPE: 'arcface'                 
     EMBEDDINGS_SIZE: 512                  
     S : 30                                 
@@ -64,7 +64,7 @@ TRAIN:
     FOCAL_GAMMA : 0.1           
     EPOCHS : 15                
     RESUME :                    
-    LOAD_WEIGHTS:               
+    LOAD_WEIGHTS: /home/ubuntu/easy_metric_learning/work_dirs/full_arcface_openclip-ConvNext-Base_m_0_5_s_30_backbone_lr_scaler_fold0/best.pt            
     LOAD_EMBEDDER: 
 
     INCREMENTAL_MARGIN:
@@ -73,7 +73,7 @@ TRAIN:
 
     OPTIMIZER:
         OPTIMIZER_TYPE: 'adamw'   
-        LR: 1e-3                
+        LR: 1e-5                
         MOMENTUM: 0.9           
         WEIGHT_DECAY: 1e-5    
         BACKBONE_LR_SCALER : 1e-3
@@ -81,14 +81,14 @@ TRAIN:
     SCHEDULER:
         SHEDULER_TYPE: 'cosine' 
         T_MAX: 15               
-        ETA_MIN: 1e-5         
+        ETA_MIN: 1e-6         
     
     AMP: True                   
     WARMUP: False               
     GRADIENT_ACC_STEPS: 5    
 
 MISC:
-    RUN_INFO: 'm_0_5_s_30_backbone_lr_scaler'             
-    DATASET_INFO: 'mixed_products_only'
+    RUN_INFO: 'm_0_5_s_30_backbone_lr_scaler_finetune'             
+    DATASET_INFO: 'mixed_dataset'
     PROJECT_NAME: 'product_recognition'
     TMP: "./work_dirs/"
