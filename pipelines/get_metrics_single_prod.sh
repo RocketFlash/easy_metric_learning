@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WORK_DIR_PATH="/home/ubuntu/easy_metric_learning/work_dirs/mixed_dataset_arcface_tf_efficientnetv2_b1.in1k_m_0_5_s_30_fold0/"
+WORK_DIR_PATH="/home/ubuntu/easy_metric_learning/work_dirs/mixed_dataset_arcface_openclip-ViT-B32_laion2b_m_0_5_s_30_backbone_lr_scaler_fold0/"
 DATASET_NAME="product_recognition"
 DATASET_PATH="/datasets/metric_learning/$DATASET_NAME/"
 DATASET_CSV="$DATASET_PATH/dataset_test.csv"
@@ -11,19 +11,20 @@ N_JOBS=30
 TOP_N=10
 
 echo "$WORK_DIR_PATH"
-python tools/generate_embeddings.py\
-    --work_folder "$WORK_DIR_PATH"\
-    --dataset_path "$DATASET_PATH"\
-    --dataset_csv "$DATASET_CSV"\
-    --n_jobs $N_JOBS\
-    --bs "$BS"
+# python tools/generate_embeddings.py\
+#     --work_folder "$WORK_DIR_PATH"\
+#     --dataset_path "$DATASET_PATH"\
+#     --dataset_csv "$DATASET_CSV"\
+#     --n_jobs $N_JOBS\
+#     --bs "$BS"
 python tools/nearest_search.py\
     --embeddings "$WORK_DIR_PATH/embeddings/$DATASET_NAME/embeddings.npz"\
     --ref_csv "$REF_CSV"\
     --test_csv "$TEST_CSV"\
     --top_n "$TOP_N"\
     --n_jobs "$N_JOBS"\
-    --faiss_gpu
+    --faiss_gpu\
+    --centroids
 python tools/calculate_metrics.py\
     --nearest_csv "$WORK_DIR_PATH/embeddings/$DATASET_NAME/nearest_top10.feather"
 

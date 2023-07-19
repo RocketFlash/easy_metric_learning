@@ -200,6 +200,7 @@ def train(CONFIGS,
     p_mixup   = get_value_if_exist(CONFIGS['DATA'], 'P_MIXUP',  0) 
     p_cutmix  = get_value_if_exist(CONFIGS['DATA'], 'P_CUTMIX', 0) 
     vis_batch = get_value_if_exist(CONFIGS['DATA'], 'VISUALIZE_BATCH') 
+    distill_loss_weight = get_value_if_exist(CONFIGS['TRAIN'], 'DISTILL_LOSS_W', 1)
 
     trainer = MLTrainer(model=model, 
                         optimizer=optimizer, 
@@ -219,7 +220,8 @@ def train(CONFIGS,
                         n_epochs=n_train_epochs,
                         p_mixup=p_mixup,
                         p_cutmix=p_cutmix,
-                        model_teacher=model_teacher)
+                        model_teacher=model_teacher,
+                        distill_loss_weight=distill_loss_weight)
 
     start_time = time.time()
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):

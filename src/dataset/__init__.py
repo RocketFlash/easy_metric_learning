@@ -16,16 +16,16 @@ def collate_fn(batch):
 
 def get_loader(df_names=None,
                data_config=None,
-               dataset_type='simple',
-               data_type='general',
+               dataset_type=None,
+               data_type=None,
                root_dir=None,  
                batch_size=None, 
-               img_size=170,
-               num_thread=4,
+               img_size=None,
+               num_thread=None,
                pin=True,
                test=False,
                split='train',
-               transform_name='no_aug',
+               transform_name=None,
                use_cache=False,
                balanced_smplr=True,
                calc_cl_count=False,
@@ -39,13 +39,13 @@ def get_loader(df_names=None,
                use_bboxes=False):
 
     if data_config is not None:
-        root_dir       = data_config["DIR"]
-        dataset_type   = data_config["DATASET_TYPE"]
+        root_dir       = data_config["DIR"] if root_dir is None else root_dir
+        dataset_type   = data_config["DATASET_TYPE"] if dataset_type is None else dataset_type
         batch_size     = data_config["BATCH_SIZE"] if batch_size is None else batch_size
-        num_thread     = data_config["WORKERS"]
-        img_size       = data_config['IMG_SIZE']
-        transform_name = data_config['TRAIN_AUG']
-        data_type      = data_config["DATA_TYPE"]
+        num_thread     = data_config["WORKERS"] if num_thread is None else num_thread
+        img_size       = data_config['IMG_SIZE'] if img_size is None else img_size
+        transform_name = data_config['TRAIN_AUG'] if transform_name is None else transform_name
+        data_type      = data_config["DATA_TYPE"] if data_type is None else data_type
         balanced_smplr = data_config["BALANCED_SAMPLER"] if "BALANCED_SAMPLER" in data_config else True
         use_cache      = data_config["USE_CACHE"] if "USE_CACHE" in data_config else False
         use_categories = data_config['USE_CATEGORIES'] if 'USE_CATEGORIES' in data_config else use_categories

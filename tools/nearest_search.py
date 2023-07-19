@@ -27,9 +27,11 @@ def parse_args():
     parser.add_argument('--use_test', action='store_true', help='use is_test column')
     parser.add_argument('--save_path', default="", help='tmp')
     parser.add_argument('--save_name', default="nearest", help='tmp')
+    parser.add_argument('--centroids', action='store_true', help='calculate centroids for gallery images')
     parser.add_argument('--no_faiss', action='store_true', help='Do not use faiss')
     parser.add_argument('--faiss_gpu', action='store_true', help='use faiss gpu')
     parser.add_argument('--verbose', action='store_true', help='print logs')
+    parser.add_argument('--embeddings_test', type=str, default='', help='path to embeddings if train and test models are different')
     return parser.parse_args()
 
 
@@ -49,16 +51,29 @@ def get_embeddings_dict(embeddings, labels, file_names):
     return fname_to_embeddings
 
 
-def filter_embeddings(fname_to_embeddings, df):
+def filter_embeddings(fname_to_embeddings, df, centorids=False):
     embeddings = []
     labels = []
     f_names = []
-    for smpl in df.file_name:
-        if smpl in fname_to_embeddings:
-            lbl, em = fname_to_embeddings[smpl]
-            embeddings.append(em)
-            labels.append(lbl)
-            f_names.append(smpl)
+    if centorids:
+        labels_groups = df.groupby('label')
+        for label, label_group in tqdm(labels_groups):
+            label_embs = []
+            for index, row in label_group.iterrows():
+                fname = row['file_name']
+                if fname in fname_to_embeddings:
+                    lbl, em = fname_to_embeddings[fname]
+                    label_embs.append(em)
+            embeddings.append(np.mean(np.array(label_embs), axis=0))
+            labels.append(label)
+            f_names.append('centroid')
+    else:
+        for smpl in df.file_name:
+            if smpl in fname_to_embeddings:
+                lbl, em = fname_to_embeddings[smpl]
+                embeddings.append(em)
+                labels.append(lbl)
+                f_names.append(smpl)
     return np.array(embeddings), np.array(labels), np.array(f_names)
 
 
@@ -74,6 +89,10 @@ if __name__ == '__main__':
 
     embeddings, labels, file_names, eval_status = read_embeddings(args.embeddings)
     df, train_df, test_df = None, None, None
+
+    embeddings_test = None
+    if args.embeddings_test:
+        embeddings_test, labels_test, file_names_test, eval_status_test = read_embeddings(args.embeddings_test)
 
     if args.ref_csv:
         df = pd.read_csv(args.ref_csv, dtype={'label': str,
@@ -98,15 +117,25 @@ if __name__ == '__main__':
     is_inner = False
     if train_df is not None:
         embeddings_dict = get_embeddings_dict(embeddings, labels, file_names)
-        train_embeddings, train_labels, train_fnames = filter_embeddings(embeddings_dict, train_df)
-        test_embeddings, test_labels, test_fnames    = filter_embeddings(embeddings_dict, test_df)
+        train_embeddings, train_labels, train_fnames = filter_embeddings(embeddings_dict, 
+                                                                         train_df, 
+                                                                         centorids=args.centroids)
+        print('N gallery embeddings:', train_embeddings.shape)
+        if embeddings_test is not None:
+            embeddings_test_dict = get_embeddings_dict(embeddings_test, labels_test, file_names_test)
+            test_embeddings, test_labels, test_fnames    = filter_embeddings(embeddings_test_dict, test_df)
+        else:
+            test_embeddings, test_labels, test_fnames    = filter_embeddings(embeddings_dict, test_df)
     else:
         if eval_status.shape:
             if args.verbose: print('Split on gallery and query')
             mask_gallery = eval_status == 'gallery'
             mask_query   = eval_status == 'query'
             train_embeddings, train_labels, train_fnames = embeddings[mask_gallery], labels[mask_gallery], file_names[mask_gallery]
-            test_embeddings, test_labels, test_fnames    = embeddings[mask_query], labels[mask_query], file_names[mask_query]
+            if embeddings_test is not None:
+                test_embeddings, test_labels, test_fnames    = embeddings_test[mask_query], labels_test[mask_query], file_names_test[mask_query]
+            else:
+                test_embeddings, test_labels, test_fnames    = embeddings[mask_query], labels[mask_query], file_names[mask_query]
         else:
             if args.verbose: print('Inner embeddings similarity')
             is_inner = True

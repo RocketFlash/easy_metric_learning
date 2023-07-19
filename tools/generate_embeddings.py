@@ -25,9 +25,13 @@ def parse_args():
     parser.add_argument('--dataset_csv', type=str, default='', help='path to dataset csv file')
     parser.add_argument('--dataset_type', type=str, default='general', help='dataset type one of [general, cars, sop]')
     parser.add_argument('--bs',type=int, default=8, help='batch size')
+    parser.add_argument('--device', type=str, default='cuda:0', help='select device')
     parser.add_argument('--n_jobs', type=int, default=4, help='number of parallel jobs')
+    parser.add_argument('--img_size',type=int, default=170, help='input image size')
     parser.add_argument('--emb_size',type=int, default=512, help='embeddings size')
     parser.add_argument('--use_bboxes', action='store_true', help='use regions from bboxes')
+    parser.add_argument('--data_type', type=str, default='general', help='preprocssing data type one of [general, clip]')
+    
     return parser.parse_args()
 
 
@@ -74,6 +78,7 @@ def main(CONFIGS, args):
                                       label_column='label',
                                       fname_column='file_name',
                                       return_filenames=True,
+                                      transform_name='no_aug',
                                       use_bboxes=args.use_bboxes)
     ids_to_labels = dataset.get_ids_to_labels()
 
@@ -198,8 +203,20 @@ if __name__ == '__main__':
         if not args.save_path:
             args.save_path = args.work_folder / 'embeddings' / dataset_name
     else:
-        assert os.path.isfile(args.config)
-        CONFIGS = load_config(args.config)
+        if os.path.isfile(args.config):
+            CONFIGS = load_config(args.config)
+        else:
+            CONFIGS = {
+                "GENERAL" : {
+                    "DEVICE" : args.device,
+                    "WORKERS" : args.n_jobs
+                },
+                "DATA" : {
+                    'DATASET_TYPE' : 'simple',                                     
+                    'DATA_TYPE' : args.data_type,
+                    'IMG_SIZE'  : args.img_size
+                }
+            }
 
     save_path = Path(args.save_path)
     save_path.mkdir(exist_ok=True, parents=True)
