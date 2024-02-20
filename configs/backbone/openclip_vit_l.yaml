@@ -1,0 +1,4 @@
+type: openclip-ViT-L_laion2b
+model_type: ViT-L-14
+pretrained_on: laion2b_s32b_b82k
+freeze: False

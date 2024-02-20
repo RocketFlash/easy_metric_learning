@@ -11,16 +11,15 @@ wandb
 timm
 umap-learn
 plotly
-kaleido
 pytorch_warmup
 imageio
 openpyxl
 imagededup
 imagesize
-lion-pytorch
 open_clip_torch
 onnx
 onnxruntime
 onnxruntime-gpu
 wget
 gdown
+hydra-core

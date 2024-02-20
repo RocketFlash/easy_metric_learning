@@ -1,0 +1,4 @@
+type: openclip-ConvNext-Base-W_laion2b
+model_type: convnext_base_w
+pretrained_on: laion2b_s13b_b82k_augreg
+freeze: False

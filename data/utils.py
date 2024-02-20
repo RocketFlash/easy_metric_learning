@@ -2,6 +2,17 @@ from sklearn.model_selection import StratifiedKFold
 import cv2
 import numpy as np
 import time
+import pandas as pd
+
+
+def get_counts_df(df):
+    counts = df['label'].value_counts()
+    counts_df = pd.DataFrame({
+        'label':counts.index, 
+        'frequency':counts.values
+    })
+    return counts_df
+
 
 def timeit(method):
     def timed(*args, **kw):
@@ -22,6 +33,7 @@ def dhash(image, hashSize=8):
 	resized = cv2.resize(gray, (hashSize + 1, hashSize))
 	diff = resized[:, 1:] > resized[:, :-1]
 	return sum([2 ** i for (i, v) in enumerate(diff.flatten()) if v])
+
 
 def convert_hash(h):
 	return int(np.array(h, dtype="float64"))
@@ -45,7 +57,7 @@ def make_all_training(df):
     train_df['fold'] = -1
 
     train_df['fold'] = train_df['fold'].astype(int)
-    return train_df[['file_name', 'label', 'fold']]
+    return train_df
 
 
 def make_all_testing(df):
@@ -53,4 +65,4 @@ def make_all_testing(df):
     train_df['fold'] = -2
 
     train_df['fold'] = train_df['fold'].astype(int)
-    return train_df[['file_name', 'label', 'fold']]
+    return train_df

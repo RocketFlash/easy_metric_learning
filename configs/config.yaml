@@ -1,0 +1,47 @@
+defaults:
+  - backbone : efficientnetv2_b1
+  - head : simple
+  - margin : arcface
+  - dataset : dataset_v0
+  - dataloader: default
+  - eval : default
+  - scheduler : cosine
+  - optimizer : adamw
+  - transform : default
+  - train : default
+  - override hydra/hydra_logging: disabled  
+  - override hydra/job_logging: disabled  
+  - _self_
+
+debug : False
+
+embeddings_size: 1024
+batch_size : 32
+epochs : 20
+fold: 0 
+random_state : 28 
+image_size: [224, 224]
+workers: 30
+device : 0         
+use_wandb : True
+use_mlflow : False
+visualize_batch: True
+mlflow_server_uri : https://r3dev-mlflow.rebotics.net/
+
+conf_thresh: 0.1
+mosaic_prob: 0.5
+amp: True
+
+resume :                    
+load_weights:
+
+run_info: ''
+run_name: ''             
+project_name: 'center_based_pascal_voc_detection'
+work_dirs: "./work_dirs/"
+
+
+hydra:
+  output_subdir: null 
+  run:
+    dir: work_dirs/${run_name}

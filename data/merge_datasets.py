@@ -3,6 +3,7 @@ import argparse
 from tqdm import tqdm
 from imagededup.methods import PHash
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='filter dataset')
     parser.add_argument('--dataset_1_info', default="./", help="path to the dataset1 info file")

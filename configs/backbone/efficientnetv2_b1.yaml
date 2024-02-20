@@ -1,0 +1,3 @@
+type: tf_efficientnetv2_b1.in1k
+pretrained: True
+freeze: False

@@ -1,0 +1,14 @@
+name: 'dataset_v0'
+DATASET_TYPE : 'simple'                                     
+DATA_TYPE : 'clip'                                      
+dir: 
+    - "/datasets/metric_learning/dataset_v0"                                  
+annotations: 
+    - "/datasets/metric_learning/dataset_v0/folds.csv" 
+                 
+TRAIN_AUG: 'soft'        
+fold: 0                 
+IMG_SIZE: 224           
+BATCH_SIZE: 500      
+WORKERS: 30               
+BALANCED_SAMPLER: False 

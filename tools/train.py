@@ -14,118 +14,111 @@ import time
 import json
 from pathlib import Path
 
+import hydra
+from omegaconf import OmegaConf
+from omegaconf.listconfig import ListConfig
+
 from src.dataset import get_loader
 from src.model import get_model
 from src.loss import get_loss
 from src.optimizers import get_optimizer
 from src.schedulers import get_scheduler
 
+from src.data.utils import get_train_val_split
+
 from src.utils import load_ckp, save_ckp, get_cp_save_paths
-from src.utils import load_config, Logger, get_train_val_split
+from src.utils import load_config, Logger
 
 from src.utils import seed_everything, get_device
 from src.utils import calculate_autoscale, calculate_dynamic_margin
 from src.utils import get_value_if_exist
 from src.trainer import MLTrainer
-from src.model import get_model_embeddings
-
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='', help='path to cfg.yaml')
-    parser.add_argument('--resume', default="", help='path to weights from which to resume')
-    parser.add_argument('--tmp', default="", help='tmp')
-    parser.add_argument('--debug', action='store_true', help='debug mode')
-    parser.add_argument('--device', type=str, default='', help='select device')
-    parser.add_argument('--teacher_config', 
-                        type=str, 
-                        default='', 
-                        help='Knowledge distillation, path to teacher network config')
-    parser.add_argument('--teacher_weights', 
-                        type=str, 
-                        default='', 
-                        help='Knowledge distillation, path to teacher network weights')
-    return parser.parse_args()
+from src.experiment_tracker import (WandbTracker, 
+                                    MLFlowTracker)
 
 
-def train(CONFIGS, 
-          WANDB_AVAILABLE=False,
-          model_teacher=None):
+@hydra.main(version_base=None,
+            config_path='../configs/',
+            config_name='config')
+def train(config):
+    seed_everything(config.random_state)
+
+    work_dir = Path(config.work_dirs) / config.run_name
+    work_dir.mkdir(exist_ok=True)
+
+    logger = Logger(work_dir / "log.txt")
+    OmegaConf.save(config, work_dir / "config.yaml")
+    config_dict = OmegaConf.to_container(
+        config, 
+        resolve=True
+    )
+    logger.info(
+        json.dumps(
+            config_dict, 
+            sort_keys=False, 
+            indent=4
+        )
+    )
+
+    if config.debug:
+        logger.info('DEBUG MODE')
+
     start_epoch = 1
+    exp_trackers = {}
     best_loss = 10000
-    wandb_run = None
-
-    if CONFIGS['GENERAL']['USE_WANDB'] and WANDB_AVAILABLE:
-        wandb_run = wandb.init(project=CONFIGS["MISC"]['PROJECT_NAME'],
-                               name=CONFIGS["MISC"]['RUN_NAME'],
-                               reinit=True)
-        wandb_run.config.update(CONFIGS)
-
-    best_cp_sp, last_cp_sp, best_emb_cp_sp, last_emb_cp_sp = get_cp_save_paths(CONFIGS)
-    
-    VALIDATE = CONFIGS["DATA"]['SPLIT_FILE'] is not None
-    USE_CATEGORIES      = get_value_if_exist(CONFIGS["DATA"], 'USE_CATEGORIES')
-    USE_TEXT_EMBEDDINGS = get_value_if_exist(CONFIGS["DATA"], 'USE_TEXT_EMBEDDINGS')
-
     labels_to_ids = None
-    categories_to_ids = None
-    n_categories = None
-    if VALIDATE:
-        df_train, df_valid, df_full = get_train_val_split(data_config=CONFIGS["DATA"])
-
-        train_loader, train_dataset = get_loader(df_train, 
-                                                 data_config=CONFIGS["DATA"], 
-                                                 split='train')
-        labels_to_ids = train_dataset.get_labels_to_ids()
-        
-        with open(Path(CONFIGS["MISC"]['WORK_DIR']) / f'labels_to_ids.json', 'w') as fp:
-            json.dump(labels_to_ids, fp)
-
-        if USE_CATEGORIES:
-            categories_to_ids = train_dataset.get_categories_to_ids()
-            with open(Path(CONFIGS["MISC"]['WORK_DIR']) / f'categories_to_ids.json', 'w') as fp:
-                json.dump(categories_to_ids, fp)
-            n_categories = len(categories_to_ids)
-
-        valid_loader, valid_dataset = get_loader(df_valid, 
-                                                 data_config=CONFIGS["DATA"], 
-                                                 split='val',
-                                                 labels_to_ids=labels_to_ids,
-                                                 categories_to_ids=categories_to_ids)
-
-        if isinstance(df_train, list):
-            df_train = pd.concat(df_train, ignore_index=True, sort=False)
-        if isinstance(df_valid, list):
-            df_valid = pd.concat(df_valid, ignore_index=True, sort=False)
-        
-        n_cl_total = df_full['label'].nunique()
-        n_cl_train = df_train['label'].nunique()
-        n_cl_valid = df_valid['label'].nunique()
-        n_s_total = len(df_full)
-        n_s_train = len(df_train)
-        n_s_valid = len(df_valid)
-        classes_counts = dict(df_full['label'].value_counts())
-
-        
-    else:
-        train_loader, train_dataset = get_loader(data_config=CONFIGS["DATA"], 
-                                                 split='train',  
-                                                 calc_cl_count=CONFIGS['MODEL']['DYNAMIC_MARGIN'])
-        n_cl_total = train_dataset.num_classes
-        n_cl_train = n_cl_total
-        n_cl_valid = 0 
-        n_s_total = train_dataset.__len__()
-        n_s_train = n_s_total
-        n_s_valid = 0
-        classes_counts = train_dataset.classes_counts
     
-    if n_s_valid==0:
-        VALIDATE = False
+    if not config.debug:
+        if config.use_wandb:
+            exp_trackers['wandb']  = WandbTracker(config,
+                                                  config_dict)
         
-    CONFIGS['MODEL']['N_CLASSES'] = n_cl_total
-    CONFIGS['TRAIN']['N_CLASSES'] = n_cl_total
-    CONFIGS['MODEL']['N_CATEGORIES'] = n_categories
-    CONFIGS['TRAIN']['N_CATEGORIES'] = n_categories
-    CONFIGS['MODEL']['USE_TEXT_EMBEDDINGS'] = USE_TEXT_EMBEDDINGS
+        if config.use_mlflow:
+            exp_trackers['mlflow'] = MLFlowTracker(config,
+                                                   config_dict)
+    
+    (best_cp_sp, 
+     last_cp_sp, 
+     best_emb_cp_sp, 
+     last_emb_cp_sp) = get_cp_save_paths(config, 
+                                         work_dir)
+        
+    df_train, df_valid, df_full = get_train_val_split(data_config=CONFIGS["DATA"])
+
+    train_loader, train_dataset = get_loader(df_train, 
+                                             data_config=CONFIGS["DATA"], 
+                                             split='train')
+    labels_to_ids = train_dataset.get_labels_to_ids()
+    
+    with open(Path(CONFIGS["MISC"]['WORK_DIR']) / f'labels_to_ids.json', 'w') as fp:
+        json.dump(labels_to_ids, fp)
+
+
+    valid_loader, valid_dataset = get_loader(df_valid, 
+                                             data_config=CONFIGS["DATA"], 
+                                             split='val',
+                                             labels_to_ids=labels_to_ids)
+
+    if isinstance(df_train, list):
+        df_train = pd.concat(df_train, ignore_index=True, sort=False)
+    if isinstance(df_valid, list):
+        df_valid = pd.concat(df_valid, ignore_index=True, sort=False)
+    
+    n_cl_total = df_full['label'].nunique()
+    n_cl_train = df_train['label'].nunique()
+    n_cl_valid = df_valid['label'].nunique()
+    n_s_total = len(df_full)
+    n_s_train = len(df_train)
+    n_s_valid = len(df_valid)
+    classes_counts = dict(df_full['label'].value_counts())
+
+    device = get_device(config.device)
+    model = get_model(
+        config.backbone,
+        config.head,
+        margin_config=config.margin,
+        n_classes=n_cl_total
+    ).to(device)
 
     if CONFIGS['MODEL']['AUTO_SCALE_SIZE']:
         CONFIGS['MODEL']['S'] = calculate_autoscale(n_cl_total)  
@@ -141,15 +134,7 @@ def train(CONFIGS,
                      n_cl_valid, 
                      n_s_total, 
                      n_s_train, 
-                     n_s_valid,
-                     n_categories) 
-
-    device = get_device(CONFIGS['GENERAL']['DEVICE'])
-    model  = get_model(model_config=CONFIGS['MODEL']).to(device)
-
-    if model_teacher is not None:
-        model_teacher.to(device)
-        model_teacher.eval()
+                     n_s_valid) 
 
     loss_func = get_loss(train_config=CONFIGS['TRAIN']).to(device)
     optimizer = get_optimizer(model,     CONFIGS['TRAIN']["OPTIMIZER"])
@@ -227,10 +212,7 @@ def train(CONFIGS,
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):
         stats_train = trainer.train_epoch(train_loader)
 
-        stats_valid = None
-        if VALIDATE:
-            stats_valid = trainer.valid_epoch(valid_loader)
-            
+        stats_valid = None            
         trainer.update_epoch()
         
         save_ckp(last_cp_sp, model, epoch, optimizer, best_loss)
@@ -242,7 +224,7 @@ def train(CONFIGS,
         else:
             scheduler.step()
         
-        check_loss = stats_valid.loss if VALIDATE else stats_train.loss
+        check_loss = stats_valid.loss
         
         if check_loss < best_loss:
             logger.info('Saving best model')
@@ -254,24 +236,16 @@ def train(CONFIGS,
             metrics['train_loss'] = stats_train.loss
             metrics['train_acc']  = stats_train.acc
             metrics['learning_rate'] = optimizer.param_groups[-1]['lr']
-            if USE_CATEGORIES:
-                if stats_train.f1_cat is not None: metrics['train_f1_cat'] = stats_train.f1_cat
-                if stats_train.loss_cat is not None: metrics['train_loss_cat'] = stats_train.loss_cat
-                if stats_train.loss_margin is not None: metrics['train_loss_margin'] = stats_train.loss_margin
-
+            
             if stats_train.images_wdb:
                 metrics["training batch"] = stats_train.images_wdb
+           
+            if stats_valid.images_wdb:
+                metrics["validation batch"] = stats_valid.images_wdb
+            metrics['valid_loss'] = stats_valid.loss
+            metrics['valid_acc']  = stats_valid.acc
+            if stats_valid.gap is not None: metrics['gap'] = stats_valid.gap
                 
-            if VALIDATE:
-                if stats_valid.images_wdb:
-                    metrics["validation batch"] = stats_valid.images_wdb
-                metrics['valid_loss'] = stats_valid.loss
-                metrics['valid_acc']  = stats_valid.acc
-                if stats_valid.gap is not None: metrics['gap'] = stats_valid.gap
-                if USE_CATEGORIES:
-                    if stats_valid.f1_cat is not None: metrics['valid_f1_cat'] = stats_valid.f1_cat
-                    if stats_valid.loss_cat is not None: metrics['valid_loss_cat'] = stats_valid.loss_cat
-                    if stats_valid.loss_margin is not None: metrics['valid_loss_margin'] = stats_valid.loss_margin
             wandb.log(metrics, step=epoch)
         
         logger.epoch_train_info(epoch, 
@@ -290,60 +264,4 @@ def train(CONFIGS,
 
 
 if __name__=="__main__":
-    args = parse_args()
-    assert os.path.isfile(args.config)
-    CONFIGS = load_config(args.config)
-
-    seed_everything(CONFIGS['GENERAL']['RANDOM_STATE'])
-
-    if args.tmp != "" and args.tmp != CONFIGS["MISC"]["TMP"]:
-        CONFIGS["MISC"]["TMP"] = args.tmp
-
-    if args.device:
-        CONFIGS['GENERAL']['DEVICE'] = int(args.device)
-    
-    if args.resume:
-        CONFIGS['TRAIN']['RESUME'] = args.resume
-
-    CONFIGS["MISC"]['RUN_NAME'] = '{}_{}_{}_{}'.format(CONFIGS['MISC']['DATASET_INFO'],
-                                                       CONFIGS['MODEL']['MARGIN_TYPE'],
-                                                       CONFIGS['MODEL']['ENCODER_NAME'],
-                                                       CONFIGS['MISC']['RUN_INFO'])
-    if CONFIGS["DATA"]['SPLIT_FILE'] is not None:
-        CONFIGS["MISC"]['RUN_NAME'] += '_fold{}'.format(CONFIGS["DATA"]['FOLD'])
-
-    CONFIGS["MISC"]['WORK_DIR'] = os.path.join(CONFIGS["MISC"]["TMP"], 
-                                               CONFIGS["MISC"]['RUN_NAME'])
-    os.makedirs(CONFIGS["MISC"]['WORK_DIR'], exist_ok=True)
-
-    logger = Logger(os.path.join(CONFIGS["MISC"]['WORK_DIR'], "log.txt"))
-    logger.info(json.dumps(CONFIGS, sort_keys=False, indent=4))
-
-    copyfile(args.config, Path(CONFIGS["MISC"]['WORK_DIR'])/'config.yml')
-
-    if args.debug: CONFIGS['GENERAL']['DEBUG'] = True
-    if CONFIGS['GENERAL']['DEBUG']: 
-        logger.info('DEBUG MODE')
-        CONFIGS['GENERAL']['USE_WANDB'] = False
-
-    WANDB_AVAILABLE = False    
-    try:
-        import wandb
-        WANDB_AVAILABLE = True
-    except ModuleNotFoundError:
-        logger.info('wandb is not installed')
-
-    model_teacher = None
-    if args.teacher_config and args.teacher_weights:
-        assert os.path.isfile(args.teacher_config)
-        CONFIGS_T = load_config(args.teacher_config)
-        model_teacher = get_model_embeddings(model_config=CONFIGS_T['MODEL'])
-        model_teacher = load_ckp(args.teacher_weights, 
-                                 model_teacher, 
-                                 emb_model_only=True)
-        for param in model_teacher.parameters():
-            param.requires_grad = False
-
-    train(CONFIGS, 
-          WANDB_AVAILABLE,
-          model_teacher)
+    train()

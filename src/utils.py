@@ -152,63 +152,18 @@ def calculate_dynamic_margin(dynamic_margin_config, classes_counts, labels_to_id
     return dynamic_margin
 
 
-def read_pd(file_path):
-    file_path = Path(file_path)
-    if file_path.suffix=='.feather':
-        df = pd.read_feather(file_path)
-    else:
-        df = pd.read_csv(file_path, dtype={ 'label': str,
-                                            'file_name': str,
-                                            'width': int,
-                                            'height': int,
-                                            'hash' : str,
-                                            'is_test':int,
-                                            'category' : str})
-    return df
 
-
-def get_train_val_split(data_config=None, split_file=None, fold=0):
-    if data_config is not None:
-        split_file = data_config["SPLIT_FILE"]
-        fold       = data_config["FOLD"]
-
-    if isinstance(split_file, list):
-        df_train = []
-        df_valid = []
-        df_full = []
-        for sf in split_file:
-            df_folds = read_pd(sf)
-            if 'fold' in df_folds:
-                df_full.append(df_folds)
-                df_train.append(df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)])
-                df_valid.append(df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)])
-            elif 'is_test' in df_folds:
-                df_train_i = df_folds[df_folds['is_test']==0]
-                df_train.append(df_train_i)
-                df_full.append(df_train_i)
-        df_full = pd.concat(df_full, ignore_index=True, sort=False)
-    else:
-        df_folds = read_pd(split_file)
-        if 'fold' in df_folds:
-            df_train = df_folds[((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)]
-            df_valid = df_folds[((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)]
-            df_full = df_folds
-        elif 'is_test' in df_folds:
-            df_train = df_folds[df_folds['is_test']==0]
-            df_full = df_train
-
-    return df_train, df_valid, df_full
-
-
-def get_cp_save_paths(config):
-    best_weights_name = 'debug_best.pt' if config['GENERAL']['DEBUG'] else 'best.pt'
-    last_weights_name = 'debug_last.pt' if config['GENERAL']['DEBUG'] else 'last.pt'
-    best_embeddings_weights_name = 'debug_best_emb.pt' if config['GENERAL']['DEBUG'] else 'best_emb.pt'
-    last_embeddings_weights_name = 'debug_last_emb.pt' if config['GENERAL']['DEBUG'] else 'last_emb.pt'
-    best_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], best_weights_name)
-    last_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], last_weights_name)
-    best_emb_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], best_embeddings_weights_name)
-    last_emb_cp_sp = os.path.join(config["MISC"]['WORK_DIR'], last_embeddings_weights_name)
+def get_cp_save_paths(config, work_dir):
+    best_weights_name = 'debug_best.pt' if config.debug else 'best.pt'
+    last_weights_name = 'debug_last.pt' if config.debug else 'last.pt'
+    best_emb_weights_name = 'debug_best_emb.pt' if config.debug else 'best_emb.pt'
+    last_emb_weights_name = 'debug_last_emb.pt' if config.debug else 'last_emb.pt'
+    
+    best_cp_sp = work_dir / best_weights_name
+    last_cp_sp = work_dir / last_weights_name
+    best_emb_cp_sp = work_dir / best_emb_weights_name
+    last_emb_cp_sp = work_dir / last_emb_weights_name
+    
     return best_cp_sp, last_cp_sp, best_emb_cp_sp, last_emb_cp_sp
 
 
