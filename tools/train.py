@@ -1,36 +1,32 @@
 import sys
 sys.path.append("./")
 
-import os
-import argparse
 from os.path import isfile
-from shutil import copyfile
 
-import numpy as np
 import pandas as pd
-import torch
 from torch.cuda import amp
 import time
-import json
 from pathlib import Path
 
 import hydra
 from omegaconf import OmegaConf
-from omegaconf.listconfig import ListConfig
 
-from src.dataset import get_loader
+from src.data import get_loader
 from src.model import get_model
+from src.logger import Logger
+from src.transform import get_transform
 from src.loss import get_loss
-from src.optimizers import get_optimizer
-from src.schedulers import get_scheduler
+from src.optimizer import get_optimizer
+from src.scheduler import get_scheduler
 
-from src.data.utils import get_train_val_split
+from src.data.utils import (get_train_val_split,
+                            get_labels_to_ids,
+                            get_dataset_stats,
+                            save_labels_to_ids,
+                            get_object_from_omegaconf)
 
 from src.utils import load_ckp, save_ckp, get_cp_save_paths
-from src.utils import load_config, Logger
-
 from src.utils import seed_everything, get_device
-from src.utils import calculate_autoscale, calculate_dynamic_margin
 from src.utils import get_value_if_exist
 from src.trainer import MLTrainer
 from src.experiment_tracker import (WandbTracker, 
@@ -52,22 +48,15 @@ def train(config):
         config, 
         resolve=True
     )
-    logger.info(
-        json.dumps(
-            config_dict, 
-            sort_keys=False, 
-            indent=4
-        )
-    )
+    logger.config_info(config_dict)
 
     if config.debug:
         logger.info('DEBUG MODE')
 
     start_epoch = 1
-    exp_trackers = {}
     best_loss = 10000
-    labels_to_ids = None
     
+    exp_trackers = {}
     if not config.debug:
         if config.use_wandb:
             exp_trackers['wandb']  = WandbTracker(config,
@@ -82,63 +71,64 @@ def train(config):
      best_emb_cp_sp, 
      last_emb_cp_sp) = get_cp_save_paths(config, 
                                          work_dir)
-        
-    df_train, df_valid, df_full = get_train_val_split(data_config=CONFIGS["DATA"])
+    
+    annotations = get_object_from_omegaconf(config.dataset.annotations)
+    root_dir = get_object_from_omegaconf(config.dataset.dir) 
 
-    train_loader, train_dataset = get_loader(df_train, 
-                                             data_config=CONFIGS["DATA"], 
-                                             split='train')
+    df_train, df_valid = get_train_val_split(
+        annotation=annotations, 
+        fold=config.dataset.fold
+    )
+
+    transform_train = get_transform(config.transform.train)
+    transform_valid = get_transform(config.transform.valid)
+
+    labels_to_ids   = get_labels_to_ids(config.dataset.labels_to_ids_path)
+
+    train_loader, train_dataset = get_loader(
+        root_dir,
+        df_train,
+        transform=transform_train,
+        dataset_config=config.dataset,
+        dataloader_config=config.dataloader,
+        labels_to_ids=labels_to_ids,
+        split='train'
+    )
     labels_to_ids = train_dataset.get_labels_to_ids()
+    save_labels_to_ids(labels_to_ids, save_dir=work_dir)
+
+    valid_loader, valid_dataset = get_loader(
+        root_dir,
+        df_valid, 
+        transform=transform_valid,
+        dataset_config=config.dataset,
+        dataloader_config=config.dataloader,
+        labels_to_ids=labels_to_ids,
+        split='valid'
+    )
+
+    dataset_stats = get_dataset_stats(
+        df_train, 
+        df_valid,
+        labels_to_ids,
+        label_column=config.dataset.label_column
+    )
+    config.margin.ids_count = dataset_stats.ids_count
+    logger.info_data(dataset_stats) 
     
-    with open(Path(CONFIGS["MISC"]['WORK_DIR']) / f'labels_to_ids.json', 'w') as fp:
-        json.dump(labels_to_ids, fp)
-
-
-    valid_loader, valid_dataset = get_loader(df_valid, 
-                                             data_config=CONFIGS["DATA"], 
-                                             split='val',
-                                             labels_to_ids=labels_to_ids)
-
-    if isinstance(df_train, list):
-        df_train = pd.concat(df_train, ignore_index=True, sort=False)
-    if isinstance(df_valid, list):
-        df_valid = pd.concat(df_valid, ignore_index=True, sort=False)
-    
-    n_cl_total = df_full['label'].nunique()
-    n_cl_train = df_train['label'].nunique()
-    n_cl_valid = df_valid['label'].nunique()
-    n_s_total = len(df_full)
-    n_s_train = len(df_train)
-    n_s_valid = len(df_valid)
-    classes_counts = dict(df_full['label'].value_counts())
-
     device = get_device(config.device)
     model = get_model(
         config.backbone,
         config.head,
         margin_config=config.margin,
-        n_classes=n_cl_total
+        n_classes=len(labels_to_ids)
     ).to(device)
+    logger.info_model(config)
 
-    if CONFIGS['MODEL']['AUTO_SCALE_SIZE']:
-        CONFIGS['MODEL']['S'] = calculate_autoscale(n_cl_total)  
 
-    if CONFIGS['MODEL']['DYNAMIC_MARGIN'] is not None:
-        CONFIGS['MODEL']['M'] = calculate_dynamic_margin(CONFIGS['MODEL']['DYNAMIC_MARGIN'], 
-                                                         classes_counts,
-                                                         labels_to_ids=labels_to_ids)
-
-    logger.data_info(CONFIGS, 
-                     n_cl_total, 
-                     n_cl_train, 
-                     n_cl_valid, 
-                     n_s_total, 
-                     n_s_train, 
-                     n_s_valid) 
-
-    loss_func = get_loss(train_config=CONFIGS['TRAIN']).to(device)
-    optimizer = get_optimizer(model,     CONFIGS['TRAIN']["OPTIMIZER"])
-    scheduler = get_scheduler(optimizer, CONFIGS['TRAIN']["SCHEDULER"])
+    loss_func = get_loss(loss_config=config.loss).to(device)
+    optimizer = get_optimizer(model, optimizer_config=config.optimizer)
+    scheduler = get_scheduler(optimizer, scheduler_config=config.scheduler)
     
     if CONFIGS['TRAIN']["WARMUP"]:
         import pytorch_warmup as warmup
@@ -187,26 +177,28 @@ def train(config):
     vis_batch = get_value_if_exist(CONFIGS['DATA'], 'VISUALIZE_BATCH') 
     distill_loss_weight = get_value_if_exist(CONFIGS['TRAIN'], 'DISTILL_LOSS_W', 1)
 
-    trainer = MLTrainer(model=model, 
-                        optimizer=optimizer, 
-                        loss_func=loss_func, 
-                        logger=logger, 
-                        device=device,
-                        epoch=start_epoch,
-                        amp_scaler=scaler,
-                        warmup_scheduler=warmup_scheduler,
-                        wandb_available=WANDB_AVAILABLE, 
-                        is_debug=CONFIGS['GENERAL']['DEBUG'],
-                        calculate_GAP=CONFIGS['TRAIN']['CALCULATE_GAP'],
-                        grad_accum_steps=CONFIGS['TRAIN']['GRADIENT_ACC_STEPS'],
-                        incremental_margin=CONFIGS['TRAIN']['INCREMENTAL_MARGIN'],
-                        work_dir=CONFIGS["MISC"]['WORK_DIR'],
-                        visualize_batch=vis_batch,
-                        n_epochs=n_train_epochs,
-                        p_mixup=p_mixup,
-                        p_cutmix=p_cutmix,
-                        model_teacher=model_teacher,
-                        distill_loss_weight=distill_loss_weight)
+    trainer = MLTrainer(
+        model=model, 
+        optimizer=optimizer, 
+        loss_func=loss_func, 
+        logger=logger, 
+        device=device,
+        epoch=start_epoch,
+        amp_scaler=scaler,
+        warmup_scheduler=warmup_scheduler,
+        wandb_available=WANDB_AVAILABLE, 
+        is_debug=CONFIGS['GENERAL']['DEBUG'],
+        calculate_GAP=CONFIGS['TRAIN']['CALCULATE_GAP'],
+        grad_accum_steps=CONFIGS['TRAIN']['GRADIENT_ACC_STEPS'],
+        incremental_margin=CONFIGS['TRAIN']['INCREMENTAL_MARGIN'],
+        work_dir=CONFIGS["MISC"]['WORK_DIR'],
+        visualize_batch=vis_batch,
+        n_epochs=n_train_epochs,
+        p_mixup=p_mixup,
+        p_cutmix=p_cutmix,
+        model_teacher=model_teacher,
+        distill_loss_weight=distill_loss_weight
+    )
 
     start_time = time.time()
     for epoch in range(start_epoch, CONFIGS['TRAIN']['EPOCHS'] + 1):

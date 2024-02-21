@@ -15,8 +15,8 @@ import json
 from pathlib import Path
 
 from src.dataset import get_loader
-from src.optimizers import get_optimizer
-from src.schedulers import get_scheduler
+from src.optimizer import get_optimizer
+from src.scheduler.schedulers import get_scheduler
 
 from src.utils import load_ckp, save_ckp, get_cp_save_paths
 from src.utils import load_config, Logger, get_train_val_split

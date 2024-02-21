@@ -4,6 +4,7 @@ defaults:
   - margin : arcface
   - dataset : dataset_v0
   - dataloader: default
+  - loss: cross_entropy
   - eval : default
   - scheduler : cosine
   - optimizer : adamw
@@ -20,10 +21,13 @@ batch_size : 32
 epochs : 20
 fold: 0 
 random_state : 28 
-image_size: [224, 224]
-workers: 30
+
+img_h: 224
+img_w: 224
+
+n_workers: 8
 device : 0         
-use_wandb : True
+use_wandb  : False
 use_mlflow : False
 visualize_batch: True
 mlflow_server_uri : https://r3dev-mlflow.rebotics.net/

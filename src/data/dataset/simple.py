@@ -1,11 +1,10 @@
-from os.path import join
 from pathlib import Path
 import numpy as np
 import cv2
 import torch
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
-from .utils import get_labels_to_ids_map
+from ..utils import get_labels_to_ids_map
 
 
 class MLDataset(Dataset):
@@ -25,49 +24,41 @@ class MLDataset(Dataset):
             root_dir,
             df_annos,   
             transform=None,
+            labels_to_ids=None,
+            use_bboxes=False,
             label_column='label',
             fname_column='file_name',
-            return_filenames=False,
-            labels_to_ids=None,
-            use_bboxes=False
         ):
 
         self.images_paths = []
         self.labels = []
         self.bboxes = []
-        self.return_filenames = return_filenames
         self.use_bboxes = use_bboxes
-        
-        if isinstance(root_dir, list) and isinstance(df_annos, list):
-            lines = [df_nms[fname_column].tolist() for df_nms in df_annos]
-            labels = [df_nms[label_column].tolist() for df_nms in df_annos]
-            for ln_idx, lns in enumerate(lines):
-                root_dir_i = root_dir[ln_idx]
-                if (Path(root_dir_i) / 'images').is_dir():
-                    root_dir_i = str(Path(root_dir_i)  / 'images')
-                self.images_paths += [join(root_dir_i, str(i)) for i in lns]
-            for lab_idx, lbl in enumerate(labels):
-                self.labels += lbl  
-            if self.use_bboxes:
-                if 'bbox' in  df_annos[0]:
-                    bboxes = [df_nms['bbox'].tolist() for df_nms in df_annos]
-                    for bbxs in bboxes:
-                        bbxs = [bbox.split(' ') for bbox in bbxs]
-                        self.bboxes += bbxs
-        else:
-            lines = df_annos[fname_column].tolist()
-            imgs_pth = Path(root_dir) / 'images'
-            if imgs_pth.is_dir():
-                self.images_paths = [join(root_dir, 'images', str(i)) for i in lines]
-            else:
-                self.images_paths = [join(root_dir, str(i)) for i in lines]
-            self.labels = df_annos[label_column].tolist()
-            if self.use_bboxes:
-                if 'bbox' in  df_annos:
-                    bboxes = df_annos['bbox'].tolist()
-                    self.bboxes = [bbox.split(' ') for bbox in bboxes]
 
+        if not isinstance(root_dir, list) and not isinstance(df_annos, list):
+            root_dir = [root_dir]
+            df_annos = [df_annos]
+        
+        file_names = [df_nms[fname_column].tolist() for df_nms in df_annos]
+        labels     = [df_nms[label_column].tolist() for df_nms in df_annos]
+
+        for idx in range(len(file_names)):
+            file_names_i = file_names[idx]
+            root_dir_i   = Path(root_dir[idx])
+            self.images_paths += [str(root_dir_i / str(fname)) for fname in file_names_i]
+
+        for labels_i in labels:
+            self.labels += labels_i 
         self.labels = np.array(self.labels, dtype=str)
+
+        if self.use_bboxes:
+            if 'bbox' in  df_annos[0]:
+                bboxes = [df_nms['bbox'].tolist() for df_nms in df_annos]
+                for bbxs in bboxes:
+                    bbxs = [bbox.split(' ') for bbox in bbxs]
+                    self.bboxes += bbxs
+            self.bboxes = [[int(b) for b in bbox] for bbox in self.bboxes]
+        
         if labels_to_ids is None:
             labels_names = sorted(np.unique(self.labels).tolist())
             self.labels_to_ids, self.ids_to_labels = get_labels_to_ids_map(labels_names)
@@ -75,11 +66,8 @@ class MLDataset(Dataset):
             self.labels_to_ids = labels_to_ids
             self.ids_to_labels = {v:k for k,v in self.labels_to_ids.items()}
         self.label_ids = np.array([self.labels_to_ids[l] for l in self.labels])
-
-        if self.use_bboxes:
-            self.bboxes = [[int(b) for b in bbox] for bbox in self.bboxes]
-        
-        self.file_names = lines
+                
+        self.file_names = file_names
         self.transform = transform
     
 
@@ -114,10 +102,7 @@ class MLDataset(Dataset):
             data = torch.tensor(self.label_ids[i], 
                                 dtype=torch.long)
                 
-            if self.return_filenames:
-                return image, data, self.file_names[i]
-            else:
-                return image, data
+            return image, data
         except:
             print(f'Corrupted image {image_path}')
         

@@ -1,102 +1,30 @@
-from .simple import MetricDataset
+from .simple import MLDataset
 from .mxdataset import MXDataset
 
-import torch
-from torch.utils.data import DataLoader
 
-from ..samplers import get_sampler
-from ..transform import get_transform
-from ..utils import worker_init_fn
+def get_dataset(
+        root_dir, 
+        df_annos, 
+        transform,
+        labels_to_ids,
+        dataset_config
+    ):
+    dataset_type = dataset_config.type
 
-
-def collate_fn(batch):
-    batch = list(filter(lambda x: x is not None, batch))
-    return torch.utils.data.dataloader.default_collate(batch)
-
-
-def get_loader(df_names=None,
-               data_config=None,
-               dataset_type=None,
-               data_type=None,
-               root_dir=None,  
-               batch_size=None, 
-               img_size=None,
-               num_thread=None,
-               pin=True,
-               test=False,
-               split='train',
-               transform_name=None,
-               use_cache=False,
-               balanced_smplr=True,
-               calc_cl_count=False,
-               label_column='label',
-               fname_column='file_name',
-               return_filenames=False,
-               labels_to_ids=None,
-               use_categories=False,
-               categories_to_ids=None,
-               use_text_embeddings=False,
-               use_bboxes=False):
-
-    if data_config is not None:
-        root_dir       = data_config["DIR"] if root_dir is None else root_dir
-        dataset_type   = data_config["DATASET_TYPE"] if dataset_type is None else dataset_type
-        batch_size     = data_config["BATCH_SIZE"] if batch_size is None else batch_size
-        num_thread     = data_config["WORKERS"] if num_thread is None else num_thread
-        img_size       = data_config['IMG_SIZE'] if img_size is None else img_size
-        transform_name = data_config['TRAIN_AUG'] if transform_name is None else transform_name
-        data_type      = data_config["DATA_TYPE"] if data_type is None else data_type
-        balanced_smplr = data_config["BALANCED_SAMPLER"] if "BALANCED_SAMPLER" in data_config else True
-        use_cache      = data_config["USE_CACHE"] if "USE_CACHE" in data_config else False
-        use_categories = data_config['USE_CATEGORIES'] if 'USE_CATEGORIES' in data_config else use_categories
-        use_text_embeddings = data_config['USE_TEXT_EMBEDDINGS'] if 'USE_TEXT_EMBEDDINGS' in data_config else use_text_embeddings
-
-    if test is False:
-        transform = get_transform(transform_name, 
-                                  data_type=data_type, 
-                                  image_size=(img_size,img_size))
-    else:
-        use_text_embeddings = False
-        transform = get_transform('test_aug', 
-                                  data_type=data_type, 
-                                  image_size=(img_size,img_size))
-    
-    if dataset_type=='mxdataset':
+    if dataset_type=='mxnet':
         dataset = MXDataset(root_dir=root_dir, 
                             transform=transform,
-                            use_cache=use_cache,
-                            calc_cl_count=calc_cl_count)
+                            use_cache=dataset_config.use_cache,
+                            calc_cl_count=dataset_config.calc_cl_count)
     else:
-        dataset = MetricDataset(root_dir=root_dir,
-                                df_names=df_names,      
-                                transform=transform,
-                                label_column=label_column,
-                                fname_column=fname_column,
-                                return_filenames=return_filenames,
-                                labels_to_ids=labels_to_ids,
-                                use_categories=use_categories,
-                                categories_to_ids=categories_to_ids,
-                                use_text_embeddings=use_text_embeddings,
-                                use_bboxes=use_bboxes)
-    
-    drop_last = split=='train'
-    shuffle = split=='train' and not balanced_smplr
+        dataset = MLDataset(
+            root_dir=root_dir, 
+            df_annos=df_annos,     
+            transform=transform,
+            labels_to_ids=labels_to_ids,
+            label_column=dataset_config.label_column,
+            fname_column=dataset_config.fname_column,
+            use_bboxes=dataset_config.use_bboxes
+        )
 
-    sampler = None
-    if balanced_smplr and split=='train':
-        sampler = get_sampler('balanced',
-                              labels=dataset.label_ids,
-                              m=1,
-                              batch_size=batch_size, 
-                              length_before_new_iter=len(dataset.label_ids))
-
-    data_loader = DataLoader(dataset=dataset,
-                             sampler=sampler,
-                             batch_size=batch_size,
-                             shuffle=shuffle,
-                             num_workers=num_thread,
-                             pin_memory=pin,
-                             drop_last=drop_last,
-                             worker_init_fn=worker_init_fn,
-                             collate_fn=collate_fn)
-    return data_loader, dataset
+    return dataset

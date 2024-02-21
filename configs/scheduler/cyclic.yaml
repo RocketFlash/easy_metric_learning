@@ -1,0 +1,5 @@
+scheduler:
+  _target_: torch.optim.lr_scheduler.CyclicLR
+  base_lr: 0.01
+  max_lr: 0.01
+  

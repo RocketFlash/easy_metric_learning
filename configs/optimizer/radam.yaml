@@ -1,7 +1,8 @@
 optimizer:
-  _target_: torch.optim.AdamW
+  _target_: torch_optimizer.RAdam
   eps: 1e-8
   weight_decay: 1e-5
   lr: 1e-3
+  betas: [0.9, 0.999]
   
 backbone_lr_scaler: 1e-3

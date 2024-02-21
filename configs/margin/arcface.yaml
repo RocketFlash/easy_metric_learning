@@ -3,3 +3,6 @@ s: 30
 m: 0.5
 easy_margin: False
 ls_eps: 0.1
+autoscale: False
+dynamic_margin: 
+ids_count: 

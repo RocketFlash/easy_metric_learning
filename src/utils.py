@@ -5,11 +5,9 @@ import math
 import cv2
 import random
 import yaml
-import logging
 import json
 import pandas as pd
 from collections import OrderedDict
-import time
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from pathlib import Path
@@ -22,6 +20,14 @@ import io
 import base64
 from io import BytesIO as _BytesIO
 from jinja2 import Template
+
+
+def get_device(device_str):
+    if device_str:
+        device = torch.device(device_str)
+    else:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    return device 
 
 
 def get_sample(image_path, 
@@ -64,21 +70,6 @@ def batch_grid(images):
     )
     return inv_normalize(image_grid)
 
-
-def calculate_time(start_time, start_epoch, epoch, epochs):
-    t = time.time() - start_time
-    elapsed = DayHourMinute(t)
-    t /= (epoch + 1) - start_epoch  # seconds per epoch
-    t = (epochs - epoch - 1) * t
-    remaining = DayHourMinute(t)
-    return elapsed, remaining
-
-
-class DayHourMinute(object):
-    def __init__(self, seconds):
-        self.days = int(seconds // 86400)
-        self.hours = int((seconds - (self.days * 86400)) // 3600)
-        self.minutes = int((seconds - self.days * 86400 - self.hours * 3600) // 60)
 
 
 def save_ckp(save_path, model, epoch=0, optimizer=None, best_loss=100, emb_model_only=False):
@@ -128,31 +119,6 @@ def load_ckp(checkpoint_fpath, model, optimizer=None, remove_module=False, emb_m
     return model, optimizer, epoch, best_loss
 
 
-def worker_init_fn(worker_id):                                                          
-    np.random.seed(np.random.get_state()[1][0] + worker_id)
-
-
-def get_mapper(mapper_path):
-    with open(mapper_path) as file:
-        mapper = json.load(file)
-    
-    return mapper
-
-
-def calculate_autoscale(train_n_classes):
-    return np.sqrt(2) * np.log(train_n_classes-1) 
- 
-
-def calculate_dynamic_margin(dynamic_margin_config, classes_counts, labels_to_ids=None):
-    dynamic_margin = {}
-    for class_id, class_cnt in classes_counts.items():
-        if labels_to_ids is not None:
-            class_id = labels_to_ids[class_id]
-        dynamic_margin[class_id] = dynamic_margin_config['HB']*class_cnt**(-dynamic_margin_config['LAMBDA']) + dynamic_margin_config['LB']
-    return dynamic_margin
-
-
-
 def get_cp_save_paths(config, work_dir):
     best_weights_name = 'debug_best.pt' if config.debug else 'best.pt'
     last_weights_name = 'debug_last.pt' if config.debug else 'last.pt'
@@ -165,90 +131,6 @@ def get_cp_save_paths(config, work_dir):
     last_emb_cp_sp = work_dir / last_emb_weights_name
     
     return best_cp_sp, last_cp_sp, best_emb_cp_sp, last_emb_cp_sp
-
-
-class Logger():
-    def __init__(self, path="log.txt"):
-        self.logger = logging.getLogger("Logger")
-        self.file_handler = logging.FileHandler(path, "w")
-        self.stdout_handler = logging.StreamHandler()
-        self.logger.addHandler(self.file_handler)
-        self.logger.addHandler(self.stdout_handler)
-        self.stdout_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-        self.file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-        self.logger.setLevel(logging.INFO)
-
-    def info(self, txt):
-        self.logger.info(txt)
-
-    def data_info(self, 
-                  config, 
-                  n_cl_total, 
-                  n_cl_train=0, 
-                  n_cl_valid=0, 
-                  n_s_total=0, 
-                  n_s_train=0, 
-                  n_s_valid=0,
-                  n_categories=None):
-
-        encoder_type = config['MODEL']['ENCODER_NAME']
-        margin_type = config['MODEL']['MARGIN_TYPE']
-        embeddings_size = config['MODEL']['EMBEDDINGS_SIZE']
-        scale_size = config['MODEL']['S']
-        margin_m = config['MODEL']['M']
-        is_autoscalse = config['MODEL']['AUTO_SCALE_SIZE']
-        is_incremental_margin = config['TRAIN']['INCREMENTAL_MARGIN'] is not None
-        sc_s = f'autoscale {scale_size:.2f}' if is_autoscalse else f'{scale_size:.2f}'
-        sc_m = margin_m if not isinstance(margin_m, dict) else 'dynamic'
-        sc_categories = f'Total N categories        : {n_categories}' if n_categories is not None else ''
-
-        if is_incremental_margin:
-            incremention_type = config['TRAIN']['INCREMENTAL_MARGIN']['TYPE']
-            m_min = config['TRAIN']['INCREMENTAL_MARGIN']['MIN_M']
-            sc_m = f'incremental {incremention_type} : [ {m_min} - {sc_m} ]'
-
-        self.logger.info(f'''
-        ============   DATA INFO             ============
-        Total N classes           : {n_cl_total}
-        Total N classes train     : {n_cl_train}
-        Total N classes valid     : {n_cl_valid}
-        Total N samples           : {n_s_total}
-        Total N training samples  : {n_s_train}
-        Total N validation samples: {n_s_valid}
-        {sc_categories}
-        ============   TRAINING PARAMETERS   ============
-        Encoder type              : {encoder_type}
-        Margin type               : {margin_type}
-        Embeddings size           : {embeddings_size}
-        Scale size s              : {sc_s}
-        Margin m                  : {sc_m}
-        =================================================''')
-
-    def epoch_train_info(self, epoch, stats_train, stats_valid):
-        epoch_info_str = f'Epoch: {epoch} Train Loss: {stats_train.loss:.5f} Train Acc: {stats_train.acc:.5f}\n'
-        if stats_valid is not None:
-            epoch_info_str += f'{" "*37} Valid Loss: {stats_valid.loss:.5f} Valid Acc: {stats_valid.acc:.5f}'
-            if stats_valid.gap is not None:
-                epoch_info_str += f'\n{" "*37} GAP value : {stats_valid.gap:.5f}'
-        self.logger.info(epoch_info_str)
-    
-    def epoch_time_info(self, start_time, start_epoch, epoch, num_epochs, workdir_path):
-        elapsed, remaining = calculate_time(start_time=start_time, 
-                                            start_epoch=start_epoch, 
-                                            epoch=epoch, 
-                                            epochs=num_epochs)
-
-        self.logger.info(f"Epoch {epoch}/{num_epochs} finishied, saved to {workdir_path} ." + \
-                         f"\n{' '*37} Elapsed {elapsed.days:d} days {elapsed.hours:d} hours {elapsed.minutes:d} minutes." + \
-                         f"\n{' '*37} Remaining {remaining.days:d} days {remaining.hours:d} hours {remaining.minutes:d} minutes.")
-
-    def close(self):
-        self.file_handler.close()
-        self.stdout_handler.close()
-
-
-def load_config(config_path):
-    return yaml.safe_load(open(config_path))
 
 
 class AverageMeter(object):
@@ -587,11 +469,3 @@ def show_images(images, n_col=3, save_name=None):
     else:
         plt.savefig(save_name)
         plt.close(fig)
-
-
-def get_device(device_str):
-    if device_str:
-        device = torch.device(device_str)
-    else:
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    return device 

@@ -1,0 +1,3 @@
+loss:
+    _target_: src.loss.soft_cross_entropy.SoftCrossEntropyLoss
+    label_smoothing: 0.1

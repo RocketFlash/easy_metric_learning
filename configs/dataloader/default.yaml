@@ -1,0 +1,6 @@
+batch_size: ${batch_size}
+n_workers: ${n_workers}
+pin_memory: True
+
+sampler:
+  type: default

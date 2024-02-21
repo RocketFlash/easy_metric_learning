@@ -1,7 +1,30 @@
 from pathlib import Path
 import pandas as pd
+import numpy as np
+import json
+from easydict import EasyDict as edict
 from omegaconf import OmegaConf
 from omegaconf.listconfig import ListConfig
+
+
+def worker_init_fn(worker_id):                                                          
+    np.random.seed(np.random.get_state()[1][0] + worker_id)
+
+
+def get_labels_to_ids(labels_to_ids_path):
+    if labels_to_ids_path is not None:
+        with open(labels_to_ids_path) as file:
+            labels_to_ids = json.load(file)
+    else:
+        labels_to_ids = None
+    
+    return labels_to_ids
+
+
+def save_labels_to_ids(labels_to_ids, save_dir='./'):
+    save_dir = Path(save_dir)
+    with open(save_dir / 'labels_to_ids.json', 'w') as fp:
+        json.dump(labels_to_ids, fp)
 
 
 def get_object_from_omegaconf(obj):
@@ -50,7 +73,6 @@ def get_train_val_from_file(annotation_file, fold=0):
     df_folds = read_pd(annotation_file)
     if 'is_test' in df_folds:
         df_train = df_folds[df_folds['is_test']==0]
-        df_full = df_train
     else:
         if 'fold' not in df_folds:
             df_folds['fold'] = 0
@@ -61,31 +83,74 @@ def get_train_val_from_file(annotation_file, fold=0):
         df_valid = df_folds[((df_folds.fold == fold) & 
                             (df_folds.fold >= 0)) | 
                             (df_folds.fold == -2)]
-        df_full = df_folds
 
-    return df_full, df_train, df_valid
+    return df_train, df_valid
 
 
 def get_train_val_split(annotation, fold=0):
     if isinstance(annotation, list):
         df_train = []
         df_valid = []
-        df_full  = []
         for annotation_file in annotation:
-            (df_full_i, 
-             df_train_i, 
+            (df_train_i, 
              df_valid_i) = get_train_val_from_file(annotation_file, 
                                                    fold=fold)
-            df_full.append(df_full_i)
             df_train.append(df_train_i)
             df_valid.append(df_valid_i)
             
-
-        df_full = pd.concat(df_full, ignore_index=True, sort=False)
     else:
-        (df_full, 
-         df_train, 
+        (df_train, 
          df_valid) = get_train_val_from_file(annotation, 
                                              fold=fold)
         
-    return df_train, df_valid, df_full
+    return df_train, df_valid
+
+
+def get_dataset_stats(
+        df_train, 
+        labels_to_ids,
+        df_valid=None,
+        label_column='label'
+    ):
+    
+    if isinstance(df_train, list):
+        df_train = pd.concat(
+            df_train, 
+            ignore_index=True, 
+            sort=False
+        )
+
+    if df_valid is not None:
+        if isinstance(df_valid, list):
+            df_valid = pd.concat(
+                df_valid, 
+                ignore_index=True, 
+                sort=False
+            )
+        df_full = pd.concat(
+            [df_train, df_valid], 
+            ignore_index=True, 
+            sort=False
+        )
+        n_classes_valid = df_valid[label_column].nunique()
+        n_samples_valid = len(df_valid)
+    else:
+        df_full = df_train
+        n_classes_valid = 0
+        n_samples_valid = 0
+
+    classes_counts = dict(df_full[label_column].value_counts())
+    ids_counts = {labels_to_ids[k]:v for k, v in classes_counts}
+
+    dataset_stats = edict(dict(
+        n_classes_total=df_full[label_column].nunique(),
+        n_classes_train=df_train[label_column].nunique(),
+        n_classes_valid=n_classes_valid,
+        n_samples_total=len(df_full),
+        n_samples_train=len(df_train),
+        n_samples_valid=n_samples_valid,
+        classes_counts=classes_counts,
+        ids_counts=ids_counts
+    ))
+
+    return dataset_stats
