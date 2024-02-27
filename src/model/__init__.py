@@ -3,21 +3,21 @@ from .margin import get_margin
 
 
 def get_model(
-        backbone_config,
-        head_config,
-        margin_config=None,
+        config_backbone,
+        config_head,
+        config_margin=None,
         n_classes=1000
     ):
         
     embeddings_model = get_model_embeddings(
-        backbone_config=backbone_config,
-        head_config=head_config
+        config_backbone=config_backbone,
+        config_head=config_head
     )
     
-    if margin_config is not None:
-        embeddings_size = head_config.embeddings_size
+    if config_margin is not None:
+        embeddings_size = config_head.embeddings_size
         margin = get_margin(
-            margin_config=margin_config,
+            config_margin=config_margin,
             embeddings_size=embeddings_size,
             n_classes=n_classes
         )

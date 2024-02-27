@@ -7,6 +7,7 @@ import random
 import yaml
 import json
 import pandas as pd
+from os.path import isfile
 from collections import OrderedDict
 from matplotlib import pyplot as plt
 from tqdm import tqdm
@@ -20,6 +21,7 @@ import io
 import base64
 from io import BytesIO as _BytesIO
 from jinja2 import Template
+from easydict import EasyDict as edict
 
 
 def get_device(device_str):
@@ -50,26 +52,9 @@ def get_images_paths(path):
                        list(pathlib_path.glob('**/*.png'))]
 
 
-def get_value_if_exist(config, name, default_value=False):
-    if name in config:
-        return config[name]
-    else:
-        return default_value
-
-
 def get_image(image_path):
     image = cv2.imread(str(image_path))
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
-
-
-def batch_grid(images):
-    image_grid = torchvision.utils.make_grid(images, nrow=4)
-    inv_normalize = transforms.Normalize(
-        mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
-        std=[1 / 0.229, 1 / 0.224, 1 / 0.255]
-    )
-    return inv_normalize(image_grid)
-
 
 
 def save_ckp(save_path, model, epoch=0, optimizer=None, best_loss=100, emb_model_only=False):
@@ -85,52 +70,87 @@ def save_ckp(save_path, model, epoch=0, optimizer=None, best_loss=100, emb_model
             'best_loss': best_loss
         }
     torch.save(checkpoint, save_path)
+    
 
+def load_ckp(
+        ckp_path, 
+        model, 
+        optimizer=None, 
+        device=None
+    ):
 
-def load_ckp(checkpoint_fpath, model, optimizer=None, remove_module=False, emb_model_only=False, device=None):
-    checkpoint = torch.load(checkpoint_fpath, map_location=device)
+    checkpoint = torch.load(ckp_path, map_location=device)
 
     pretrained_dict = checkpoint['model']
-    if emb_model_only:
-        model.load_state_dict(pretrained_dict)
-        return model
-
     model_state_dict = model.state_dict()
-    if remove_module:
-        new_state_dict = OrderedDict()
-        for k, v in pretrained_dict.items():
-            name = k[7:] # remove 'module.' of DataParallel/DistributedDataParallel
-            new_state_dict[name] = v
-        pretrained_dict = new_state_dict
     pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_state_dict}
     model_state_dict.update(pretrained_dict)
- 
-    model.load_state_dict(pretrained_dict)
+    model.load_state_dict(model_state_dict)
 
-    try:
-        optimizer.load_state_dict(checkpoint['optimizer'])
-    except:
-        print('Cannot load optimizer params')
+    if optimizer is not None:
+        try:
+            optimizer.load_state_dict(checkpoint['optimizer'])
+        except:
+            print('Cannot load optimizer params')
         
-
     epoch = checkpoint['epoch'] if 'epoch' in checkpoint else 0
     best_loss = checkpoint['best_loss'] if 'best_loss' in checkpoint else 100
     
     return model, optimizer, epoch, best_loss
 
 
-def get_cp_save_paths(config, work_dir):
-    best_weights_name = 'debug_best.pt' if config.debug else 'best.pt'
-    last_weights_name = 'debug_last.pt' if config.debug else 'last.pt'
-    best_emb_weights_name = 'debug_best_emb.pt' if config.debug else 'best_emb.pt'
-    last_emb_weights_name = 'debug_last_emb.pt' if config.debug else 'last_emb.pt'
+def load_checkpoint(
+        ckp_path, 
+        model, 
+        optimizer, 
+        logger, 
+        mode='resume'
+    ):
+
+    assert isfile(ckp_path), f"no checkpoint found at : {ckp_path}"
+
+    checkpoint_data = {}
+    if mode=='resume':
+        logger.info(f'resume training from: {ckp_path}')
+        model, optimizer, epoch_resume, best_loss = load_ckp(ckp_path, model, optimizer)
+        checkpoint_data['model']       = model
+        checkpoint_data['optimizer']   = optimizer
+        checkpoint_data['start_epoch'] = epoch_resume + 1
+        checkpoint_data['best_loss']   = best_loss
+        
+    elif mode=='emb':
+        logger.info(f"load embeddings net only from: {ckp_path}")
+        model.embeddings_net = load_ckp(
+            ckp_path, 
+            model.embeddings_net,  
+        )
+        checkpoint_data['model'] = model
+        
+    elif mode=='weights':
+        logger.info(f"load weights from: {ckp_path}")
+        model, _, _, _ = load_ckp(
+            ckp_path, 
+            model
+        )
+        checkpoint_data['model'] = model
+    else:
+        logger.info(f"wrong loading mode")
+
+
+def get_save_paths(work_dir):
+    best_weights_name = 'best.pt'
+    last_weights_name = 'last.pt'
+    best_emb_weights_name = 'best_emb.pt'
+    last_emb_weights_name = 'last_emb.pt'
+
+    save_paths = edict(dict(
+        best_weights_path=work_dir / best_weights_name,
+        last_weights_path=work_dir / last_weights_name,
+        best_emb_weights_path=work_dir / best_emb_weights_name,
+        last_emb_weights_path=work_dir / last_emb_weights_name
+    ))
     
-    best_cp_sp = work_dir / best_weights_name
-    last_cp_sp = work_dir / last_weights_name
-    best_emb_cp_sp = work_dir / best_emb_weights_name
-    last_emb_cp_sp = work_dir / last_emb_weights_name
-    
-    return best_cp_sp, last_cp_sp, best_emb_cp_sp, last_emb_cp_sp
+    return save_paths
 
 
 class AverageMeter(object):

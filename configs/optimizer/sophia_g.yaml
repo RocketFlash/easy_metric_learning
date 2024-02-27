@@ -1,6 +1,9 @@
+type: sophia_g
 optimizer:
   _target_: src.optimizer.sophia_g.SophiaG
   rho: 0.04
   weight_decay: 1e-5
   lr: 1e-3
+
+backbone_lr_scaler: 1e-3
   

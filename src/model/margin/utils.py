@@ -7,10 +7,12 @@ def l2_norm(input_x,axis=1):
     return output
 
 
-def get_incremental_margin(m_max,
-                           m_min=0,
-                           n_epochs=10, 
-                           mode='linear'):
+def get_incremental_margin(
+        m_max,
+        m_min=0,
+        n_epochs=10, 
+        mode='linear'
+    ):
     
     if isinstance(m_max, dict):
         m_vals = []

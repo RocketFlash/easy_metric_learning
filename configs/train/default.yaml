@@ -1,0 +1,11 @@
+grad_accum_steps: 5
+calculate_GAP: False
+incremental_margin:
+
+cutmix:
+  p: 0
+  alpha: 0.5
+
+mixup:
+  p: 0
+  alpha: 0.5

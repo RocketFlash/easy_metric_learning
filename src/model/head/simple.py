@@ -39,9 +39,6 @@ class SimpleHead(nn.Module):
 
     def forward(self, x):
         x = self.dropout(x)
-        print('dropout:', x.shape)
         x = self.head(x)
-        print('head:', x.shape)
         x = self.bn(x)
-        print('bn:', x.shape)
         return x

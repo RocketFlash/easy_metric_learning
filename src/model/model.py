@@ -9,19 +9,19 @@ class EmbeddigsNet(nn.Module):
     A class for embeddings learning model  
     
     Args:
-        backbone_config : 
+        config_backbone : 
             config with backbone parameters 
-        head_config : 
+        config_head : 
             config with head parameters
     """
     def __init__(
             self, 
-            backbone_config, 
-            head_config, 
+            config_backbone, 
+            config_head, 
         ):
         super(EmbeddigsNet, self).__init__()
-        backbone, backbone_out_feats = get_backbone(backbone_config)
-        self.head = get_head(head_config, backbone_out_feats)
+        backbone, backbone_out_feats = get_backbone(config_backbone)
+        self.head = get_head(config_head, backbone_out_feats)
         self.backbone = backbone
 
 
@@ -63,12 +63,12 @@ class MLNet(nn.Module):
 
 
 def get_model_embeddings(
-        backbone_config, 
-        head_config
+        config_backbone, 
+        config_head
     ):
 
     model = EmbeddigsNet(
-        backbone_config=backbone_config, 
-        head_config=head_config
+        config_backbone=config_backbone, 
+        config_head=config_head
     )
     return model

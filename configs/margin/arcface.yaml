@@ -5,4 +5,4 @@ easy_margin: False
 ls_eps: 0.1
 autoscale: False
 dynamic_margin: 
-ids_count: 
+id_counts: 

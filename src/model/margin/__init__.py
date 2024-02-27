@@ -13,10 +13,10 @@ import numpy as np
 
 def calculate_dynamic_margin(
         dynamic_margin_config, 
-        ids_counts, 
+        id_counts, 
     ):
     dynamic_margin = {}
-    for class_id, class_id_cnt in ids_counts.items():
+    for class_id, class_id_cnt in id_counts.items():
         dynamic_margin[class_id] = dynamic_margin_config.hb*class_id_cnt**(-dynamic_margin_config.lmbda) + dynamic_margin_config.lb
 
     return dynamic_margin
@@ -27,41 +27,41 @@ def calculate_autoscale(n_classes):
 
 
 def get_margin(
-        margin_config,
+        config_margin,
         embeddings_size=512, 
         n_classes=100,
     ):
 
-    margin_type=margin_config.type
-    if margin_config.autoscale:
+    margin_type=config_margin.type
+    if config_margin.autoscale:
         s = calculate_autoscale(n_classes)
     else:
-        s = margin_config.s
+        s = config_margin.s
 
-    if margin_config.dynamic_margin is not None:
+    if config_margin.dynamic_margin is not None:
         m = calculate_dynamic_margin(
-            margin_config.dynamic_margin, 
-            margin_config.ids_counts, 
+            config_margin.dynamic_margin, 
+            config_margin.id_counts, 
         )
     else:
-        m = margin_config.m
+        m = config_margin.m
 
     if margin_type=='adacos':
         margin = AdaCos(
             in_features=embeddings_size,
             out_features=n_classes, 
             m=m,  
-            ls_eps=margin_config.ls_eps
+            ls_eps=config_margin.ls_eps
         )
     elif margin_type=='adaface_bn':
         margin = AdaFace(
             in_features=embeddings_size,
             out_features=n_classes,
             m=m,
-            h=margin_config.h,
+            h=config_margin.h,
             s=s,
-            t_alpha=margin_config.t_alpha,
-            ls_eps=margin_config.ls_eps,
+            t_alpha=config_margin.t_alpha,
+            ls_eps=config_margin.ls_eps,
             use_batchnorm=True
         )
     elif margin_type=='adaface':
@@ -69,9 +69,9 @@ def get_margin(
             in_features=embeddings_size,
             out_features=n_classes,
             m=m,
-            h=margin_config.h,
+            h=config_margin.h,
             s=s,
-            t_alpha=margin_config.t_alpha
+            t_alpha=config_margin.t_alpha
         )
     elif margin_type=='cosface':
         margin = AddMarginProduct(
@@ -86,9 +86,9 @@ def get_margin(
             out_features=n_classes, 
             s=s, 
             m=m,
-            K=margin_config.K, 
-            easy_margin=margin_config.easy_margin, 
-            ls_eps=margin_config.ls_eps
+            K=config_margin.K, 
+            easy_margin=config_margin.easy_margin, 
+            ls_eps=config_margin.ls_eps
         )
     elif margin_type=='elastic_arcface':
         margin = ElasticArcFace(
@@ -96,7 +96,7 @@ def get_margin(
             out_features=n_classes, 
             s=s, 
             m=m, 
-            plus=margin_config.plus
+            plus=config_margin.plus
         )
     elif margin_type=='elastic_arcface_plus':
         margin = ElasticArcFace(
@@ -104,7 +104,7 @@ def get_margin(
             out_features=n_classes, 
             s=s, 
             m=m, 
-            plus=margin_config.plus
+            plus=config_margin.plus
         )
     elif margin_type=='elastic_cosface':
         margin = ElasticCosFace(
@@ -112,7 +112,7 @@ def get_margin(
             out_features=n_classes, 
             s=s, 
             m=m, 
-            plus=margin_config.plus
+            plus=config_margin.plus
         )
     elif margin_type=='elastic_cosface_plus':
         margin = ElasticCosFace(
@@ -120,7 +120,7 @@ def get_margin(
             out_features=n_classes, 
             s=s, 
             m=m, 
-            plus=margin_config.plus
+            plus=config_margin.plus
         )
     elif margin_type=='arcface':
         margin = ArcMarginProduct(
@@ -128,8 +128,8 @@ def get_margin(
             out_features=n_classes, 
             s=s, 
             m=m, 
-            easy_margin=margin_config.easy_margin, 
-            ls_eps=margin_config.ls_eps
+            easy_margin=config_margin.easy_margin, 
+            ls_eps=config_margin.ls_eps
         )
     elif margin_type=='curricularface':
         margin = CurricularFace(
@@ -137,18 +137,18 @@ def get_margin(
             out_features=n_classes, 
             s=s, 
             m=m,  
-            ls_eps=margin_config.ls_eps
+            ls_eps=config_margin.ls_eps
         )
     elif margin_type=='combined':
         margin = CombinedMargin(
             in_features=embeddings_size,
             out_features=n_classes,
             s=s,
-            m1=margin_config.m1,
+            m1=config_margin.m1,
             m=m,
-            m3=margin_config.m3,
-            ls_eps=margin_config.ls_eps,  
-            easy_margin=margin_config.easy_margin
+            m3=config_margin.m3,
+            ls_eps=config_margin.ls_eps,  
+            easy_margin=config_margin.easy_margin
         )
     else:
         margin = Softmax(

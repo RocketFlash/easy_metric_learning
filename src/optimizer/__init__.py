@@ -20,10 +20,10 @@ def get_optimizer(model, optimizer_config):
             }
         ]
 
-    loss_fn = hydra.utils.instantiate(
+    optimizer = hydra.utils.instantiate(
         optimizer_config.get('optimizer'), 
         params=params,
         _convert_="object"
     )
     
-    return loss_fn
+    return optimizer

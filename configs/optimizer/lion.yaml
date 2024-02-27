@@ -1,3 +1,4 @@
+type: lion
 optimizer:
   _target_: lion_pytorch.Lion
   weight_decay: 1e-5

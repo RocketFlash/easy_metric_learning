@@ -1,3 +1,4 @@
+type: sgd
 optimizer:
   _target_: torch.optim.AdamW
   nesterov: True

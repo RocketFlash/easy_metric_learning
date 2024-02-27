@@ -2,9 +2,9 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import json
-from easydict import EasyDict as edict
 from omegaconf import OmegaConf
 from omegaconf.listconfig import ListConfig
+from dataclasses import dataclass
 
 
 def worker_init_fn(worker_id):                                                          
@@ -106,6 +106,28 @@ def get_train_val_split(annotation, fold=0):
     return df_train, df_valid
 
 
+@dataclass
+class DatasetStats():
+    n_classes_total: int
+    n_classes_train: int
+    n_classes_valid: int
+    n_samples_total: int
+    n_samples_train: int
+    n_samples_valid: int
+    label_counts: dict
+    id_counts: dict
+
+    def __repr__(self):
+        repr_str = ''
+        repr_str += f'          N classes total : {self.n_classes_total}\n'
+        repr_str += f'          N classes train : {self.n_classes_train}\n'
+        repr_str += f'          N classes valid : {self.n_classes_valid}\n'
+        repr_str += f'          N samples total : {self.n_samples_total}\n'
+        repr_str += f'          N samples train : {self.n_samples_train}\n'
+        repr_str += f'          N samples valid : {self.n_samples_valid}\n'
+        return repr_str
+
+
 def get_dataset_stats(
         df_train, 
         labels_to_ids,
@@ -127,6 +149,7 @@ def get_dataset_stats(
                 ignore_index=True, 
                 sort=False
             )
+        
         df_full = pd.concat(
             [df_train, df_valid], 
             ignore_index=True, 
@@ -139,18 +162,18 @@ def get_dataset_stats(
         n_classes_valid = 0
         n_samples_valid = 0
 
-    classes_counts = dict(df_full[label_column].value_counts())
-    ids_counts = {labels_to_ids[k]:v for k, v in classes_counts}
+    label_counts = dict(df_full[label_column].value_counts())
+    id_counts = {labels_to_ids[k]: int(v) for k, v in label_counts.items()}
 
-    dataset_stats = edict(dict(
+    dataset_stats = DatasetStats(
         n_classes_total=df_full[label_column].nunique(),
         n_classes_train=df_train[label_column].nunique(),
         n_classes_valid=n_classes_valid,
         n_samples_total=len(df_full),
         n_samples_train=len(df_train),
         n_samples_valid=n_samples_valid,
-        classes_counts=classes_counts,
-        ids_counts=ids_counts
-    ))
+        label_counts=label_counts,
+        id_counts=id_counts,
+    )
 
     return dataset_stats

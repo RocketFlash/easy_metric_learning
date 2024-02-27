@@ -1,6 +1,7 @@
 import logging
 import time
 import json
+from omegaconf import OmegaConf
 
 
 class DayHourMinute(object):
@@ -37,8 +38,14 @@ class Logger():
 
     def info_config(
             self,
-            config_dict
+            config
         ):
+
+        config_dict = OmegaConf.to_container(
+            config, 
+            resolve=True
+        )
+        
         self.logger.info(
             json.dumps(
                 config_dict, 
@@ -52,17 +59,7 @@ class Logger():
             self, 
             dataset_stats
         ):
-
-        self.logger.info(f'''
-        ============   Dataset info          ============
-        N classes total    : {dataset_stats.n_classes_total}
-        N classes train    : {dataset_stats.n_classes_train}
-        N classes valid    : {dataset_stats.n_classes_valid}
-
-        N samples total    : {dataset_stats.n_samples_total}
-        N samples train    : {dataset_stats.n_samples_train}
-        N samples valid    : {dataset_stats.n_samples_valid}
-        =================================================''')
+        self.logger.info('\n            ===== Dataset info =====\n' + dataset_stats.__repr__())
 
     
     def info_model(
@@ -80,11 +77,9 @@ class Logger():
 
 
     def info_epoch_train(self, epoch, stats_train, stats_valid):
-        epoch_info_str = f'Epoch: {epoch} Train Loss: {stats_train.loss:.5f} Train Acc: {stats_train.acc:.5f}\n'
+        epoch_info_str = f'Epoch: {epoch} Train Loss: {stats_train.loss:.5f}\n'
         if stats_valid is not None:
-            epoch_info_str += f'{" "*37} Valid Loss: {stats_valid.loss:.5f} Valid Acc: {stats_valid.acc:.5f}'
-            if stats_valid.gap is not None:
-                epoch_info_str += f'\n{" "*37} GAP value : {stats_valid.gap:.5f}'
+            epoch_info_str += f'{" "*37} Valid Loss: {stats_valid.loss:.5f}'
         self.logger.info(epoch_info_str)
     
 

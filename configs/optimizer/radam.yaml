@@ -1,3 +1,4 @@
+type: radam
 optimizer:
   _target_: torch_optimizer.RAdam
   eps: 1e-8

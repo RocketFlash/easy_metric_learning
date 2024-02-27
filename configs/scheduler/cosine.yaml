@@ -2,4 +2,8 @@ scheduler:
   _target_: torch.optim.lr_scheduler.CosineAnnealingLR
   T_max: 10
   eta_min: 10
+
+# warmup_scheduler:
+#   optimizer_type: ${optimizer.type}
+#   warmup_period: 100
   

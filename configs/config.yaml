@@ -17,7 +17,7 @@ defaults:
 debug : False
 
 embeddings_size: 1024
-batch_size : 32
+batch_size : 8
 epochs : 20
 fold: 0 
 random_state : 28 
@@ -35,13 +35,13 @@ mlflow_server_uri : https://r3dev-mlflow.rebotics.net/
 conf_thresh: 0.1
 mosaic_prob: 0.5
 amp: True
-
-resume :                    
-load_weights:
+                  
+load_checkpoint:
+load_mode: resume
 
 run_info: ''
-run_name: ''             
-project_name: 'center_based_pascal_voc_detection'
+run_name: 'test_run'             
+project_name: 'product_recognition_v3'
 work_dirs: "./work_dirs/"
 
 
