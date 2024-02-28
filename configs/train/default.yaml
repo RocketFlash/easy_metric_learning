@@ -1,4 +1,4 @@
-grad_accum_steps: 5
+grad_accum_steps: ${grad_accum_steps}
 calculate_GAP: False
 incremental_margin:
 

@@ -1,13 +1,20 @@
 import torch.nn as nn
 import hydra
+from easydict import EasyDict as edict
 
 
-def get_loss(loss_config, weight=None):
+def get_loss(loss_config, device='cpu', weight=None):
+    loss_fns = {}
 
-    loss_fn = hydra.utils.instantiate(
-        loss_config.get('loss'), 
-        weight=weight,
-        _convert_="object"
-    )
+    for loss_cfg in loss_config.losses:
+        loss_fn = hydra.utils.instantiate(
+            loss_cfg.get('loss_fn'), 
+            weight=weight,
+            _convert_="object"
+        ).to(device)
+        loss_fns[loss_cfg.name] = edict({
+            'loss_fn': loss_fn, 
+            'weight' : loss_cfg.weight
+        })
     
-    return loss_fn
+    return loss_fns

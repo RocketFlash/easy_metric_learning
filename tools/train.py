@@ -20,6 +20,7 @@ from src.trainer import MLTrainer
 from src.experiment_tracker import get_experiment_trackers
 
 
+
 @hydra.main(version_base=None,
             config_path='../configs/',
             config_name='config')
@@ -56,7 +57,10 @@ def train(config):
     ).to(device)
     logger.info_model(config)
 
-    optimizer = get_optimizer(model, optimizer_config=config.optimizer)
+    optimizer = get_optimizer(
+        model=model, 
+        optimizer_config=config.optimizer
+    )
     
     if config.load_checkpoint is not None:
         checkpoint_data = load_checkpoint(
@@ -90,7 +94,7 @@ def train(config):
     for epoch in range(start_epoch, config.epochs + 1):
         stats_train = trainer.train_epoch(train_loader)
         stats_valid = trainer.valid_epoch(valid_loader)
-        check_loss = stats_valid.loss
+        check_loss = stats_valid.losses.total_loss
 
         trainer.update_epoch()
         
@@ -118,6 +122,15 @@ def train(config):
                 save_paths.last_emb_weights_path, 
                 save_paths.best_emb_weights_path
             )
+
+        stats = dict(
+            lr=optimizer.param_groups[-1]['lr'],
+            epoch=epoch,
+            train=stats_train,
+            valid=stats_valid
+        )
+        for exp_tracker_name, exp_tracker in exp_trackers.items():
+            exp_tracker.send_stats(stats)
             
         logger.info_epoch_train(
             epoch, 
@@ -131,6 +144,10 @@ def train(config):
             num_epochs=config.epochs, 
             workdir_path=work_dir
         )
+
+    for exp_tracker_name, exp_tracker in exp_trackers.items():
+        logger.info(f'Finish {exp_tracker_name}')
+        exp_tracker.finish_run()
 
     logger.info(f"Training done, all results saved to {work_dir}")
 

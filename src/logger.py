@@ -30,6 +30,7 @@ class Logger():
         self.stdout_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
         self.file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
         self.logger.setLevel(logging.INFO)
+        self.tab_string = '    '
 
 
     def info(self, txt):
@@ -59,7 +60,10 @@ class Logger():
             self, 
             dataset_stats
         ):
-        self.logger.info('\n            ===== Dataset info =====\n' + dataset_stats.__repr__())
+
+        dataset_info_header = f'\n{self.tab_string*2}=============== {"Dataset info":<15} ===============\n'
+        dataset_info_str = dataset_info_header + dataset_stats.__repr__()
+        self.logger.info(dataset_info_str)
 
     
     def info_model(
@@ -67,31 +71,41 @@ class Logger():
             config, 
         ):
 
-        self.logger.info(f'''
-        ============   Model parameters   ===============
-        Backbone           : {config.backbone.type}
-        Head               : {config.head.type}
-        Margin             : {config.margin.type}
-        Embeddings size    : {config.embeddings_size}
-        =================================================''')
+        model_info_header = f'\n{self.tab_string*2}=============== {"Model params":<15} ===============\n'
+        model_info_str = model_info_header
+        model_info_str += f'{self.tab_string*2}{"Backbone":<15}: {config.backbone.type}\n'
+        model_info_str += f'{self.tab_string*2}{"Head":<15}: {config.head.type}\n'
+        model_info_str += f'{self.tab_string*2}{"Margin":<15}: {config.margin.type}\n'
+        model_info_str += f'{self.tab_string*2}{"Embeddings size":<15}: {config.embeddings_size}\n'
+        self.logger.info(model_info_str)
 
 
     def info_epoch_train(self, epoch, stats_train, stats_valid):
-        epoch_info_str = f'Epoch: {epoch} Train Loss: {stats_train.loss:.5f}\n'
+        epoch_info_str = f'Epoch {epoch} stats:\n'
+        epoch_info_str += f'{self.tab_string}Train Losses:\n'
+        for k_loss, v_loss in stats_train['losses'].items():
+            epoch_info_str += f'{self.tab_string*2}{k_loss:<15} : {v_loss:.5f}\n'
+
         if stats_valid is not None:
-            epoch_info_str += f'{" "*37} Valid Loss: {stats_valid.loss:.5f}'
+            epoch_info_str += f'{self.tab_string}Valid Losses:\n'
+            for k_loss, v_loss in stats_valid['losses'].items():
+                epoch_info_str += f'{self.tab_string*2}{k_loss:<15} : {v_loss:.5f}\n'
         self.logger.info(epoch_info_str)
     
 
     def info_epoch_time(self, start_time, start_epoch, epoch, num_epochs, workdir_path):
-        elapsed, remaining = calculate_time(start_time=start_time, 
-                                            start_epoch=start_epoch, 
-                                            epoch=epoch, 
-                                            epochs=num_epochs)
+        elapsed, remaining = calculate_time(
+            start_time=start_time, 
+            start_epoch=start_epoch, 
+            epoch=epoch, 
+            epochs=num_epochs
+        )
+        time_info_str = f"Epoch {epoch}/{num_epochs} finishied\n"
+        time_info_str += f"Checkpoint was saved in {workdir_path}\n"
+        time_info_str += f"{self.tab_string*2}{'Elapsed':<15} {elapsed.days:d} days {elapsed.hours:d} hours {elapsed.minutes:d} minutes\n"
+        time_info_str += f"{self.tab_string*2}{'Remaining':<15} {remaining.days:d} days {remaining.hours:d} hours {remaining.minutes:d} minutes\n"
+        self.logger.info(time_info_str)
 
-        self.logger.info(f"Epoch {epoch}/{num_epochs} finishied, saved to {workdir_path} ." + \
-                         f"\n{' '*37} Elapsed {elapsed.days:d} days {elapsed.hours:d} hours {elapsed.minutes:d} minutes." + \
-                         f"\n{' '*37} Remaining {remaining.days:d} days {remaining.hours:d} hours {remaining.minutes:d} minutes.")
 
     def close(self):
         self.file_handler.close()

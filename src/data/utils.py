@@ -118,13 +118,14 @@ class DatasetStats():
     id_counts: dict
 
     def __repr__(self):
+        tab_string = '    '
         repr_str = ''
-        repr_str += f'          N classes total : {self.n_classes_total}\n'
-        repr_str += f'          N classes train : {self.n_classes_train}\n'
-        repr_str += f'          N classes valid : {self.n_classes_valid}\n'
-        repr_str += f'          N samples total : {self.n_samples_total}\n'
-        repr_str += f'          N samples train : {self.n_samples_train}\n'
-        repr_str += f'          N samples valid : {self.n_samples_valid}\n'
+        repr_str += f'{tab_string*2}classes total : {self.n_classes_total}\n'
+        repr_str += f'{tab_string*2}classes train : {self.n_classes_train}\n'
+        repr_str += f'{tab_string*2}classes valid : {self.n_classes_valid}\n'
+        repr_str += f'{tab_string*2}samples total : {self.n_samples_total}\n'
+        repr_str += f'{tab_string*2}samples train : {self.n_samples_train}\n'
+        repr_str += f'{tab_string*2}samples valid : {self.n_samples_valid}\n'
         return repr_str
 
 

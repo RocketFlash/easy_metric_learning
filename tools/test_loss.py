@@ -31,7 +31,8 @@ def test_dataloader(config):
         n_classes=len(labels_to_ids)
     ).to(device)
 
-    loss_fn = get_loss(loss_config=config.loss).to(device)
+    loss_fns = get_loss(loss_config=config.loss, device=device)
+
     optimizer = get_optimizer(model, optimizer_config=config.optimizer)
     scheduler = get_scheduler(optimizer, scheduler_config=config.scheduler)
     warmup_scheduler = get_warmup_scheduler(optimizer, scheduler_config=config.scheduler)
@@ -44,8 +45,9 @@ def test_dataloader(config):
         annos  = annos.to(device)
 
         pred = model(images, annos)
-        loss = loss_fn(pred, annos)
-        print(loss)
+        for loss_name, loss_params in loss_fns.items():
+            loss = loss_params.loss_fn(pred, annos) * loss_params.weight
+            print(f'{loss_name} : {loss}')
         break
 
 
