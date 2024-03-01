@@ -52,11 +52,13 @@ def main(CONFIGS, args):
 
     device = torch.device(CONFIGS['GENERAL']['DEVICE'])
 
-    df_dtype = {'label': str,
-                'file_name': str,
-                'width': int,
-                'height': int,
-                'is_test':int}  
+    df_dtype = {
+        'label': str,
+        'file_name': str,
+        'width': int,
+        'height': int,
+        'is_test':int
+    }  
 
     df = pd.read_csv(dataset_csv, 
                      dtype=df_dtype)
@@ -69,17 +71,19 @@ def main(CONFIGS, args):
         eval_status = df['evaluation_status'].values
     
     CONFIGS['DATA']['USE_CATEGORIES'] = False
-    data_loader, dataset = get_loader(df,
-                                      data_config=CONFIGS["DATA"],
-                                      split='val',
-                                      test=True,
-                                      batch_size=bs,
-                                      num_thread=n_workers,
-                                      label_column='label',
-                                      fname_column='file_name',
-                                      return_filenames=True,
-                                      transform_name='no_aug',
-                                      use_bboxes=args.use_bboxes)
+    data_loader, dataset = get_loader(
+        df,
+        data_config=CONFIGS["DATA"],
+        split='val',
+        test=True,
+        batch_size=bs,
+        num_thread=n_workers,
+        label_column='label',
+        fname_column='file_name',
+        return_filenames=True,
+        transform_name='no_aug',
+        use_bboxes=args.use_bboxes
+    )
     ids_to_labels = dataset.get_ids_to_labels()
 
     if args.model_type=='torch':

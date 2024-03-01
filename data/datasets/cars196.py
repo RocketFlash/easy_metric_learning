@@ -10,7 +10,7 @@ import cv2
 class Cars196(BaseDataset):
     def __init__(self, save_path):
         super(Cars196, self).__init__(save_path=save_path)
-        self.dataset_folder = Path(self.dataset_path) / 'CARS196'
+        self.dataset_folder = Path(self.dataset_path) / 'cars196'
         self.dataset_url = 'http://ftp.cs.stanford.edu/cs/cvgl/CARS196.zip'
 
 

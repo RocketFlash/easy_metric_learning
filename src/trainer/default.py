@@ -1,16 +1,11 @@
-import os
 from tqdm.auto import tqdm
-import numpy as np
 import torch
-import torchvision
-import torch.nn as nn
 from torch.cuda import amp
 from easydict import EasyDict as edict
 
 from ..utils import AverageMeter
-from ..metric import GAP
 from ..model.margin.utils import get_incremental_margin
-from ..transform import cutmix, mixup
+from ..transform import mix_transform
 from ..loss.mix import MixCriterion
 from ..loss import get_loss
 from ..visualization import save_batch_grid
@@ -48,7 +43,6 @@ class MLTrainer:
         
         self.debug = config.debug
         self.visualize_batch = config.visualize_batch
-        self.calculate_GAP = config.train.calculate_GAP
         self.grad_accum_steps = config.train.grad_accum_steps
 
         self.mix_loss_fns = {k: MixCriterion(v) for k, v in self.loss_fns.items()}
@@ -64,28 +58,6 @@ class MLTrainer:
             self.incremental_margin = None
 
 
-    def mix_transform(self, images, targets):
-        p = np.random.rand()
-        is_mixed = False
-
-        if self.config.train.cutmix.p>0 or self.config.train.mixup.p>0:
-            if p < self.config.train.cutmix.p and p < self.config.train.mixup.p:
-                p = np.random.rand()
-                if p < 0.5:
-                    images, targets = cutmix(images, targets, self.config.train.cutmix.alpha)
-                else:
-                    images, targets = mixup(images, targets, self.config.train.mixup.alpha)
-                is_mixed = True
-            elif p < self.p_cutmix:
-                images, targets = cutmix(images, targets, self.config.train.cutmix.alpha)
-                is_mixed = True
-            elif p < self.p_mixup:
-                images, targets = mixup(images, targets, self.config.train.mixup.alpha)
-                is_mixed = True
-
-        return images, targets, is_mixed
-
-
     def train_epoch(self, train_loader):
         self.model.train()
 
@@ -94,7 +66,6 @@ class MLTrainer:
 
         loss_meters = {k: AverageMeter() for k, v in self.loss_fns.items()}
         loss_meters['total_loss'] = AverageMeter()
-        # metric_meters = {k: AverageMeter() for k, v in self.loss_fns.items()}
         
         tqdm_train = tqdm(
             train_loader, 
@@ -104,7 +75,14 @@ class MLTrainer:
         for batch_index, (images, targets) in enumerate(tqdm_train):
             if self.debug and batch_index>=10: break
 
-            images, targets, is_mixed = self.mix_transform(images, targets)
+            images, targets, is_mixed = mix_transform(
+                images, 
+                targets,
+                cutmix_p=self.config.transform.cutmix.p,
+                cutmix_alpha=self.config.transform.cutmix.alpha,
+                mixup_p=self.config.transform.mixup.p,
+                mixup_alpha=self.config.transform.mixup.alpha
+            )
             
             if is_mixed:
                 criterion = self.mix_loss_fns
@@ -197,10 +175,8 @@ class MLTrainer:
 
         loss_meters = {k: AverageMeter() for k, v in self.loss_fns.items()}
         loss_meters['total_loss'] = AverageMeter()
-        activation = nn.Softmax(dim=1)
 
         tqdm_val = tqdm(valid_loader, total=int(len(valid_loader)))
-        vals_gt, vals_pred, vals_conf = [], [], []
 
         criterion = self.loss_fns
         
@@ -232,15 +208,6 @@ class MLTrainer:
                     total_loss += loss
 
                 loss_meters['total_loss'].update(total_loss.detach().item())
-
-                if self.calculate_GAP:
-                    output_probs = activation(output)
-                    confs, pred = torch.max(output_probs, dim=1)
-
-                    vals_conf.extend(confs.cpu().numpy().tolist())
-                    vals_pred.extend(pred.cpu().numpy().tolist())
-                    vals_gt.extend(targets.cpu().numpy().tolist())
-
                 
                 info_params = dict(
                     epoch=self.epoch, 
@@ -254,10 +221,6 @@ class MLTrainer:
         stats = dict(
             losses={loss_name: loss_meter.avg for loss_name, loss_meter in loss_meters.items()},
         )
-
-        if self.calculate_GAP:
-            gap_val = GAP(vals_pred, vals_conf, vals_gt)
-            stats['gap'] = gap_val
 
         return edict(stats)
 

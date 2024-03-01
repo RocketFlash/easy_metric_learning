@@ -8,7 +8,7 @@ from pathlib import Path
 import hydra
 from omegaconf import OmegaConf
 
-from src.data import get_data_from_config
+from src.data import get_train_data_from_config
 from src.model import get_model
 from src.optimizer import get_optimizer
 from src.logger import Logger
@@ -18,7 +18,6 @@ from src.utils import load_checkpoint, save_ckp, get_save_paths
 from src.utils import seed_everything, get_device
 from src.trainer import MLTrainer
 from src.experiment_tracker import get_experiment_trackers
-
 
 
 @hydra.main(version_base=None,
@@ -39,10 +38,13 @@ def train(config):
     start_epoch = 1
     
     save_paths = get_save_paths(work_dir)
-    data_info  = get_data_from_config(config)
+    data_info  = get_train_data_from_config(config)
 
     train_loader = data_info.train_loader
     valid_loader = data_info.valid_loader
+
+    logger.info_data(data_info.train_dataset_stats) 
+    logger.info_data(data_info.valid_dataset_stats) 
 
     save_labels_to_ids(data_info.labels_to_ids, save_dir=work_dir)
     config.margin.id_counts = data_info.dataset_stats.id_counts
@@ -74,8 +76,6 @@ def train(config):
         optimizer   = checkpoint_data['optimizer'] if 'optimizer' in checkpoint_data else optimizer
         start_epoch = checkpoint_data['start_epoch'] if 'start_epoch' in checkpoint_data else start_epoch
         best_loss   = checkpoint_data['best_loss'] if 'best_loss' in checkpoint_data else best_loss
-   
-    logger.info(f'Current best loss: {best_loss}')
     
     exp_trackers = get_experiment_trackers(config)
 
@@ -90,11 +90,21 @@ def train(config):
         ids_to_labels=data_info.ids_to_labels
     )
 
+    # evaluator = MLEvaluator(
+
+    # )
+
+    logger.info(f'Current best loss: {best_loss}')
+    
     start_time = time.time()
     for epoch in range(start_epoch, config.epochs + 1):
         stats_train = trainer.train_epoch(train_loader)
-        stats_valid = trainer.valid_epoch(valid_loader)
-        check_loss = stats_valid.losses.total_loss
+        if valid_loader is not None:
+            stats_valid = trainer.valid_epoch(valid_loader)
+            check_loss  = stats_valid.losses.total_loss
+        else:
+            stats_valid = None
+            check_loss  = stats_train.losses.total_loss
 
         trainer.update_epoch()
         
@@ -112,7 +122,6 @@ def train(config):
         )
         
         if check_loss < best_loss:
-            logger.info('Saving best model')
             best_loss = check_loss
             shutil.copyfile(
                 save_paths.last_weights_path, 
@@ -122,6 +131,7 @@ def train(config):
                 save_paths.last_emb_weights_path, 
                 save_paths.best_emb_weights_path
             )
+            logger.info('Best model was saved')
 
         stats = dict(
             lr=optimizer.param_groups[-1]['lr'],

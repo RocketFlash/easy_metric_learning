@@ -18,7 +18,6 @@ from src.data import get_data_from_config
 def test_dataloader(config):
     data_info = get_data_from_config(config)
     train_loader = data_info.train_loader
-    valid_loader = data_info.valid_loader
     labels_to_ids = data_info.labels_to_ids
 
     config.margin.id_counts = data_info.dataset_stats.id_counts

@@ -1,7 +1,7 @@
 type: adam
 optimizer:
   _target_: torch.optim.Adam
-  weight_decay: 1e-5
+  weight_decay: 0
   lr: 1e-3
 
 backbone_lr_scaler: 1e-3

@@ -5,7 +5,7 @@ defaults:
   - dataset : dataset_v0
   - dataloader: default
   - loss: cross_entropy
-  - eval : default
+  - evaluation : default
   - scheduler : cosine
   - optimizer : adamw
   - transform : default
@@ -20,28 +20,26 @@ embeddings_size: 512
 batch_size : 256
 epochs : 20
 fold: 0 
-grad_accum_steps: 3
+grad_accum_steps: 1
 random_state : 28 
 
 img_h: 224
 img_w: 224
 
 n_workers: 8
-device : 0         
+device : 0       
+visualize_batch: True  
 use_wandb  : True
 use_mlflow : True
-visualize_batch: True
 mlflow_server_uri : https://r3dev-mlflow.rebotics.net/
 
-conf_thresh: 0.1
-mosaic_prob: 0.5
 amp: True
                   
 load_checkpoint:
 load_mode: resume
 
 run_info: ''
-run_name: '${margin.type}_${backbone.type}_${head.type}_${dataset.name}_img${img_h}x${img_w}_emb${embeddings_size}'             
+run_name: '${margin.type}_${backbone.type}_${head.type}_${dataset.name}_img${img_h}x${img_w}_emb${embeddings_size}${run_info}'             
 project_name: 'product_recognition_v3'
 work_dirs: "./work_dirs/"
 

@@ -1,6 +1,6 @@
 import albumentations as A
-from .cutmix import cutmix
-from .mixup import mixup
+from .mix import mix_transform
+
 import hydra
 from torchvision import transforms
 

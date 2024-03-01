@@ -1,11 +1,2 @@
 grad_accum_steps: ${grad_accum_steps}
-calculate_GAP: False
 incremental_margin:
-
-cutmix:
-  p: 0
-  alpha: 0.5
-
-mixup:
-  p: 0
-  alpha: 0.5

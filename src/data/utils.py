@@ -2,9 +2,29 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import json
+import torch
 from omegaconf import OmegaConf
 from omegaconf.listconfig import ListConfig
 from dataclasses import dataclass
+
+
+def get_labels_to_ids_map(labels):
+    labels_to_ids = {}
+    ids_to_labels = {}
+    idx = 0
+
+    for label in labels:
+        if label not in labels_to_ids:
+            labels_to_ids[label] = idx
+            ids_to_labels[idx] = label
+            idx+=1
+    
+    return labels_to_ids, ids_to_labels
+
+
+def collate_fn(batch):
+    batch = list(filter(lambda x: x is not None, batch))
+    return torch.utils.data.dataloader.default_collate(batch)
 
 
 def worker_init_fn(worker_id):                                                          
@@ -55,24 +75,11 @@ def read_pd(file_path):
     return df
 
 
-def get_labels_to_ids_map(labels):
-    labels_to_ids = {}
-    ids_to_labels = {}
-    idx = 0
-
-    for label in labels:
-        if label not in labels_to_ids:
-            labels_to_ids[label] = idx
-            ids_to_labels[idx] = label
-            idx+=1
-    
-    return labels_to_ids, ids_to_labels
-
-
 def get_train_val_from_file(annotation_file, fold=0):
     df_folds = read_pd(annotation_file)
     if 'is_test' in df_folds:
         df_train = df_folds[df_folds['is_test']==0]
+        df_valid = None
     else:
         if 'fold' not in df_folds:
             df_folds['fold'] = 0
@@ -93,88 +100,120 @@ def get_train_val_split(annotation, fold=0):
         df_valid = []
         for annotation_file in annotation:
             (df_train_i, 
-             df_valid_i) = get_train_val_from_file(annotation_file, 
-                                                   fold=fold)
+             df_valid_i) = get_train_val_from_file(
+                 annotation_file, 
+                 fold=fold
+            )
             df_train.append(df_train_i)
-            df_valid.append(df_valid_i)
+            if df_valid_i is not None:
+                df_valid.append(df_valid_i)
+        if not df_valid:
+            df_valid = None
             
     else:
         (df_train, 
-         df_valid) = get_train_val_from_file(annotation, 
-                                             fold=fold)
+         df_valid) = get_train_val_from_file(
+             annotation, 
+             fold=fold
+        )
         
     return df_train, df_valid
 
 
+def get_test_from_file(annotation_file, fold=0):
+    df_folds = read_pd(annotation_file)
+    if 'is_test' in df_folds:
+        df_test = df_folds[df_folds['is_test']==1]
+    else:
+        if 'fold' not in df_folds:
+            df_folds['fold'] = 0
+
+        df_test = df_folds[((df_folds.fold == fold) & 
+                            (df_folds.fold >= 0)) | 
+                            (df_folds.fold == -2)]
+
+    return df_test
+
+
+def get_test_split(annotation, fold=0):
+    if isinstance(annotation, list):
+        df_test = []
+        for annotation_file in annotation:
+            df_test_i = get_test_from_file(
+                 annotation_file, 
+                 fold=fold
+            )
+            df_test.append(df_test_i)    
+    else:
+        df_test = get_test_from_file(
+             annotation, 
+             fold=fold
+        )
+        
+    return df_test
+
+
 @dataclass
 class DatasetStats():
-    n_classes_total: int
-    n_classes_train: int
-    n_classes_valid: int
-    n_samples_total: int
-    n_samples_train: int
-    n_samples_valid: int
+    n_classes: int
+    n_samples: int
     label_counts: dict
     id_counts: dict
+    split: str
 
     def __repr__(self):
         tab_string = '    '
         repr_str = ''
-        repr_str += f'{tab_string*2}classes total : {self.n_classes_total}\n'
-        repr_str += f'{tab_string*2}classes train : {self.n_classes_train}\n'
-        repr_str += f'{tab_string*2}classes valid : {self.n_classes_valid}\n'
-        repr_str += f'{tab_string*2}samples total : {self.n_samples_total}\n'
-        repr_str += f'{tab_string*2}samples train : {self.n_samples_train}\n'
-        repr_str += f'{tab_string*2}samples valid : {self.n_samples_valid}\n'
+        repr_str += f'{tab_string*2}classes : {self.n_classes}\n'
+        repr_str += f'{tab_string*2}samples : {self.n_samples}\n'
         return repr_str
-
+    
 
 def get_dataset_stats(
-        df_train, 
+        df, 
         labels_to_ids,
-        df_valid=None,
-        label_column='label'
+        label_column='label',
+        split='train'
     ):
     
-    if isinstance(df_train, list):
-        df_train = pd.concat(
-            df_train, 
+    if isinstance(df, list):
+        df = pd.concat(
+            df, 
             ignore_index=True, 
             sort=False
         )
 
-    if df_valid is not None:
-        if isinstance(df_valid, list):
-            df_valid = pd.concat(
-                df_valid, 
-                ignore_index=True, 
-                sort=False
-            )
-        
-        df_full = pd.concat(
-            [df_train, df_valid], 
-            ignore_index=True, 
-            sort=False
-        )
-        n_classes_valid = df_valid[label_column].nunique()
-        n_samples_valid = len(df_valid)
-    else:
-        df_full = df_train
-        n_classes_valid = 0
-        n_samples_valid = 0
-
-    label_counts = dict(df_full[label_column].value_counts())
+    label_counts = dict(df[label_column].value_counts())
     id_counts = {labels_to_ids[k]: int(v) for k, v in label_counts.items()}
 
     dataset_stats = DatasetStats(
-        n_classes_total=df_full[label_column].nunique(),
-        n_classes_train=df_train[label_column].nunique(),
-        n_classes_valid=n_classes_valid,
-        n_samples_total=len(df_full),
-        n_samples_train=len(df_train),
-        n_samples_valid=n_samples_valid,
+        n_classes=df[label_column].nunique(),
+        n_samples=len(df),
         label_counts=label_counts,
         id_counts=id_counts,
+        split=split
     )
 
     return dataset_stats
+
+
+def combine_dfs(df1, df2):
+    if isinstance(df1, list):
+        df1 = pd.concat(
+            df1, 
+            ignore_index=True, 
+            sort=False
+        )
+
+    if isinstance(df2, list):
+        df2 = pd.concat(
+            df2, 
+            ignore_index=True, 
+            sort=False
+        )
+        
+    return pd.concat(
+        [df1, df2], 
+        ignore_index=True, 
+        sort=False
+    )

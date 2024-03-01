@@ -1,7 +1,7 @@
 scheduler:
   _target_: torch.optim.lr_scheduler.CosineAnnealingLR
-  T_max: 10
-  eta_min: 10
+  T_max: ${epochs}
+  eta_min: 1e-5
 
 # warmup_scheduler:
 #   optimizer_type: ${optimizer.type}

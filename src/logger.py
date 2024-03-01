@@ -60,10 +60,11 @@ class Logger():
             self, 
             dataset_stats
         ):
-
-        dataset_info_header = f'\n{self.tab_string*2}=============== {"Dataset info":<15} ===============\n'
-        dataset_info_str = dataset_info_header + dataset_stats.__repr__()
-        self.logger.info(dataset_info_str)
+        if dataset_stats is not None:
+            header_str = f"{dataset_stats.split} dataset info"
+            dataset_info_header = f'\n{self.tab_string*2}=============== {header_str:<15} ===============\n'
+            dataset_info_str = dataset_info_header + dataset_stats.__repr__()
+            self.logger.info(dataset_info_str)
 
     
     def info_model(
