@@ -24,11 +24,15 @@ class EmbeddigsNet(nn.Module):
         self.head = get_head(config_head, backbone_out_feats)
         self.backbone = backbone
 
-
-    def forward(self, x):
+    
+    def get_embeddings(self, x):
         x = self.backbone(x)
         x = self.head(x)
         return x
+
+
+    def forward(self, x):
+        return self.get_embeddings(x)
 
 
 class MLNet(nn.Module):

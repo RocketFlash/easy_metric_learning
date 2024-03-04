@@ -10,6 +10,6 @@ fold: 0
 
 label_column: label
 fname_column: file_name
-use_bboxes: False
+use_bboxes: True
 
 labels_to_ids_path: 

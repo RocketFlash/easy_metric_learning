@@ -19,7 +19,6 @@ class MLTrainer:
             config,
             model, 
             optimizer,
-            logger, 
             epoch=1,
             work_dir='./', 
             device='cpu', 
@@ -28,7 +27,6 @@ class MLTrainer:
 
         self.config = config
         self.model  = model
-        self.logger = logger
         self.epoch  = epoch
         self.device = device
         self.work_dir = work_dir
@@ -72,7 +70,7 @@ class MLTrainer:
             total=int(len(train_loader))
         )
         
-        for batch_index, (images, targets) in enumerate(tqdm_train):
+        for batch_index, (images, targets, file_names) in enumerate(tqdm_train):
             if self.debug and batch_index>=10: break
 
             images, targets, is_mixed = mix_transform(
@@ -181,7 +179,7 @@ class MLTrainer:
         criterion = self.loss_fns
         
         with torch.no_grad():
-            for batch_index, (images, targets) in enumerate(tqdm_val):
+            for batch_index, (images, targets, file_names) in enumerate(tqdm_val):
                 if self.debug and batch_index>10: break
 
                 if self.visualize_batch:

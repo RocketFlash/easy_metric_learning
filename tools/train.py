@@ -8,7 +8,8 @@ from pathlib import Path
 import hydra
 from omegaconf import OmegaConf
 
-from src.data import get_train_data_from_config
+from src.data import (get_train_data_from_config,
+                      get_test_data_from_config)
 from src.model import get_model
 from src.optimizer import get_optimizer
 from src.logger import Logger
@@ -17,6 +18,7 @@ from src.data.utils import save_labels_to_ids
 from src.utils import load_checkpoint, save_ckp, get_save_paths
 from src.utils import seed_everything, get_device
 from src.trainer import MLTrainer
+from src.evaluator import get_evaluator
 from src.experiment_tracker import get_experiment_trackers
 
 
@@ -38,24 +40,25 @@ def train(config):
     start_epoch = 1
     
     save_paths = get_save_paths(work_dir)
-    data_info  = get_train_data_from_config(config)
+    data_info_train = get_train_data_from_config(config)
+    data_infos_test = get_test_data_from_config(config)
 
-    train_loader = data_info.train_loader
-    valid_loader = data_info.valid_loader
+    train_loader = data_info_train.train.dataloader
+    valid_loader = data_info_train.valid.dataloader
 
-    logger.info_data(data_info.train_dataset_stats) 
-    logger.info_data(data_info.valid_dataset_stats) 
+    logger.info_data(data_info_train.train.dataset_stats) 
+    logger.info_data(data_info_train.valid.dataset_stats) 
 
-    save_labels_to_ids(data_info.labels_to_ids, save_dir=work_dir)
-    config.margin.id_counts = data_info.dataset_stats.id_counts
-    logger.info_data(data_info.dataset_stats) 
+    save_labels_to_ids(data_info_train.train.labels_to_ids, save_dir=work_dir)
+    config.margin.id_counts = data_info_train.dataset_stats.id_counts
+    logger.info_data(data_info_train.dataset_stats) 
     
     device = get_device(config.device)
     model = get_model(
         config_backbone=config.backbone,
         config_head=config.head,
         config_margin=config.margin,
-        n_classes=data_info.n_classes
+        n_classes=data_info_train.train.dataset_stats.n_classes
     ).to(device)
     logger.info_model(config)
 
@@ -83,16 +86,18 @@ def train(config):
         config,
         model=model,
         optimizer=optimizer, 
-        logger=logger, 
         device=device,
         epoch=start_epoch,
         work_dir=work_dir,
-        ids_to_labels=data_info.ids_to_labels
+        ids_to_labels=data_info_train.train.ids_to_labels
     )
 
-    # evaluator = MLEvaluator(
-
-    # )
+    evaluator = get_evaluator(
+        config,
+        model=model,
+        work_dir=work_dir,
+        device=device,
+    )
 
     logger.info(f'Current best loss: {best_loss}')
     
@@ -101,13 +106,18 @@ def train(config):
         stats_train = trainer.train_epoch(train_loader)
         if valid_loader is not None:
             stats_valid = trainer.valid_epoch(valid_loader)
-            check_loss  = stats_valid.losses.total_loss
+            check_loss  = stats_valid.losses.total_loss            
         else:
             stats_valid = None
             check_loss  = stats_train.losses.total_loss
 
         trainer.update_epoch()
-        
+
+        for data_info in data_infos_test:       
+            logger.info(data_info.dataset_name)    
+            metrics = evaluator.evaluate(data_info)
+            logger.info(metrics)
+
         save_ckp(
             save_paths.last_weights_path, 
             model, 
@@ -159,7 +169,7 @@ def train(config):
         logger.info(f'Finish {exp_tracker_name}')
         exp_tracker.finish_run()
 
-    logger.info(f"Training done, all results saved to {work_dir}")
+    logger.info(f"Training done, all results were saved in {work_dir}")
 
 
 if __name__=="__main__":

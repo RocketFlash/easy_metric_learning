@@ -1,16 +1,9 @@
 datasets:
-  - name: cars196
-    dir: /datasets/metric_learning/datasets_opensource/CARS196
-    annotations: /datasets/metric_learning/datasets_opensource/CARS196/dataset_info.csv
-    label_column: label
-    fname_column: file_name
-    use_bboxes: False
   - name: cub_200_2011
+    type: simple 
     dir: /datasets/metric_learning/datasets_opensource/CUB_200_2011                                 
     annotations: /datasets/metric_learning/datasets_opensource/CUB_200_2011/dataset_info.csv
     label_column: label
     fname_column: file_name
-    use_bboxes: False
-
-K: 5
+    use_bboxes: True
                   

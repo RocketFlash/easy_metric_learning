@@ -1,0 +1,4 @@
+type: faiss
+K: 5
+faiss_gpu: False
+save_results: True

@@ -1,6 +1,7 @@
 from torch.utils.data import (Dataset,
                               DataLoader)
 from dataclasses import dataclass
+from easydict import EasyDict as edict
 
 from .dataset import get_dataset
 from ..sampler import get_sampler
@@ -17,29 +18,13 @@ from .utils import (worker_init_fn,
 
 
 @dataclass
-class TrainDataInfo():
+class DataInfo():
     dataset_name: str
-    train_loader: DataLoader
-    valid_loader: DataLoader
-    train_dataset: Dataset
-    valid_dataset: Dataset
-    train_dataset_stats: DatasetStats
-    valid_dataset_stats: DatasetStats
+    dataloader: DataLoader
+    dataset: Dataset
     dataset_stats: DatasetStats
     labels_to_ids: dict
     ids_to_labels: dict
-    n_classes: int
-
-
-@dataclass
-class TestDataInfo():
-    dataset_name: str
-    test_loader: DataLoader
-    test_dataset: Dataset
-    dataset_stats: DatasetStats
-    labels_to_ids: dict
-    ids_to_labels: dict
-    n_classes: int
     
 
 def get_train_data_from_config(config):
@@ -105,28 +90,38 @@ def get_train_data_from_config(config):
         valid_dataset_stats = None
         dataset_stats = train_dataset_stats
 
-    n_classes = len(labels_to_ids)
+    data_info_train = DataInfo(
+        dataset_name=config.dataset,
+        dataloader=train_loader,
+        dataset=train_dataset,
+        dataset_stats=train_dataset_stats,
+        labels_to_ids=labels_to_ids,
+        ids_to_labels=ids_to_labels,
+    )
 
-    return TrainDataInfo(
-            dataset_name=config.dataset,
-            train_loader=train_loader,
-            valid_loader=valid_loader,
-            train_dataset=train_dataset,
-            valid_dataset=valid_dataset,
-            train_dataset_stats=train_dataset_stats,
-            valid_dataset_stats=valid_dataset_stats,
-            dataset_stats=dataset_stats,
-            labels_to_ids=labels_to_ids,
-            ids_to_labels=ids_to_labels,
-            n_classes=n_classes
-        )
+    data_info_valid = DataInfo(
+        dataset_name=config.dataset,
+        dataloader=valid_loader,
+        dataset=valid_dataset,
+        dataset_stats=valid_dataset_stats,
+        labels_to_ids=labels_to_ids,
+        ids_to_labels=ids_to_labels,
+    )
+
+    data_infos = edict(dict(
+        train=data_info_train,
+        valid=data_info_valid,
+        dataset_stats=dataset_stats
+    ))
+
+    return data_infos
 
 
 def get_test_data_from_config(config):
     transform_test = get_transform(config.transform.test)
 
     data_infos = []
-    for dataset_config in config.evaluation.datasets:
+    for dataset_config in config.evaluation.data.datasets:
         annotations = get_object_from_omegaconf(dataset_config.annotations)
         root_dir    = get_object_from_omegaconf(dataset_config.dir) 
 
@@ -156,16 +151,13 @@ def get_test_data_from_config(config):
             label_column=dataset_config.label_column
         )
 
-        n_classes = len(labels_to_ids)
-
-        data_info = TestDataInfo(
+        data_info = DataInfo(
             dataset_name=dataset_config.name,
-            test_loader=test_loader,
-            test_dataset=test_dataset,
+            dataloader=test_loader,
+            dataset=test_dataset,
             dataset_stats=dataset_stats,
             labels_to_ids=labels_to_ids,
             ids_to_labels=ids_to_labels,
-            n_classes=n_classes
         )
 
         data_infos.append(data_info)

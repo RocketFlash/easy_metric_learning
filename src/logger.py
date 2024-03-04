@@ -91,6 +91,10 @@ class Logger():
             epoch_info_str += f'{self.tab_string}Valid Losses:\n'
             for k_loss, v_loss in stats_valid['losses'].items():
                 epoch_info_str += f'{self.tab_string*2}{k_loss:<15} : {v_loss:.5f}\n'
+            if 'metrics' in stats_valid:
+                epoch_info_str += f'{self.tab_string}Valid metrics:\n'
+                for k_metric, v_metric in stats_valid['metrics'].items():
+                    epoch_info_str += f'{self.tab_string*2}{k_metric:<15} : {v_metric:.5f}\n'
         self.logger.info(epoch_info_str)
     
 

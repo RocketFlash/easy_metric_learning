@@ -31,6 +31,7 @@ class MLDataset(Dataset):
         ):
 
         self.images_paths = []
+        self.file_names = []
         self.labels = []
         self.bboxes = []
         self.use_bboxes = use_bboxes
@@ -46,6 +47,7 @@ class MLDataset(Dataset):
             file_names_i = file_names[idx]
             root_dir_i   = Path(root_dir[idx])
             self.images_paths += [str(root_dir_i / str(fname)) for fname in file_names_i]
+            self.file_names   += [str(fname) for fname in file_names_i]
 
         for labels_i in labels:
             self.labels += labels_i 
@@ -67,7 +69,6 @@ class MLDataset(Dataset):
             self.ids_to_labels = {v:k for k,v in self.labels_to_ids.items()}
         self.label_ids = np.array([self.labels_to_ids[l] for l in self.labels])
                 
-        self.file_names = file_names
         self.transform = transform
     
 
@@ -81,6 +82,7 @@ class MLDataset(Dataset):
 
     def __getitem__(self, i):
         image_path = self.images_paths[i]
+        file_name = self.file_names[i]
         try:
             if Path(image_path).suffix == '.gif':
                 image =  plt.imread(image_path)
@@ -102,7 +104,7 @@ class MLDataset(Dataset):
             data = torch.tensor(self.label_ids[i], 
                                 dtype=torch.long)
                 
-            return image, data
+            return image, data, file_name
         except:
             print(f'Corrupted image {image_path}')
         

@@ -5,7 +5,8 @@ defaults:
   - dataset : dataset_v0
   - dataloader: default
   - loss: cross_entropy
-  - evaluation : default
+  - evaluation/evaluator : faiss
+  - evaluation/data : cars_cub
   - scheduler : cosine
   - optimizer : adamw
   - transform : default

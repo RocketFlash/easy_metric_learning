@@ -1,4 +1,10 @@
 import torch
+import numpy as np
+
+
+def top_k_accuracy(y_true, y_pred, k=1):
+    return np.equal(y_pred[:, :k], y_true[:, None]).any(axis=1).mean()
+
 
 def accuracy(output, labels):
     if isinstance(labels, (tuple, list)):

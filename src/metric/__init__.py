@@ -1,6 +1,4 @@
 from .gap import GAP
-from .simple import accuracy, f_score
-
 
 import hydra
 from easydict import EasyDict as edict
