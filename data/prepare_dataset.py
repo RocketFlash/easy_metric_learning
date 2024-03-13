@@ -50,12 +50,7 @@ def parse_args():
         default='sop', 
         help='dataset type'
     )
-    parser.add_argument(
-        '--dataset_info', 
-        type=str, 
-        default='./', 
-        help='path to dataset folder'
-    )
+    
     parser.add_argument(
         '--save_path', 
         type=str, 

@@ -30,14 +30,16 @@ if __name__ == '__main__':
     save_path = Path(args.save_path)
     save_path.mkdir(exist_ok=True)
 
-    df = pd.read_csv(dataset_info_path, 
-                     dtype={
-                            'label': str,
-                            'file_name': str,
-                            'width': int,
-                            'height': int,
-                            'hash': str
-                    })
+    df = pd.read_csv(
+        dataset_info_path, 
+        dtype={
+            'label': str,
+            'file_name': str,
+            'width': int,
+            'height': int,
+            'hash': str
+        }
+    )
 
     counts_df = get_counts_df(df)
     counts_df.to_csv(dataset_path / 'class_counts.csv', index=False)

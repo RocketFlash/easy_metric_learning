@@ -1,7 +1,4 @@
-from tqdm.auto import tqdm
-import numpy as np
 import faiss
-import pandas as pd
 from .base import BaseEvaluator
 
 
@@ -10,13 +7,13 @@ class FAISSEvaluator(BaseEvaluator):
             self, 
             config,
             model, 
-            work_dir='./', 
+            save_dir='./', 
             device='cpu', 
         ):
         super().__init__(
             config=config,
             model=model, 
-            work_dir=work_dir, 
+            save_dir=save_dir, 
             device=device, 
         )
     

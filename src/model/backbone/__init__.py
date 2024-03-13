@@ -1,15 +1,37 @@
 import timm
 import torch.nn as nn
+import functools
+
+
+def disable_info(*args, **kwargs):
+    pass
+
+
+def load_openclip_model(model_type, pretrained_on):
+    import open_clip
+    
+    info_fnc = open_clip.create_model_and_transforms.__globals__['logging'].info
+    open_clip.create_model_and_transforms.__globals__['logging'].info = disable_info
+    
+    clip_model, _, _ = open_clip.create_model_and_transforms(
+        model_type, 
+        pretrained=pretrained_on
+    )
+
+    # open_clip.create_model_and_transforms.__globals__['logging'].info = info_fnc 
+
+    backbone = clip_model.visual
+    return backbone
 
 
 def get_backbone(backbone_config):
     backbone_type = backbone_config.type
 
     if 'openclip' in backbone_type:
-        import open_clip
-        clip_model, _, _ = open_clip.create_model_and_transforms(backbone_config.model_type, 
-                                                                 pretrained=backbone_config.pretrained_on)
-        backbone = clip_model.visual
+        backbone = load_openclip_model(
+            backbone_config.model_type, 
+            pretrained_on=backbone_config.pretrained_on
+        )
         
     else:
         backbone = timm.create_model(backbone_type, 

@@ -1,5 +1,6 @@
 opencv-python
 pandas
+pyarrow
 easydict
 tqdm
 matplotlib
@@ -8,6 +9,7 @@ albumentations[imgaug]
 pyyaml
 scikit-learn
 wandb
+mlflow
 timm
 umap-learn
 plotly
@@ -23,3 +25,4 @@ onnxruntime-gpu
 wget
 gdown
 hydra-core
+ipyplot

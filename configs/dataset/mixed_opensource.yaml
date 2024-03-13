@@ -1,0 +1,30 @@
+name: mixed_opensource
+type: simple                                         
+
+dir: 
+    - /datasets/metric_learning/datasets_opensource/cars196
+    - /datasets/metric_learning/datasets_opensource/CUB_200_2011
+    - /datasets/metric_learning/datasets_opensource/Stanford_Online_Products   
+    - /datasets/metric_learning/datasets_opensource/inshop 
+    # - /datasets/metric_learning/datasets_opensource/met
+    - /datasets/metric_learning/datasets_opensource/products10k
+    # - /datasets/metric_learning/datasets_opensource/rp2k
+    # - /datasets/metric_learning/datasets_opensource/shopee
+
+annotations: 
+    - /datasets/metric_learning/datasets_opensource/cars196/dataset_info.csv
+    - /datasets/metric_learning/datasets_opensource/CUB_200_2011/dataset_info.csv
+    - /datasets/metric_learning/datasets_opensource/Stanford_Online_Products/dataset_info.csv
+    - /datasets/metric_learning/datasets_opensource/inshop/dataset_info.csv
+    # - /datasets/metric_learning/datasets_opensource/met/dataset_info.csv
+    - /datasets/metric_learning/datasets_opensource/products10k/dataset_info.csv
+    # - /datasets/metric_learning/datasets_opensource/rp2k/dataset_info.csv
+    # - /datasets/metric_learning/datasets_opensource/shopee/dataset_info.csv
+                  
+fold: 0 
+
+label_column: label
+fname_column: file_name
+use_bboxes: True
+
+labels_to_ids_path: 

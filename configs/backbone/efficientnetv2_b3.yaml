@@ -1,0 +1,6 @@
+type: tf_efficientnetv2_b3.in1k
+pretrained: True
+freeze: False
+
+norm_mean: [0.485, 0.456, 0.406]
+norm_std:  [0.229, 0.224, 0.225]

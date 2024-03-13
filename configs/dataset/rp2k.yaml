@@ -1,0 +1,16 @@
+name: rp2k
+type: simple                                         
+
+dir: 
+    - /datasets/metric_learning/datasets_opensource/rp2k
+
+annotations: 
+    - /datasets/metric_learning/datasets_opensource/rp2k/dataset_info.csv
+                  
+fold: 0 
+
+label_column: label
+fname_column: file_name
+use_bboxes: False
+
+labels_to_ids_path: 

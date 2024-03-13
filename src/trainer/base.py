@@ -13,7 +13,7 @@ from ..scheduler import (get_scheduler,
                          get_warmup_scheduler)
 
 
-class MLTrainer:
+class BaseTrainer:
     def __init__(
             self, 
             config,
@@ -41,16 +41,16 @@ class MLTrainer:
         
         self.debug = config.debug
         self.visualize_batch = config.visualize_batch
-        self.grad_accum_steps = config.train.grad_accum_steps
+        self.grad_accum_steps = config.train.trainer.grad_accum_steps
 
         self.mix_loss_fns = {k: MixCriterion(v) for k, v in self.loss_fns.items()}
         
-        if config.train.incremental_margin is not None:
+        if config.train.trainer.incremental_margin is not None:
             self.incremental_margin = get_incremental_margin(
                 m_max=self.model.margin.m,
-                m_min=config.train.incremental_margin.min_m,
+                m_min=config.train.trainer.incremental_margin.min_m,
                 n_epochs=self.n_epochs,
-                mode=config.train.incremental_margin.type
+                mode=config.train.trainer.incremental_margin.type
             )
         else:
             self.incremental_margin = None

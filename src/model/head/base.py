@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class SimpleHead(nn.Module):
+class BaseHead(nn.Module):
     """
     A class for simple head  
     
@@ -22,7 +22,7 @@ class SimpleHead(nn.Module):
                  backbone_out_feats,
                  embeddings_size=512, 
                  dropout_p=0.0):
-        super(SimpleHead, self).__init__()
+        super(BaseHead, self).__init__()
 
         self.dropout = nn.Dropout(p=dropout_p)
         self.head = nn.Linear(backbone_out_feats, embeddings_size)

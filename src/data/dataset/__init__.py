@@ -1,4 +1,4 @@
-from .simple import MLDataset
+from .base import BaseDataset
 from .mxdataset import MXDataset
 
 
@@ -12,12 +12,14 @@ def get_dataset(
     dataset_type = dataset_config.type
 
     if dataset_type=='mxnet':
-        dataset = MXDataset(root_dir=root_dir, 
-                            transform=transform,
-                            use_cache=dataset_config.use_cache,
-                            calc_cl_count=dataset_config.calc_cl_count)
+        dataset = MXDataset(
+            root_dir=root_dir, 
+            transform=transform,
+            use_cache=dataset_config.use_cache,
+            calc_cl_count=dataset_config.calc_cl_count
+        )
     else:
-        dataset = MLDataset(
+        dataset = BaseDataset(
             root_dir=root_dir, 
             df_annos=df_annos,     
             transform=transform,

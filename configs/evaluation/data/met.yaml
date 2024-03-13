@@ -1,0 +1,9 @@
+datasets:
+  - name: met
+    type: simple 
+    dir: /datasets/metric_learning/datasets_opensource/met
+    annotations: /datasets/metric_learning/datasets_opensource/met/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+                  

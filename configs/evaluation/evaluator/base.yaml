@@ -1,3 +1,4 @@
 type: base
 K: 5
-save_results: True                  
+save_results: True    
+save_embeddings: False

@@ -13,21 +13,29 @@ def get_experiment_trackers(config):
         if config.use_wandb:
             try:
                 from .wandb import WandbTracker
-                exp_trackers['wandb']  = WandbTracker(
+                use_wandb = True
+            except:
+                use_wandb = False
+                print('wandb is not installed')
+
+            if use_wandb:
+                exp_trackers['wandb'] = WandbTracker(
                     config,
                     config_dict
                 )
-            except:
-                print('wandb is not installed')
         
         if config.use_mlflow:
             try:
                 from .mlflow import MLFlowTracker
+                use_mlflow = True
+            except:
+                use_mlflow = False
+                print('mlflow is not installed')
+
+            if use_mlflow:
                 exp_trackers['mlflow'] = MLFlowTracker(
                     config,
                     config_dict
                 )
-            except:
-                print('mlflow is not installed')
-            
+        
     return exp_trackers

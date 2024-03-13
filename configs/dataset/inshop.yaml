@@ -1,0 +1,16 @@
+name: inshop
+type: simple                                         
+
+dir: 
+    - /datasets/metric_learning/datasets_opensource/inshop 
+
+annotations: 
+    - /datasets/metric_learning/datasets_opensource/inshop/dataset_info.csv
+                  
+fold: 0 
+
+label_column: label
+fname_column: file_name
+use_bboxes: False
+
+labels_to_ids_path: 

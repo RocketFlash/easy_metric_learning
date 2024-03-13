@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from ..utils import get_labels_to_ids_map
 
 
-class MLDataset(Dataset):
-    """Metric learning Dataset. Read images, apply 
+class BaseDataset(Dataset):
+    """Base metric learning Dataset. Read images, apply 
        augmentation and preprocessing transformations.
     
     Args:
@@ -54,12 +54,14 @@ class MLDataset(Dataset):
         self.labels = np.array(self.labels, dtype=str)
 
         if self.use_bboxes:
-            if 'bbox' in  df_annos[0]:
-                bboxes = [df_nms['bbox'].tolist() for df_nms in df_annos]
-                for bbxs in bboxes:
-                    bbxs = [bbox.split(' ') for bbox in bbxs]
-                    self.bboxes += bbxs
-            self.bboxes = [[int(b) for b in bbox] for bbox in self.bboxes]
+            for df_nms in df_annos:
+                if 'bbox' in  df_nms:
+                    bboxes = df_nms['bbox'].tolist()
+                    bboxes = [bbox.split(' ') for bbox in bboxes]
+                    bboxes = [[int(b) for b in bbox] for bbox in bboxes]
+                else:
+                    bboxes = [None] * len(df_nms)
+                self.bboxes += bboxes
         
         if labels_to_ids is None:
             labels_names = sorted(np.unique(self.labels).tolist())
@@ -92,10 +94,11 @@ class MLDataset(Dataset):
             image = image[:,:,:3]
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-            if self.bboxes:
+            if self.use_bboxes:
                 bbox = self.bboxes[i]
-                x1, y1, w, h = bbox
-                image = image[y1:(y1+h), x1:(x1+w), :]
+                if bbox is not None:
+                    x1, y1, w, h = bbox
+                    image = image[y1:(y1+h), x1:(x1+w), :]
             
             if self.transform:
                 sample = self.transform(image=image)

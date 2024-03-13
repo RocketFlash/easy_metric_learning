@@ -39,10 +39,6 @@ class Shopee(BaseDataset):
         })
         
         df_info['file_name'] = df_info['file_name'].apply(lambda x: f'train_images/{x}')
-        df_info = get_stratified_kfold(df_info, 
-                                       k=5, 
-                                       random_state=28)
-        df_info = df_info.assign(is_test=[1 if x == 0 else 0 for x in df_info['fold']])
 
         df_info = self.add_image_sizes(
             df_info, 
@@ -50,6 +46,7 @@ class Shopee(BaseDataset):
         )
         
         df_info['label'] = df_info['label'].apply(lambda x: f'shopee_{x}')
+        df_info['is_test'] = 0
 
         df_info = df_info[[
             'file_name', 

@@ -3,9 +3,8 @@ sys.path.append("./")
 
 import time
 import shutil
-from pathlib import Path
-
 import hydra
+from pathlib import Path
 from omegaconf import OmegaConf
 
 from src.data import (get_train_data_from_config,
@@ -14,12 +13,14 @@ from src.model import get_model
 from src.optimizer import get_optimizer
 from src.logger import Logger
 from src.data.utils import save_labels_to_ids
-
-from src.utils import load_checkpoint, save_ckp, get_save_paths
-from src.utils import seed_everything, get_device
-from src.trainer import MLTrainer
+from src.trainer import get_trainer
 from src.evaluator import get_evaluator
 from src.experiment_tracker import get_experiment_trackers
+from src.utils import (load_checkpoint, 
+                       save_ckp, 
+                       get_save_paths, 
+                       seed_everything, 
+                       get_device)
 
 
 @hydra.main(version_base=None,
@@ -50,8 +51,7 @@ def train(config):
     logger.info_data(data_info_train.valid.dataset_stats) 
 
     save_labels_to_ids(data_info_train.train.labels_to_ids, save_dir=work_dir)
-    config.margin.id_counts = data_info_train.dataset_stats.id_counts
-    logger.info_data(data_info_train.dataset_stats) 
+    config.margin.id_counts = data_info_train.train.dataset_stats.id_counts
     
     device = get_device(config.device)
     model = get_model(
@@ -82,20 +82,22 @@ def train(config):
     
     exp_trackers = get_experiment_trackers(config)
 
-    trainer = MLTrainer(
+
+    trainer = get_trainer(
         config,
         model=model,
-        optimizer=optimizer, 
+        optimizer=optimizer,
         device=device,
         epoch=start_epoch,
         work_dir=work_dir,
         ids_to_labels=data_info_train.train.ids_to_labels
     )
 
+    eval_save_dir = work_dir/'eval'
     evaluator = get_evaluator(
         config,
         model=model,
-        work_dir=work_dir,
+        save_dir=eval_save_dir,
         device=device,
     )
 
@@ -114,9 +116,9 @@ def train(config):
         trainer.update_epoch()
 
         for data_info in data_infos_test:       
-            logger.info(data_info.dataset_name)    
+            logger.info(f'Model evaluation on {data_info.dataset_name}')    
             metrics = evaluator.evaluate(data_info)
-            logger.info(metrics)
+            logger.info(f'{data_info.dataset_name} metrics: {metrics}')
 
         save_ckp(
             save_paths.last_weights_path, 

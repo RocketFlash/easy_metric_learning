@@ -11,16 +11,17 @@ class BaseEvaluator:
             self, 
             config,
             model, 
-            work_dir='./', 
-            device='cpu'
+            save_dir='./', 
+            device='cpu',
         ):
 
         self.config = config
         self.model  = model
         self.device = device
-        self.work_dir = work_dir
+    
         self.save_results = config.evaluation.evaluator.save_results
-        self.save_dir = self.work_dir / 'eval'
+        self.save_embeddings = config.evaluation.evaluator.save_embeddings
+        self.save_dir = save_dir
         self.save_dir.mkdir(exist_ok=True)
 
         self.debug = config.debug
@@ -81,13 +82,13 @@ class BaseEvaluator:
                 file_names[index:(index+batch_size)] = fnames
                 index += batch_size
 
-        # if self.save_results:
-        #     np.savez(
-        #         self.save_dir / f'{data_info.dataset_name}_embeddings.npz', 
-        #         embeddings=embeddings, 
-        #         labels=labels,
-        #         file_names=file_names
-        #     )
+        if self.save_embeddings:
+            np.savez(
+                self.save_dir / f'{data_info.dataset_name}_embeddings.npz', 
+                embeddings=embeddings, 
+                labels=labels,
+                file_names=file_names
+            )
 
         return embeddings, labels, file_names
     
@@ -139,7 +140,7 @@ class BaseEvaluator:
         all_dist = []
         all_fnms = []
 
-        for i in tqdm(range(len(best_top_n_idxs))):
+        for i in range(len(best_top_n_idxs)):
             all_pred.append(labels[best_top_n_idxs[i]])
             all_gts.append(labels[i])
             all_dist.append(distances[i])

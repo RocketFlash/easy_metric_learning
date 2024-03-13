@@ -21,14 +21,18 @@ def calculate_time(start_time, start_epoch, epoch, epochs):
 
 
 class Logger():
-    def __init__(self, path="log.txt"):
+    def __init__(self, path=None):
         self.logger = logging.getLogger("Logger")
-        self.file_handler = logging.FileHandler(path, "w")
+
         self.stdout_handler = logging.StreamHandler()
-        self.logger.addHandler(self.file_handler)
         self.logger.addHandler(self.stdout_handler)
         self.stdout_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-        self.file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+
+        if path is not None:
+            self.file_handler = logging.FileHandler(path, "w")
+            self.logger.addHandler(self.file_handler)
+            self.file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+        
         self.logger.setLevel(logging.INFO)
         self.tab_string = '    '
 
@@ -47,7 +51,7 @@ class Logger():
             resolve=True
         )
         
-        self.logger.info(
+        self.info(
             json.dumps(
                 config_dict, 
                 sort_keys=False, 
@@ -64,7 +68,7 @@ class Logger():
             header_str = f"{dataset_stats.split} dataset info"
             dataset_info_header = f'\n{self.tab_string*2}=============== {header_str:<15} ===============\n'
             dataset_info_str = dataset_info_header + dataset_stats.__repr__()
-            self.logger.info(dataset_info_str)
+            self.info(dataset_info_str)
 
     
     def info_model(
@@ -78,7 +82,7 @@ class Logger():
         model_info_str += f'{self.tab_string*2}{"Head":<15}: {config.head.type}\n'
         model_info_str += f'{self.tab_string*2}{"Margin":<15}: {config.margin.type}\n'
         model_info_str += f'{self.tab_string*2}{"Embeddings size":<15}: {config.embeddings_size}\n'
-        self.logger.info(model_info_str)
+        self.info(model_info_str)
 
 
     def info_epoch_train(self, epoch, stats_train, stats_valid):
@@ -95,7 +99,7 @@ class Logger():
                 epoch_info_str += f'{self.tab_string}Valid metrics:\n'
                 for k_metric, v_metric in stats_valid['metrics'].items():
                     epoch_info_str += f'{self.tab_string*2}{k_metric:<15} : {v_metric:.5f}\n'
-        self.logger.info(epoch_info_str)
+        self.info(epoch_info_str)
     
 
     def info_epoch_time(self, start_time, start_epoch, epoch, num_epochs, workdir_path):
@@ -109,7 +113,7 @@ class Logger():
         time_info_str += f"Checkpoint was saved in {workdir_path}\n"
         time_info_str += f"{self.tab_string*2}{'Elapsed':<15} {elapsed.days:d} days {elapsed.hours:d} hours {elapsed.minutes:d} minutes\n"
         time_info_str += f"{self.tab_string*2}{'Remaining':<15} {remaining.days:d} days {remaining.hours:d} hours {remaining.minutes:d} minutes\n"
-        self.logger.info(time_info_str)
+        self.info(time_info_str)
 
 
     def close(self):

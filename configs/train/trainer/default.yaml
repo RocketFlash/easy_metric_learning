@@ -1,2 +1,4 @@
+type: base
+
 grad_accum_steps: ${grad_accum_steps}
 incremental_margin:

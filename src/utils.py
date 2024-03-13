@@ -102,8 +102,8 @@ def load_ckp(
 def load_checkpoint(
         ckp_path, 
         model, 
-        optimizer, 
-        logger, 
+        optimizer=None, 
+        logger=None, 
         mode='resume'
     ):
 
@@ -111,30 +111,39 @@ def load_checkpoint(
 
     checkpoint_data = {}
     if mode=='resume':
-        logger.info(f'resume training from: {ckp_path}')
-        model, optimizer, epoch_resume, best_loss = load_ckp(ckp_path, model, optimizer)
+        if logger is not None: logger.info(f'resume training from: {ckp_path}')
+        model, optimizer, epoch, best_loss = load_ckp(ckp_path, model, optimizer)
         checkpoint_data['model']       = model
         checkpoint_data['optimizer']   = optimizer
-        checkpoint_data['start_epoch'] = epoch_resume + 1
+        checkpoint_data['start_epoch'] = epoch + 1
         checkpoint_data['best_loss']   = best_loss
         
     elif mode=='emb':
-        logger.info(f"load embeddings net only from: {ckp_path}")
-        model.embeddings_net = load_ckp(
-            ckp_path, 
-            model.embeddings_net,  
-        )
+        if logger is not None:  logger.info(f"load embeddings net only from: {ckp_path}")
+        
+        if hasattr(model, "embeddings_net"):
+            model.embeddings_net, _, _, _ = load_ckp(
+                ckp_path, 
+                model.embeddings_net,  
+            )
+        else:
+            model, _, _, _ = load_ckp(
+                ckp_path, 
+                model,  
+            )
         checkpoint_data['model'] = model
         
     elif mode=='weights':
-        logger.info(f"load weights from: {ckp_path}")
+        if logger is not None:  logger.info(f"load weights from: {ckp_path}")
         model, _, _, _ = load_ckp(
             ckp_path, 
             model
         )
         checkpoint_data['model'] = model
     else:
-        logger.info(f"wrong loading mode")
+        if logger is not None:  logger.info(f"wrong loading mode")
+
+    return checkpoint_data
 
 
 def get_save_paths(work_dir):

@@ -1,0 +1,16 @@
+name: shopee
+type: simple                                         
+
+dir: 
+    - /datasets/metric_learning/datasets_opensource/shopee
+
+annotations: 
+    - /datasets/metric_learning/datasets_opensource/shopee/dataset_info.csv
+                  
+fold: 0 
+
+label_column: label
+fname_column: file_name
+use_bboxes: False
+
+labels_to_ids_path: 

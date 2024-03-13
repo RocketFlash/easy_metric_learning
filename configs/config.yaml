@@ -1,6 +1,6 @@
 defaults:
   - backbone : efficientnetv2_b1
-  - head : simple
+  - head : base
   - margin : arcface
   - dataset : dataset_v0
   - dataloader: default
@@ -10,7 +10,7 @@ defaults:
   - scheduler : cosine
   - optimizer : adamw
   - transform : default
-  - train : default
+  - train/trainer: default
   - override hydra/hydra_logging: disabled  
   - override hydra/job_logging: disabled  
   - _self_
@@ -21,7 +21,7 @@ embeddings_size: 512
 batch_size : 256
 epochs : 20
 fold: 0 
-grad_accum_steps: 1
+grad_accum_steps: 4
 random_state : 28 
 
 img_h: 224
@@ -36,8 +36,8 @@ mlflow_server_uri : https://r3dev-mlflow.rebotics.net/
 
 amp: True
                   
-load_checkpoint:
-load_mode: resume
+load_checkpoint: 
+load_mode: emb
 
 run_info: ''
 run_name: '${margin.type}_${backbone.type}_${head.type}_${dataset.name}_img${img_h}x${img_w}_emb${embeddings_size}${run_info}'             
