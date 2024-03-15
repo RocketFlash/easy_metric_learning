@@ -2,9 +2,9 @@ name: cub_200_2011
 type: simple                                     
 
 dir: 
-    - /datasets/metric_learning/datasets_opensource/CUB_200_2011                                 
+    - /mnt/datasets/metric_learning/datasets_opensource/CUB_200_2011                                 
 annotations: 
-    - /datasets/metric_learning/datasets_opensource/CUB_200_2011/dataset_info.csv
+    - /mnt/datasets/metric_learning/datasets_opensource/CUB_200_2011/dataset_info.csv
                   
 fold: 0 
 

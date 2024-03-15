@@ -2,7 +2,7 @@ import wget
 import zipfile
 import pandas as pd
 from pathlib import Path
-from .base_dataset import BaseDataset
+from .base import BaseDataset
 
 
 class RP2K(BaseDataset):
@@ -36,8 +36,10 @@ class RP2K(BaseDataset):
         df_train['is_test'] = 0
         df_test['is_test']  = 1
 
-        df_info = pd.concat([df_train, df_test],
-                            ignore_index=True)
+        df_info = pd.concat(
+            [df_train, df_test],
+            ignore_index=True
+        )
         
         df_info['label'] = df_info['label'].apply(lambda x: f'rp2k_{x}')
         

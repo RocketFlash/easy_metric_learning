@@ -75,7 +75,15 @@ def read_pd(file_path):
     return df
 
 
-def get_train_val_from_file(annotation_file, fold=0):
+def get_train_val_from_file(
+        annotation_file, 
+        fold=0,
+        min_n_samples_per_label=None,
+        max_n_samples_per_label=None,
+        oversampling_min_n_samples=None,
+        random_state=28
+    ):
+    print(annotation_file)
     df_folds = read_pd(annotation_file)
     if 'is_test' in df_folds:
         df_train = df_folds[df_folds['is_test']==0]
@@ -90,11 +98,61 @@ def get_train_val_from_file(annotation_file, fold=0):
         df_valid = df_folds[((df_folds.fold == fold) & 
                             (df_folds.fold >= 0)) | 
                             (df_folds.fold == -2)]
+        
+    if min_n_samples_per_label is not None:
+        print(f'N train samples before min filtering: {len(df_train)}')
+        label_counts = df_train['label'].value_counts()
+        labels_to_keep = label_counts[label_counts >= min_n_samples_per_label].index
+        df_train = df_train[df_train['label'].isin(labels_to_keep)]
+        print(f'N train samples after min filtering: {len(df_train)}')
+
+    if max_n_samples_per_label is not None:
+        print(f'N train samples before max filtering: {len(df_train)}')
+        train_groups = []
+        for label, group in df_train.groupby('label'):
+            group = group.reset_index(drop=True)
+            if len(group)>100:
+                group = group.sample(
+                    max_n_samples_per_label, 
+                    random_state=random_state
+                )
+            train_groups.append(group)
+        df_train = pd.concat(train_groups).reset_index(drop=True)
+        print(f'N train samples after max filtering: {len(df_train)}')
+
+    if oversampling_min_n_samples is not None:
+        print(f'N train samples before oversampling: {len(df_train)}')
+        resampled_dfs = []
+        for label, group in df_train.groupby('label'):
+            if len(group) < oversampling_min_n_samples:
+                num_samples_needed = oversampling_min_n_samples - len(group)
+                resampled_group = group.sample(
+                    n=num_samples_needed, 
+                    replace=True, 
+                    random_state=random_state
+                )  
+                resampled_dfs.append(pd.concat([group, resampled_group]))
+            else:
+                resampled_dfs.append(group)
+
+        df_train = pd.concat(resampled_dfs)
+        print(f'N train samples after oversampling: {len(df_train)}')
+
+    labels_train = df_train.label.unique()
+    if df_valid is not None:
+        df_valid = df_valid[df_valid['label'].isin(labels_train)]
 
     return df_train, df_valid
 
 
-def get_train_val_split(annotation, fold=0):
+def get_train_val_split(
+        annotation, 
+        fold=0,
+        min_n_samples_per_label=None,
+        max_n_samples_per_label=None,
+        oversampling_min_n_samples=None,
+        random_state=28
+    ):
     if isinstance(annotation, list):
         df_train = []
         df_valid = []
@@ -102,7 +160,11 @@ def get_train_val_split(annotation, fold=0):
             (df_train_i, 
              df_valid_i) = get_train_val_from_file(
                  annotation_file, 
-                 fold=fold
+                 fold=fold,
+                 min_n_samples_per_label=min_n_samples_per_label,
+                 max_n_samples_per_label=max_n_samples_per_label,
+                 oversampling_min_n_samples=oversampling_min_n_samples,
+                 random_state=random_state
             )
             df_train.append(df_train_i)
             if df_valid_i is not None:
@@ -114,7 +176,11 @@ def get_train_val_split(annotation, fold=0):
         (df_train, 
          df_valid) = get_train_val_from_file(
              annotation, 
-             fold=fold
+             fold=fold,
+             min_n_samples_per_label=min_n_samples_per_label,
+             max_n_samples_per_label=max_n_samples_per_label,
+             oversampling_min_n_samples=oversampling_min_n_samples,
+             random_state=random_state
         )
         
     return df_train, df_valid

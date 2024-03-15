@@ -2,10 +2,10 @@ name: products10k
 type: simple                                         
 
 dir: 
-    - /datasets/metric_learning/datasets_opensource/products10k
+    - /mnt/datasets/metric_learning/datasets_opensource/products10k
 
 annotations: 
-    - /datasets/metric_learning/datasets_opensource/products10k/dataset_info.csv
+    - /mnt/datasets/metric_learning/datasets_opensource/products10k/dataset_info.csv
                   
 fold: 0 
 

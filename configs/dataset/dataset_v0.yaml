@@ -4,10 +4,9 @@ type: 'simple'
 dir: 
     - "/datasets/metric_learning/dataset_v0"                                  
 annotations: 
-    - "/datasets/metric_learning/dataset_v0/folds.csv" 
+    - "/datasets/metric_learning/dataset_v0/dataset_train.csv" 
                  
-norm_type : 'clip'  
-fold: 0 
+fold: 
 
 label_column: 'label'
 fname_column: 'file_name'

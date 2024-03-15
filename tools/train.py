@@ -82,7 +82,6 @@ def train(config):
     
     exp_trackers = get_experiment_trackers(config)
 
-
     trainer = get_trainer(
         config,
         model=model,

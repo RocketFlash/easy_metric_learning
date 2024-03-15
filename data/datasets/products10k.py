@@ -2,7 +2,7 @@ import wget
 import zipfile
 import pandas as pd
 from pathlib import Path
-from .base_dataset import BaseDataset
+from .base import BaseDataset
 
 
 class Products10K(BaseDataset):
@@ -49,8 +49,10 @@ class Products10K(BaseDataset):
         df_test['is_test'] = 1
         df_test['name'] = df_test['name'].apply(lambda x: f'test/{x}')
 
-        df_info = pd.concat([df_train, df_test],
-                            ignore_index=True)
+        df_info = pd.concat(
+            [df_train, df_test],
+            ignore_index=True
+        )
         df_info = df_info.rename(columns={'name' : 'file_name',
                                         'class' : 'label'})
         

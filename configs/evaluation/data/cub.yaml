@@ -1,8 +1,8 @@
 datasets:
   - name: cub_200_2011
     type: simple 
-    dir: /datasets/metric_learning/datasets_opensource/CUB_200_2011                                 
-    annotations: /datasets/metric_learning/datasets_opensource/CUB_200_2011/dataset_info.csv
+    dir: /mnt/datasets/metric_learning/datasets_opensource/CUB_200_2011                                 
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/CUB_200_2011/dataset_info.csv
     label_column: label
     fname_column: file_name
     use_bboxes: True

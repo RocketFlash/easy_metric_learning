@@ -1,11 +1,11 @@
-name: shopee
+name: inaturalist_2021
 type: simple                                         
 
 dir: 
-    - /mnt/datasets/metric_learning/datasets_opensource/shopee
+    - /mnt/datasets/metric_learning/datasets_opensource/inaturalist_2021
 
 annotations: 
-    - /mnt/datasets/metric_learning/datasets_opensource/shopee/dataset_info.csv
+    - /mnt/datasets/metric_learning/datasets_opensource/inaturalist_2021/dataset_info.csv
                   
 fold: 0 
 

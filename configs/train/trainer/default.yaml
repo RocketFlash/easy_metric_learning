@@ -2,3 +2,5 @@ type: base
 
 grad_accum_steps: ${grad_accum_steps}
 incremental_margin:
+  min_m: 0.3
+  type: 'linear'

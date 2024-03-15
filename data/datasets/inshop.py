@@ -2,7 +2,7 @@ import zipfile
 import gdown
 import pandas as pd
 from pathlib import Path
-from .base_dataset import BaseDataset
+from .base import BaseDataset
 
 
 class Inshop(BaseDataset):

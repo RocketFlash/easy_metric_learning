@@ -76,11 +76,16 @@ if __name__ == '__main__':
     DATASET_PATH = DATASET_CSV_PATH.parents[0]
     THRESHOLD = args.threshold
 
-    df = pd.read_csv(DATASET_CSV_PATH, dtype={'label': str,
-                                              'file_name': str,
-                                              'width': int,
-                                              'height': int,
-                                              'hash' : str})
+    df = pd.read_csv(
+        DATASET_CSV_PATH, 
+        dtype={
+            'label': str,
+            'file_name': str,
+            'width': int,
+            'height': int,
+            'hash' : str
+        }
+    )
 
     if args.min_size > 0:
         df = min_size_filtering(df, min_size=args.min_size)

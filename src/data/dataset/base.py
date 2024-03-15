@@ -85,6 +85,7 @@ class BaseDataset(Dataset):
     def __getitem__(self, i):
         image_path = self.images_paths[i]
         file_name = self.file_names[i]
+
         try:
             if Path(image_path).suffix == '.gif':
                 image =  plt.imread(image_path)

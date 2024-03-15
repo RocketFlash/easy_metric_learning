@@ -3,7 +3,7 @@ import wget
 import os
 import pandas as pd
 from pathlib import Path
-from .base_dataset import BaseDataset
+from .base import BaseDataset
 
 
 class FineFood(BaseDataset):
@@ -36,32 +36,34 @@ class FineFood(BaseDataset):
         
 
     def prepare(self):
-        train_path = self.dataset_folder / 'train'
-        val_path   = self.dataset_folder / 'val'
+        train_path = self.dataset_folder / 'Train'
+        val_path   = self.dataset_folder / 'Val'
 
-        # df_train = self.get_labels_and_paths(train_path, split='train')
-        # df_val   = self.get_labels_and_paths(val_path, split='val')
+        df_train = self.get_labels_and_paths(train_path, split='Train')
+        df_val   = self.get_labels_and_paths(val_path, split='Val')
 
-        # df_train['is_test'] = 0
-        # df_val['is_test']   = 1
+        df_train['is_test'] = 0
+        df_val['is_test']   = 1
 
-        # df_info = pd.concat([df_train, df_val],
-        #                     ignore_index=True)
+        df_info = pd.concat(
+            [df_train, df_val],
+            ignore_index=True
+        )
 
-        # df_info['label'] = df_info['label'].apply(lambda x: f'ali_{x}')
+        df_info['label'] = df_info['label'].apply(lambda x: f'finefood_{x}')
 
-        # df_info = self.add_image_sizes(df_info, self.dataset_folder)
-        # df_info = df_info[[
-        #     'file_name', 
-        #     'label', 
-        #     'width', 
-        #     'height',
-        #     'is_test'
-        # ]]
+        df_info = self.add_image_sizes(df_info, self.dataset_folder)
+        df_info = df_info[[
+            'file_name', 
+            'label', 
+            'width', 
+            'height',
+            'is_test'
+        ]]
         
-        # print(df_info)
-        # print(df_info.dtypes)
-        # df_info.to_csv(self.dataset_folder / 'dataset_info.csv', index=False) 
+        print(df_info)
+        print(df_info.dtypes)
+        df_info.to_csv(self.dataset_folder / 'dataset_info.csv', index=False) 
         
         
         

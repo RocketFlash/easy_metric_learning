@@ -18,8 +18,8 @@ defaults:
 debug : False
 
 embeddings_size: 512
-batch_size : 256
-epochs : 20
+batch_size : 512
+epochs : 15
 fold: 0 
 grad_accum_steps: 4
 random_state : 28 

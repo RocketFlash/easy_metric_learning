@@ -11,6 +11,7 @@ from datasets.met import MET
 from datasets.hnm import HNM
 from datasets.finefood import FineFood
 from datasets.shopee import Shopee
+from datasets.inaturalist_2021 import Inaturalist2021
 
 
 name_to_dataset_dict = {
@@ -25,6 +26,7 @@ name_to_dataset_dict = {
     'hnm' : HNM,
     'finefood' : FineFood,
     'shopee' : Shopee,
+    'inaturalist_2021': Inaturalist2021
 }
 
 
@@ -45,7 +47,8 @@ def parse_args():
             'met',
             'hnm',
             'finefood',
-            'shopee'
+            'shopee',
+            'inaturalist_2021'
         ],
         default='sop', 
         help='dataset type'

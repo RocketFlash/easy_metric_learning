@@ -1,0 +1,9 @@
+datasets:
+  - name: inaturalist_2021
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/inaturalist_2021
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/inaturalist_2021/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+                  

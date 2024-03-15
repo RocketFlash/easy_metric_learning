@@ -217,7 +217,7 @@ class DatasetViewer:
 
         resize_transform = A.Compose([
             A.LongestMaxSize(self.img_width.value),
-            A.PadIfNeeded (
+            A.PadIfNeeded(
                 min_height=self.img_width.value, 
                 min_width=self.img_width.value, 
                 border_mode=cv2.BORDER_CONSTANT,

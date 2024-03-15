@@ -1,11 +1,9 @@
 import tarfile
 import wget
 import pandas as pd
-from scipy.io import loadmat
 from pathlib import Path
-from .base_dataset import BaseDataset
+from .base import BaseDataset
 import shutil
-import cv2
 
 
 class CUB(BaseDataset):

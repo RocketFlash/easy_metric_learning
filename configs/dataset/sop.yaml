@@ -2,10 +2,10 @@ name: sop
 type: simple                                         
 
 dir: 
-    - /datasets/metric_learning/datasets_opensource/Stanford_Online_Products   
+    - /mnt/datasets/metric_learning/datasets_opensource/Stanford_Online_Products   
 
 annotations: 
-    - /datasets/metric_learning/datasets_opensource/Stanford_Online_Products/dataset_info.csv
+    - /mnt/datasets/metric_learning/datasets_opensource/Stanford_Online_Products/dataset_info.csv
                   
 fold: 0 
 

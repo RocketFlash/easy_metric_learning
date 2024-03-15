@@ -116,14 +116,16 @@ if __name__ == '__main__':
     dataset_info_path = Path(args.dataset_info)
     dataset_path = dataset_info_path.parents[0]
 
-    df = pd.read_csv(dataset_info_path, 
-                     dtype={
-                         'label': str,
-                         'file_name': str,
-                         'width': int,
-                         'height': int,
-                         'hash': str,
-                     })
+    df = pd.read_csv(
+        dataset_info_path, 
+        dtype={
+            'label': str,
+            'file_name': str,
+            'width': int,
+            'height': int,
+            'hash': str,
+        }
+    )
 
     counts_df = get_counts_df(df)
 

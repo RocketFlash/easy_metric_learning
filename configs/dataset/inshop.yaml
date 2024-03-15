@@ -2,10 +2,10 @@ name: inshop
 type: simple                                         
 
 dir: 
-    - /datasets/metric_learning/datasets_opensource/inshop 
+    - /mnt/datasets/metric_learning/datasets_opensource/inshop 
 
 annotations: 
-    - /datasets/metric_learning/datasets_opensource/inshop/dataset_info.csv
+    - /mnt/datasets/metric_learning/datasets_opensource/inshop/dataset_info.csv
                   
 fold: 0 
 

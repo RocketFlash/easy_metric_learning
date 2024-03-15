@@ -3,8 +3,7 @@ import wget
 import pandas as pd
 from scipy.io import loadmat
 from pathlib import Path
-from .base_dataset import BaseDataset
-import cv2
+from .base import BaseDataset
 
 
 class Cars196(BaseDataset):
@@ -47,16 +46,20 @@ class Cars196(BaseDataset):
             class_ids.append(class_id)
             is_tests.append(is_test)
 
-        df_info = pd.DataFrame(list(zip(file_names, 
-                                        class_ids, 
-                                        bboxes,
-                                        is_tests)), 
-                               columns=[
-                                   'file_name', 
-                                   'class_id', 
-                                   'bbox',
-                                   'is_test'
-                                ])
+        df_info = pd.DataFrame(
+            list(
+                zip(file_names, 
+                    class_ids, 
+                    bboxes,
+                    is_tests)
+                ), 
+            columns=[
+                'file_name', 
+                'class_id', 
+                'bbox',
+                'is_test'
+            ]
+        )
         
         df_info['label'] = df_info['class_id'].apply(lambda x: f'cars_{x}')    
         df_info = self.add_image_sizes(df_info, self.dataset_folder)

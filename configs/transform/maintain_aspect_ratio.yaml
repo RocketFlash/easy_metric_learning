@@ -1,7 +1,8 @@
 train:
   order:
     [
-      resize,
+      longest_max_size,
+      pad_if_needed,
       horizontal_flip,
       random_rotate90,
       shift_scale_rotate,
@@ -22,6 +23,15 @@ train:
     height: ${img_h}
     width: ${img_w}
     p: 1.0
+  longest_max_size:
+    _target_: albumentations.LongestMaxSize
+    max_size: ${img_h}
+  pad_if_needed:
+    _target_: albumentations.PadIfNeeded
+    min_height: ${img_h}
+    min_width: ${img_w} 
+    border_mode: 0
+    value: [127,127,127]
   horizontal_flip:
     _target_: albumentations.HorizontalFlip
     p: 0.5
@@ -130,5 +140,3 @@ cutmix:
 mixup:
   p: 0
   alpha: 0.5
-
-maintain_aspect_ratio: False

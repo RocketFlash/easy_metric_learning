@@ -3,7 +3,7 @@ import tarfile
 import json
 import pandas as pd
 from pathlib import Path
-from .base_dataset import BaseDataset
+from .base import BaseDataset
 
 
 class MET(BaseDataset):
@@ -66,8 +66,10 @@ class MET(BaseDataset):
         df_test['is_test'] = 1
         df_val['is_test']  = 0
 
-        df_test = pd.concat([df_val, df_test],
-                            ignore_index=True)
+        df_test = pd.concat(
+            [df_val, df_test],
+            ignore_index=True
+        )
         class_folders_path = sorted(list(self.dataset_folder.glob('MET/*/')))
 
         labels = []

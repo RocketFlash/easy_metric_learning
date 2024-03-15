@@ -2,10 +2,10 @@ name: rp2k
 type: simple                                         
 
 dir: 
-    - /datasets/metric_learning/datasets_opensource/rp2k
+    - /mnt/datasets/metric_learning/datasets_opensource/rp2k
 
 annotations: 
-    - /datasets/metric_learning/datasets_opensource/rp2k/dataset_info.csv
+    - /mnt/datasets/metric_learning/datasets_opensource/rp2k/dataset_info.csv
                   
 fold: 0 
 

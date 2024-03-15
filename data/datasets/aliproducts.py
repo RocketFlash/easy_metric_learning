@@ -2,7 +2,7 @@ import wget
 import tarfile
 import pandas as pd
 from pathlib import Path
-from .base_dataset import BaseDataset
+from .base import BaseDataset
 
 
 class Aliproducts(BaseDataset):

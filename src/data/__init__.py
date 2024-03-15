@@ -34,7 +34,11 @@ def get_train_data_from_config(config):
     fold = config.dataset.fold if 'fold' in config.dataset else 0
     df_train, df_valid = get_train_val_split(
         annotation=annotations, 
-        fold=fold
+        fold=fold,
+        min_n_samples_per_label=config.dataset.min_n_samples_per_label,
+        max_n_samples_per_label=config.dataset.max_n_samples_per_label,
+        oversampling_min_n_samples=config.dataset.oversampling_min_n_samples,
+        random_state=config.random_state
     )
 
     transform_train = get_transform(config.transform.train)
