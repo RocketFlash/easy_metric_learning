@@ -75,11 +75,63 @@ def read_pd(file_path):
     return df
 
 
+def min_n_samples_per_label_filter(
+        df, 
+        min_n_samples=5
+    ):
+    label_counts = df['label'].value_counts()
+    labels_to_keep = label_counts[label_counts >= min_n_samples].index
+    df = df[df['label'].isin(labels_to_keep)]
+    return df
+
+
+def undersampling(
+        df, 
+        max_n_samples=100,
+        random_state=28
+    ):
+    train_groups = []
+    for label, group in df.groupby('label'):
+        group = group.reset_index(drop=True)
+        if len(group)>max_n_samples:
+            group = group.sample(
+                max_n_samples, 
+                random_state=random_state
+            )
+        train_groups.append(group)
+    df = pd.concat(train_groups).reset_index(drop=True)
+    return df
+
+
+def oversampling(
+        df, 
+        min_n_samples=20,
+        random_state=28
+    ):
+    resampled_dfs = []
+    for label, group in df.groupby('label'):
+        if len(group) < min_n_samples:
+            num_samples_needed = min_n_samples - len(group)
+            resampled_group = group.sample(
+                n=num_samples_needed, 
+                replace=True, 
+                random_state=random_state
+            )  
+            resampled_dfs.append(
+                pd.concat([group, resampled_group])
+            )
+        else:
+            resampled_dfs.append(group)
+
+    df = pd.concat(resampled_dfs)
+    return df
+
+
 def get_train_val_from_file(
         annotation_file, 
         fold=0,
         min_n_samples_per_label=None,
-        max_n_samples_per_label=None,
+        undersampling_max_n_samples=None,
         oversampling_min_n_samples=None,
         random_state=28
     ):
@@ -98,45 +150,38 @@ def get_train_val_from_file(
         df_valid = df_folds[((df_folds.fold == fold) & 
                             (df_folds.fold >= 0)) | 
                             (df_folds.fold == -2)]
-        
-    if min_n_samples_per_label is not None:
-        print(f'N train samples before min filtering: {len(df_train)}')
-        label_counts = df_train['label'].value_counts()
-        labels_to_keep = label_counts[label_counts >= min_n_samples_per_label].index
-        df_train = df_train[df_train['label'].isin(labels_to_keep)]
-        print(f'N train samples after min filtering: {len(df_train)}')
+    
+    filtering_status_str = ''
+    n_samples_before = len(df_train)
 
-    if max_n_samples_per_label is not None:
-        print(f'N train samples before max filtering: {len(df_train)}')
-        train_groups = []
-        for label, group in df_train.groupby('label'):
-            group = group.reset_index(drop=True)
-            if len(group)>100:
-                group = group.sample(
-                    max_n_samples_per_label, 
-                    random_state=random_state
-                )
-            train_groups.append(group)
-        df_train = pd.concat(train_groups).reset_index(drop=True)
-        print(f'N train samples after max filtering: {len(df_train)}')
+    if min_n_samples_per_label is not None:
+        df_train = min_n_samples_per_label_filter(
+            df_train, 
+            min_n_samples=min_n_samples_per_label
+        )
+        filtering_status_str += f' => min samples filtering [min n samples={min_n_samples_per_label}] ({len(df_train)})'
+
+    if undersampling_max_n_samples is not None:
+        df_train = undersampling(
+            df_train, 
+            max_n_samples=undersampling_max_n_samples,
+            random_state=random_state
+        )
+        filtering_status_str += f' => undersampling [max n samples={undersampling_max_n_samples}] ({len(df_train)})'
+        
 
     if oversampling_min_n_samples is not None:
-        print(f'N train samples before oversampling: {len(df_train)}')
-        resampled_dfs = []
-        for label, group in df_train.groupby('label'):
-            if len(group) < oversampling_min_n_samples:
-                num_samples_needed = oversampling_min_n_samples - len(group)
-                resampled_group = group.sample(
-                    n=num_samples_needed, 
-                    replace=True, 
-                    random_state=random_state
-                )  
-                resampled_dfs.append(pd.concat([group, resampled_group]))
-            else:
-                resampled_dfs.append(group)
+        df_train = oversampling(
+            df_train, 
+            min_n_samples=oversampling_min_n_samples,
+            random_state=random_state
+        )
+        filtering_status_str += f' => oversampling [min n samples={oversampling_min_n_samples}] ({len(df_train)})'
 
-        df_train = pd.concat(resampled_dfs)
-        print(f'N train samples after oversampling: {len(df_train)}')
+    if filtering_status_str:
+        before_str = f'N samples before filtering ({n_samples_before})'
+        filtering_status_str = before_str + filtering_status_str
+        print(filtering_status_str)
 
     labels_train = df_train.label.unique()
     if df_valid is not None:
@@ -149,7 +194,7 @@ def get_train_val_split(
         annotation, 
         fold=0,
         min_n_samples_per_label=None,
-        max_n_samples_per_label=None,
+        undersampling_max_n_samples=None,
         oversampling_min_n_samples=None,
         random_state=28
     ):
@@ -162,7 +207,7 @@ def get_train_val_split(
                  annotation_file, 
                  fold=fold,
                  min_n_samples_per_label=min_n_samples_per_label,
-                 max_n_samples_per_label=max_n_samples_per_label,
+                 undersampling_max_n_samples=undersampling_max_n_samples,
                  oversampling_min_n_samples=oversampling_min_n_samples,
                  random_state=random_state
             )
@@ -178,7 +223,7 @@ def get_train_val_split(
              annotation, 
              fold=fold,
              min_n_samples_per_label=min_n_samples_per_label,
-             max_n_samples_per_label=max_n_samples_per_label,
+             undersampling_max_n_samples=undersampling_max_n_samples,
              oversampling_min_n_samples=oversampling_min_n_samples,
              random_state=random_state
         )

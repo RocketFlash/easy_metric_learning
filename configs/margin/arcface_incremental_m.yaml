@@ -8,3 +8,5 @@ dynamic_margin:
 id_counts: 
 
 incremental_margin:
+  min_m: 0.3
+  type: 'linear'

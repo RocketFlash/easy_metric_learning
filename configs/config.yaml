@@ -18,7 +18,7 @@ defaults:
 debug : False
 
 embeddings_size: 512
-batch_size : 512
+batch_size : 256
 epochs : 15
 fold: 0 
 grad_accum_steps: 4
@@ -27,7 +27,7 @@ random_state : 28
 img_h: 224
 img_w: 224
 
-n_workers: 8
+n_workers: 16
 device : 0       
 visualize_batch: True  
 use_wandb  : True

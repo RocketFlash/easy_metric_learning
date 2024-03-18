@@ -13,4 +13,8 @@ label_column: label
 fname_column: file_name
 use_bboxes: False
 
+min_n_samples_per_label: 
+undersampling_max_n_samples: 
+oversampling_min_n_samples: 
+
 labels_to_ids_path: 

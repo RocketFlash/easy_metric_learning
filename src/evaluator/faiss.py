@@ -26,7 +26,8 @@ class FAISSEvaluator(BaseEvaluator):
             dataset_name='dataset'
         ):
         self.model.eval()
-            
+        
+        top_k = max(self.K)
         vector_dimension = embeddings.shape[1]
         faiss.omp_set_num_threads(self.config.n_workers)
 
@@ -39,7 +40,7 @@ class FAISSEvaluator(BaseEvaluator):
         index.add(embeddings)
         distances, best_top_n_idxs = index.search(
             embeddings, 
-            k=self.K+1
+            k=top_k+1
         )
 
         best_top_n_idxs = best_top_n_idxs[:, 1:]
@@ -53,7 +54,7 @@ class FAISSEvaluator(BaseEvaluator):
         )
 
         if self.save_results:
-            df_nearest.to_feather(self.save_dir / f'{dataset_name}_top{self.K}.feather')
+            df_nearest.to_feather(self.save_dir / f'{dataset_name}_top{top_k}.feather')
 
         return df_nearest
 

@@ -92,7 +92,7 @@ def train(config):
         ids_to_labels=data_info_train.train.ids_to_labels
     )
 
-    eval_save_dir = work_dir/'eval'
+    eval_save_dir = work_dir / 'eval'
     evaluator = get_evaluator(
         config,
         model=model,
@@ -114,10 +114,15 @@ def train(config):
 
         trainer.update_epoch()
 
+        eval_stats = {}
         for data_info in data_infos_test:       
             logger.info(f'Model evaluation on {data_info.dataset_name}')    
-            metrics = evaluator.evaluate(data_info)
-            logger.info(f'{data_info.dataset_name} metrics: {metrics}')
+            eval_metrics = evaluator.evaluate(data_info)
+            eval_stats[data_info.dataset_name] = eval_metrics
+
+            logger.info(f'{data_info.dataset_name} metrics:')
+            for k_metric, v_metric in eval_metrics.items():
+                logger.info(f'{k_metric}: {v_metric}')
 
         save_ckp(
             save_paths.last_weights_path, 
@@ -148,7 +153,8 @@ def train(config):
             lr=optimizer.param_groups[-1]['lr'],
             epoch=epoch,
             train=stats_train,
-            valid=stats_valid
+            valid=stats_valid,
+            eval=eval_stats
         )
         for exp_tracker_name, exp_tracker in exp_trackers.items():
             exp_tracker.send_stats(stats)

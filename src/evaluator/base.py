@@ -2,7 +2,7 @@ from tqdm.auto import tqdm
 import torch
 import numpy as np
 import pandas as pd
-from ..metric.basic import top_k_accuracy
+from ..metric.basic import recall_at_k
 from ..utils import cosine_similarity_chunks
 
 
@@ -101,12 +101,14 @@ class BaseEvaluator:
             dataset_name='dataset'
         ):
         self.model.eval()
+
+        top_k = max(self.K)
         
         best_top_n_vals, best_top_n_idxs = cosine_similarity_chunks(
             embeddings, 
             embeddings, 
             n_chunks=self.config.evaluation.n_chunks, 
-            top_n=self.K+1
+            top_n=top_k+1
         )
 
         best_top_n_idxs = best_top_n_idxs.T
@@ -123,7 +125,7 @@ class BaseEvaluator:
         )
 
         if self.save_results:
-            df_nearest.to_feather(self.save_dir / f'{dataset_name}_top{self.K}.feather')
+            df_nearest.to_feather(self.save_dir / f'{dataset_name}_top{top_k}.feather')
 
         return df_nearest
 
@@ -160,9 +162,9 @@ class BaseEvaluator:
         gts          = df_nearest['gt'].to_numpy()
 
         metrics = {}
-        top_ks = predictions.shape[1]
-        for k in range(1, top_ks+1):
-            metrics[f'top{k} acc'] = round(top_k_accuracy(gts, predictions, k=k), 5)
+        
+        for k in self.K:
+            metrics[f'R@{k}'] = round(recall_at_k(gts, predictions, k=k), 5)
 
         df_metrics = pd.DataFrame(
             metrics.items(), 

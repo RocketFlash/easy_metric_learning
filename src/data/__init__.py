@@ -36,7 +36,7 @@ def get_train_data_from_config(config):
         annotation=annotations, 
         fold=fold,
         min_n_samples_per_label=config.dataset.min_n_samples_per_label,
-        max_n_samples_per_label=config.dataset.max_n_samples_per_label,
+        undersampling_max_n_samples=config.dataset.undersampling_max_n_samples,
         oversampling_min_n_samples=config.dataset.oversampling_min_n_samples,
         random_state=config.random_state
     )

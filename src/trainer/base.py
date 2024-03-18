@@ -45,12 +45,12 @@ class BaseTrainer:
 
         self.mix_loss_fns = {k: MixCriterion(v) for k, v in self.loss_fns.items()}
         
-        if config.train.trainer.incremental_margin is not None:
+        if config.margin.incremental_margin is not None:
             self.incremental_margin = get_incremental_margin(
                 m_max=self.model.margin.m,
-                m_min=config.train.trainer.incremental_margin.min_m,
+                m_min=config.margin.incremental_margin.min_m,
                 n_epochs=self.n_epochs,
-                mode=config.train.trainer.incremental_margin.type
+                mode=config.margin.incremental_margin.type
             )
         else:
             self.incremental_margin = None
@@ -162,6 +162,7 @@ class BaseTrainer:
             self.scheduler.step()
 
         stats = dict(
+            m=self.model.margin.m,
             losses={loss_name: loss_meter.avg for loss_name, loss_meter in loss_meters.items()},
         )
 

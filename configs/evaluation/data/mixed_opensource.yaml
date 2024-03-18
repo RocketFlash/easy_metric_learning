@@ -41,10 +41,10 @@ datasets:
     label_column: label
     fname_column: file_name
     use_bboxes: False
-  - name: aliproducts
+  - name: rp2k
     type: simple 
-    dir: /mnt/datasets/metric_learning/datasets_opensource/aliproducts/
-    annotations: /mnt/datasets/metric_learning/datasets_opensource/aliproducts/dataset_info.csv
+    dir: /mnt/datasets/metric_learning/datasets_opensource/rp2k/
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/rp2k/dataset_info.csv
     label_column: label
     fname_column: file_name
     use_bboxes: False
@@ -52,6 +52,13 @@ datasets:
     type: simple 
     dir: /mnt/datasets/metric_learning/datasets_opensource/largefinefoodai/
     annotations: /mnt/datasets/metric_learning/datasets_opensource/largefinefoodai/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: inaturalist_2021
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/inaturalist_2021/
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/inaturalist_2021/dataset_info.csv
     label_column: label
     fname_column: file_name
     use_bboxes: False

@@ -1,4 +1,4 @@
 type: base
-K: 5
+K: [1, 2, 5, 10]
 save_results: True    
 save_embeddings: False
