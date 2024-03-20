@@ -27,7 +27,7 @@ class DataInfo():
     ids_to_labels: dict
     
 
-def get_train_data_from_config(config):
+def get_train_data_from_config(config, logger=None):
     annotations = get_object_from_omegaconf(config.dataset.annotations)
     root_dir    = get_object_from_omegaconf(config.dataset.dir) 
 
@@ -38,7 +38,8 @@ def get_train_data_from_config(config):
         min_n_samples_per_label=config.dataset.min_n_samples_per_label,
         undersampling_max_n_samples=config.dataset.undersampling_max_n_samples,
         oversampling_min_n_samples=config.dataset.oversampling_min_n_samples,
-        random_state=config.random_state
+        random_state=config.random_state,
+        logger=logger
     )
 
     transform_train = get_transform(config.transform.train)
@@ -121,7 +122,7 @@ def get_train_data_from_config(config):
     return data_infos
 
 
-def get_test_data_from_config(config):
+def get_test_data_from_config(config, logger=None):
     transform_test = get_transform(config.transform.test)
 
     data_infos = []

@@ -133,9 +133,11 @@ def get_train_val_from_file(
         min_n_samples_per_label=None,
         undersampling_max_n_samples=None,
         oversampling_min_n_samples=None,
-        random_state=28
+        random_state=28,
+        logger=None
     ):
-    print(annotation_file)
+    if logger is not None:
+        logger.info(annotation_file)
     df_folds = read_pd(annotation_file)
     if 'is_test' in df_folds:
         df_train = df_folds[df_folds['is_test']==0]
@@ -181,7 +183,8 @@ def get_train_val_from_file(
     if filtering_status_str:
         before_str = f'N samples before filtering ({n_samples_before})'
         filtering_status_str = before_str + filtering_status_str
-        print(filtering_status_str)
+        if logger is not None:
+            logger.info(filtering_status_str)
 
     labels_train = df_train.label.unique()
     if df_valid is not None:
@@ -196,7 +199,8 @@ def get_train_val_split(
         min_n_samples_per_label=None,
         undersampling_max_n_samples=None,
         oversampling_min_n_samples=None,
-        random_state=28
+        random_state=28,
+        logger=None
     ):
     if isinstance(annotation, list):
         df_train = []
@@ -209,7 +213,8 @@ def get_train_val_split(
                  min_n_samples_per_label=min_n_samples_per_label,
                  undersampling_max_n_samples=undersampling_max_n_samples,
                  oversampling_min_n_samples=oversampling_min_n_samples,
-                 random_state=random_state
+                 random_state=random_state,
+                 logger=logger
             )
             df_train.append(df_train_i)
             if df_valid_i is not None:
@@ -225,7 +230,8 @@ def get_train_val_split(
              min_n_samples_per_label=min_n_samples_per_label,
              undersampling_max_n_samples=undersampling_max_n_samples,
              oversampling_min_n_samples=oversampling_min_n_samples,
-             random_state=random_state
+             random_state=random_state,
+             logger=logger
         )
         
     return df_train, df_valid

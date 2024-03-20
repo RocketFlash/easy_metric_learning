@@ -4,17 +4,10 @@ import os
 import math
 import cv2
 import random
-import yaml
-import json
-import pandas as pd
 from os.path import isfile
-from collections import OrderedDict
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from pathlib import Path
-import torchvision
-from torchvision import transforms
-from sklearn.metrics.pairwise import cosine_similarity
 from .transform import get_transform
 from PIL import Image
 import io
@@ -22,6 +15,17 @@ import base64
 from io import BytesIO as _BytesIO
 from jinja2 import Template
 from easydict import EasyDict as edict
+
+
+def is_main_process(accelerator):
+    if accelerator is not None:
+        if accelerator.is_local_main_process:
+            is_main = True
+        else:
+            is_main = False
+    else:
+        is_main = True
+    return is_main
 
 
 def get_device(device_str):
@@ -32,10 +36,12 @@ def get_device(device_str):
     return device 
 
 
-def get_sample(image_path, 
-               img_h=170, 
-               img_w=170,
-               data_type='general'):
+def get_sample(
+        image_path, 
+        img_h=170, 
+        img_w=170,
+        data_type='general'
+    ):
     image = cv2.imread(image_path)
     transform = get_transform('test_aug',
                               data_type=data_type, 
@@ -57,19 +63,44 @@ def get_image(image_path):
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
 
 
-def save_ckp(save_path, model, epoch=0, optimizer=None, best_loss=100, emb_model_only=False):
-    if emb_model_only:
-        checkpoint = {
-            'model': model.state_dict()
-        }
+def save_ckp(
+        save_path, 
+        model, 
+        epoch=0, 
+        optimizer=None, 
+        best_criterion_val=None, 
+        emb_model_only=False,
+        criterion='train.losses.total_loss',
+        accelerator=None
+    ):
+    if accelerator is not None:
+        accelerator.wait_for_everyone() 
+        if emb_model_only:
+            model_state_dict = accelerator.unwrap_model(model).embeddings_net.state_dict()
+        else:
+            model_state_dict = accelerator.unwrap_model(model).state_dict()
     else:
-        checkpoint = {
+        if emb_model_only:
+            model_state_dict = model.embeddings_net.state_dict()
+        else:
+            model_state_dict = model.state_dict()
+
+    checkpoint = {
+        'model': model_state_dict
+    }
+
+    if not emb_model_only:
+        checkpoint.update({
             'epoch': epoch,
-            'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
-            'best_loss': best_loss
-        }
-    torch.save(checkpoint, save_path)
+            'best_criterion_val': best_criterion_val,
+            'criterion' : criterion
+        })
+
+    if accelerator is not None:
+        accelerator.save(checkpoint, save_path)
+    else:
+        torch.save(checkpoint, save_path)
     
 
 def load_ckp(
@@ -94,9 +125,9 @@ def load_ckp(
             print('Cannot load optimizer params')
         
     epoch = checkpoint['epoch'] if 'epoch' in checkpoint else 0
-    best_loss = checkpoint['best_loss'] if 'best_loss' in checkpoint else 100
+    best_criterion_val = checkpoint['best_criterion_val'] if 'best_criterion_val' in checkpoint else None
     
-    return model, optimizer, epoch, best_loss
+    return model, optimizer, epoch, best_criterion_val
 
 
 def load_checkpoint(
@@ -112,11 +143,11 @@ def load_checkpoint(
     checkpoint_data = {}
     if mode=='resume':
         if logger is not None: logger.info(f'resume training from: {ckp_path}')
-        model, optimizer, epoch, best_loss = load_ckp(ckp_path, model, optimizer)
+        model, optimizer, epoch, best_criterion_val = load_ckp(ckp_path, model, optimizer)
         checkpoint_data['model']       = model
         checkpoint_data['optimizer']   = optimizer
         checkpoint_data['start_epoch'] = epoch + 1
-        checkpoint_data['best_loss']   = best_loss
+        checkpoint_data['best_criterion_val'] = best_criterion_val
         
     elif mode=='emb':
         if logger is not None:  logger.info(f"load embeddings net only from: {ckp_path}")
@@ -144,6 +175,26 @@ def load_checkpoint(
         if logger is not None:  logger.info(f"wrong loading mode")
 
     return checkpoint_data
+
+def is_model_best(
+        stats,
+        best_criterion_val,
+        criterion='train.losses.total_loss',
+        criterion_type='loss'
+    ):
+    criterion_list = criterion.split('.')
+
+    crit_val = stats[criterion_list[0]]
+    for crit in criterion_list[1:]:
+        crit_val = crit_val[crit]
+    current_criterion_val = crit_val
+
+    if criterion_type=='loss':
+        is_best = True if best_criterion_val > current_criterion_val else False
+    else:
+        is_best = True if best_criterion_val < current_criterion_val else False
+
+    return is_best, current_criterion_val
 
 
 def get_save_paths(work_dir):
@@ -198,7 +249,16 @@ def plot_tiles_similarity(similarity_matrix, save_path='./img.png'):
     plt.close(fig)
 
 
-def plot_embeddings(embeddings, labels, save_path='./tsne.png', show=True, n_labels=-1, mapper=None,  method='fast_tsne', n_jobs=4):
+def plot_embeddings(
+        embeddings, 
+        labels, 
+        save_path='./tsne.png', 
+        show=True, 
+        n_labels=-1, 
+        mapper=None,  
+        method='fast_tsne', 
+        n_jobs=4
+    ):
     
     labels_set = list(set(labels))
     
@@ -245,18 +305,20 @@ def np_image_to_base64(im_matrix):
     return im_url
 
 
-def plot_embeddings_interactive(embeddings, 
-                                labels, 
-                                file_names=None,
-                                save_dir='./', 
-                                n_labels=-1, 
-                                mapper=None, 
-                                save_name=None,
-                                dataset_path='', 
-                                method='fast_tsne', 
-                                n_jobs=4, 
-                                n_components=2, 
-                                random_state=28):
+def plot_embeddings_interactive(
+        embeddings, 
+        labels, 
+        file_names=None,
+        save_dir='./', 
+        n_labels=-1, 
+        mapper=None, 
+        save_name=None,
+        dataset_path='', 
+        method='fast_tsne', 
+        n_jobs=4, 
+        n_components=2, 
+        random_state=28
+    ):
     import plotly.graph_objects as go
     
     labels_set = list(set(labels))
@@ -428,42 +490,6 @@ def plot_embeddings_interactive(embeddings,
     # Save the HTML content to a file
     with open(save_name, 'w') as file:
         file.write(html_content)
-
-
-def cosine_similarity_chunks(X, Y, n_chunks=5, top_n=5, sparse=False):
-    ch_sz = X.shape[0]//n_chunks
-
-    best_top_n_vals = None
-    best_top_n_idxs = None
-
-    
-    for i in tqdm(range(n_chunks)):
-        chunk = X[i*ch_sz:,:] if i==n_chunks-1 else X[i*ch_sz:(i+1)*ch_sz,:]
-        cosine_sim_matrix_i = cosine_similarity(chunk, Y)
-        best_top_n_vals, best_top_n_idxs = calculate_top_n(cosine_sim_matrix_i,
-                                                           best_top_n_vals,
-                                                            best_top_n_idxs,
-                                                            curr_zero_idx=(i*ch_sz),
-                                                            n=top_n)
-    return best_top_n_vals, best_top_n_idxs
-
-
-def calculate_top_n(sim_matrix,best_top_n_vals,
-                               best_top_n_idxs,
-                               curr_zero_idx=0,
-                               n=10):
-    n_rows, n_cols = sim_matrix.shape
-    total_matrix_vals = sim_matrix
-    total_matrix_idxs = np.tile(np.arange(n_rows).reshape(n_rows,1), (1,n_cols)).astype(int) + curr_zero_idx
-    if curr_zero_idx>0:
-        total_matrix_vals = np.vstack((total_matrix_vals, best_top_n_vals))
-        total_matrix_idxs = np.vstack((total_matrix_idxs, best_top_n_idxs))
-    res = np.argpartition(total_matrix_vals, -n, axis=0)[-n:]
-    res_vals = np.take_along_axis(total_matrix_vals, res, axis=0)
-    res_idxs = np.take_along_axis(total_matrix_idxs, res, axis=0)
-
-    del res, total_matrix_idxs, total_matrix_vals
-    return res_vals, res_idxs
 
 
 def show_images(images, n_col=3, save_name=None):

@@ -2,7 +2,7 @@ import hydra
 from easydict import EasyDict as edict
 
 
-def get_loss(loss_config, device='cpu', weight=None):
+def get_loss(loss_config, device=None, weight=None):
     loss_fns = {}
 
     for loss_cfg in loss_config.losses:
@@ -10,7 +10,10 @@ def get_loss(loss_config, device='cpu', weight=None):
             loss_cfg.get('loss_fn'), 
             weight=weight,
             _convert_="object"
-        ).to(device)
+        )
+        if device is not None:
+            loss_fn = loss_fn.to(device)
+            
         loss_fns[loss_cfg.name] = edict({
             'loss_fn': loss_fn, 
             'weight' : loss_cfg.weight

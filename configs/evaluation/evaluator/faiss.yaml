@@ -1,5 +1,0 @@
-type: faiss
-K: [1, 2, 5, 10]
-faiss_gpu: False
-save_results: True
-save_embeddings: False

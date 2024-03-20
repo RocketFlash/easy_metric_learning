@@ -1,0 +1,3 @@
+name: cars196_R@1
+type: metric
+criterion: eval.cars196.R@1

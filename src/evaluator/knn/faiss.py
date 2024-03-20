@@ -1,22 +1,24 @@
 import faiss
-from .base import BaseEvaluator
+from .base import BaseKNN
 
 
-class FAISSEvaluator(BaseEvaluator):
+class FAISSKNN(BaseKNN):
     def __init__(
             self, 
-            config,
-            model, 
-            save_dir='./', 
-            device='cpu', 
+            K=1,
+            n_workers=8,
+            save_results=False,
+            faiss_gpu=False,
+            save_dir='./'
         ):
         super().__init__(
-            config=config,
-            model=model, 
-            save_dir=save_dir, 
-            device=device, 
+            K=K,
+            save_results=save_results,
+            save_dir=save_dir
         )
-    
+        self.n_workers = n_workers
+        self.faiss_gpu = faiss_gpu
+        
 
     def nearest_search(
             self, 
@@ -25,14 +27,13 @@ class FAISSEvaluator(BaseEvaluator):
             file_names=None, 
             dataset_name='dataset'
         ):
-        self.model.eval()
         
         top_k = max(self.K)
         vector_dimension = embeddings.shape[1]
-        faiss.omp_set_num_threads(self.config.n_workers)
+        faiss.omp_set_num_threads(self.n_workers)
 
         index = faiss.IndexFlatIP(vector_dimension)
-        if self.config.evaluation.evaluator.faiss_gpu:
+        if self.faiss_gpu:
             res = faiss.StandardGpuResources()
             index = faiss.index_cpu_to_gpu(res, 0, index)
 
@@ -48,15 +49,12 @@ class FAISSEvaluator(BaseEvaluator):
 
         df_nearest = self.get_nearest_info(
             labels,
-            file_names,
             best_top_n_idxs,
-            distances
+            distances,
+            file_names=file_names
         )
 
         if self.save_results:
             df_nearest.to_feather(self.save_dir / f'{dataset_name}_top{top_k}.feather')
 
         return df_nearest
-
-                
-            

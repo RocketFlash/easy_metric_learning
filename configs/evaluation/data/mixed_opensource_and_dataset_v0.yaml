@@ -1,0 +1,72 @@
+datasets:
+  - name: cars196
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/cars196
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/cars196/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: True
+  - name: cub_200_2011
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/CUB_200_2011                                 
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/CUB_200_2011/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: True
+  - name: inshop
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/inshop
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/inshop/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: met
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/met
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/met/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: products10k
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/products10k
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/products10k/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: sop
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/Stanford_Online_Products
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/Stanford_Online_Products/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: rp2k
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/rp2k/
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/rp2k/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: largefinefood
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/largefinefoodai/
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/largefinefoodai/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: inaturalist_2021
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/inaturalist_2021/
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/inaturalist_2021/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: dataset_v0
+    type: simple 
+    dir: /datasets/metric_learning/dataset_v0/
+    annotations: /datasets/metric_learning/dataset_v0/dataset_test.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+                  

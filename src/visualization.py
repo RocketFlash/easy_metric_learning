@@ -114,6 +114,9 @@ class DatasetViewer:
         self.prev_batch_button = widgets.Button(description='Previous batch')
         self.prev_batch_button.on_click(self.prev_batch)
 
+        self.random_batch_button = widgets.Button(description='Random batch')
+        self.random_batch_button.on_click(self.random_batch)
+
         self.show_button = widgets.Button(description='Show')
         self.show_button.on_click(self.update_output)
 
@@ -185,6 +188,7 @@ class DatasetViewer:
                 self.prev_batch_button, 
                 self.next_batch_button, 
             ]),
+            self.random_batch_button,
             self.show_button,
             self.image_widget,
         ])
@@ -366,4 +370,16 @@ class DatasetViewer:
             end_idx = max(bs, 0)
 
         next_labels = self.group_names[start_idx:end_idx]
+        self.label_text_area.value = ','.join(next_labels)
+
+
+    def random_batch(self, b):
+        bs = self.batch_size.value
+        
+        next_labels = np.random.choice(
+            self.group_names, 
+            size=bs, 
+            replace=False
+        )
+
         self.label_text_area.value = ','.join(next_labels)

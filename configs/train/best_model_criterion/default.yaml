@@ -1,0 +1,3 @@
+name: total_loss
+type: loss
+criterion: train.losses.total_loss

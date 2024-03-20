@@ -11,10 +11,9 @@ class ExperimentTracker():
         stats_valid = stats['valid'] if 'valid' in stats else None
         stats_eval  = stats['eval']
 
+        stats_dict['learning_rate'] = stats_train['learning_rate']
         if 'm' in stats_train:
             stats_dict['train/m'] = stats_train['m']
-
-        stats_dict['learning_rate'] = stats['lr']
 
         for k_loss, v_loss in stats_train['losses'].items():
             stats_dict[f'train/{k_loss}'] = v_loss

@@ -5,17 +5,20 @@ defaults:
   - dataset : dataset_v0
   - dataloader: default
   - loss: cross_entropy
-  - evaluation/evaluator : faiss
+  - evaluation/evaluator : default
   - evaluation/data : cars_cub
+  - evaluation/knn : faiss
   - scheduler : cosine
   - optimizer : adamw
   - transform : default
   - train/trainer: default
+  - train/best_model_criterion: default
   - override hydra/hydra_logging: disabled  
   - override hydra/job_logging: disabled  
   - _self_
 
 debug : False
+ddp: False
 
 embeddings_size: 512
 batch_size : 256
@@ -27,7 +30,7 @@ random_state : 28
 img_h: 224
 img_w: 224
 
-n_workers: 16
+n_workers: auto
 device : 0       
 visualize_batch: True  
 use_wandb  : True

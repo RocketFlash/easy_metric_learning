@@ -56,8 +56,11 @@ def test(config):
     
     for data_info in data_infos_test:       
         logger.info(f'Model evaluation on {data_info.dataset_name}')    
-        metrics = evaluator.evaluate(data_info)
-        logger.info(f'{data_info.dataset_name} metrics: {metrics}')
+        eval_metrics = evaluator.evaluate(data_info)
+
+        logger.info(f'{data_info.dataset_name} metrics:')
+        for k_metric, v_metric in eval_metrics.items():
+            logger.info(f'{k_metric}: {v_metric}')
 
 
 if __name__=="__main__":

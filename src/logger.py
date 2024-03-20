@@ -15,30 +15,49 @@ def calculate_time(start_time, start_epoch, epoch, epochs):
     t = time.time() - start_time
     elapsed = DayHourMinute(t)
     t /= (epoch + 1) - start_epoch  # seconds per epoch
-    t = (epochs - epoch - 1) * t
+    t = (epochs - epoch) * t
     remaining = DayHourMinute(t)
     return elapsed, remaining
 
 
 class Logger():
-    def __init__(self, path=None):
+    def __init__(
+            self, 
+            path=None,
+            accelerator=None
+        ):
+        self.accelerator = accelerator
+        self.path = path
+        self.tab_string = '    '
+
+        if self.accelerator is not None:
+            if self.accelerator.is_main_process:
+                self.prepare_logger()
+        else:
+            self.prepare_logger()
+
+
+    def prepare_logger(self):
         self.logger = logging.getLogger("Logger")
 
         self.stdout_handler = logging.StreamHandler()
         self.logger.addHandler(self.stdout_handler)
         self.stdout_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
 
-        if path is not None:
-            self.file_handler = logging.FileHandler(path, "w")
+        if self.path is not None:
+            self.file_handler = logging.FileHandler(self.path, "w")
             self.logger.addHandler(self.file_handler)
             self.file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
         
         self.logger.setLevel(logging.INFO)
-        self.tab_string = '    '
 
 
     def info(self, txt):
-        self.logger.info(txt)
+        if self.accelerator is not None:
+            if self.accelerator.is_main_process:
+                self.logger.info(txt)
+        else:
+            self.logger.info(txt)
 
 
     def info_config(

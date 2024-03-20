@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import pandas as pd
 from ..metric.basic import recall_at_k
-from ..utils import cosine_similarity_chunks
+from .knn import get_knn_search
 
 
 class BaseEvaluator:
@@ -23,15 +23,20 @@ class BaseEvaluator:
         self.save_embeddings = config.evaluation.evaluator.save_embeddings
         self.save_dir = save_dir
         self.save_dir.mkdir(exist_ok=True)
+        self.K = config.evaluation.evaluator.K
+
+        self.knn_algo = get_knn_search(
+            config.evaluation.knn,
+            K=self.K,
+            save_dir=self.save_dir
+        )
 
         self.debug = config.debug
-        self.visualize_batch = config.visualize_batch
-        self.K = self.config.evaluation.evaluator.K
-
+        
 
     def evaluate(self, data_info):
         embeddings, labels, file_names = self.generate_embeddings(data_info)
-        df_nearest = self.nearest_search(
+        df_nearest = self.knn_algo.nearest_search(
             embeddings=embeddings, 
             labels=labels, 
             file_names=file_names, 
@@ -69,6 +74,7 @@ class BaseEvaluator:
         
         with torch.no_grad():
             for batch_index, (images, targets, fnames) in enumerate(tqdm_test):
+                if self.debug and batch_index>=10: break
                 images = images.to(self.device)
                 output = self.model.get_embeddings(images)
 
@@ -92,69 +98,6 @@ class BaseEvaluator:
 
         return embeddings, labels, file_names
     
-
-    def nearest_search(
-            self, 
-            embeddings, 
-            labels, 
-            file_names=None, 
-            dataset_name='dataset'
-        ):
-        self.model.eval()
-
-        top_k = max(self.K)
-        
-        best_top_n_vals, best_top_n_idxs = cosine_similarity_chunks(
-            embeddings, 
-            embeddings, 
-            n_chunks=self.config.evaluation.n_chunks, 
-            top_n=top_k+1
-        )
-
-        best_top_n_idxs = best_top_n_idxs.T
-        distances = best_top_n_vals.T
-
-        best_top_n_idxs = best_top_n_idxs[:, 1:]
-        distances = distances[:, 1:]
-
-        df_nearest = self.get_nearest_info(
-            labels,
-            file_names,
-            best_top_n_idxs,
-            distances
-        )
-
-        if self.save_results:
-            df_nearest.to_feather(self.save_dir / f'{dataset_name}_top{top_k}.feather')
-
-        return df_nearest
-
-    
-    def get_nearest_info(
-            self, 
-            labels,
-            file_names,
-            best_top_n_idxs,
-            distances
-        ):
-        all_pred = []
-        all_gts  = []
-        all_dist = []
-        all_fnms = []
-
-        for i in range(len(best_top_n_idxs)):
-            all_pred.append(labels[best_top_n_idxs[i]])
-            all_gts.append(labels[i])
-            all_dist.append(distances[i])
-            all_fnms.append(file_names[i])
-
-        df_nearest = pd.DataFrame(
-            list(zip(all_fnms, all_gts, all_pred, all_dist)), 
-            columns=['file_name', 'gt', 'prediction', 'similarity']
-        )
-
-        return df_nearest
-
 
     def calculate_metrics(self, df_nearest, dataset_name='dataset'):
         predictions  = np.array([row.astype(str) for row in df_nearest['prediction'].to_numpy()])

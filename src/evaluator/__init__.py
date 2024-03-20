@@ -1,5 +1,5 @@
 from .base import BaseEvaluator
-from .faiss import FAISSEvaluator
+from .ddp import DDPEvaluator
 
 
 def get_evaluator(
@@ -7,13 +7,14 @@ def get_evaluator(
         model,
         save_dir='./',
         device='cpu',
+        accelerator=None,
     ):
-    if config.evaluation.evaluator.type=='faiss':
-        evaluator = FAISSEvaluator(
+    if accelerator is not None:
+        evaluator = DDPEvaluator(
             config,
             model=model, 
             save_dir=save_dir, 
-            device=device, 
+            accelerator=accelerator,
         )
     else:
         evaluator = BaseEvaluator(
