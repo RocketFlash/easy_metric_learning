@@ -19,6 +19,7 @@ class Inaturalist2021(BaseDataset):
 
     def download(self):
         if not self.dataset_folder.is_dir():
+            self.dataset_folder.mkdir(exist_ok=True)
             train_data_tar_file = self.dataset_folder / 'train.tar.gz'
             valid_data_tar_file = self.dataset_folder / 'val.tar.gz'
             train_anno_tar_file = self.dataset_folder / 'train.json.tar.gz'

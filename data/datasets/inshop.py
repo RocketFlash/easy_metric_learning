@@ -23,18 +23,22 @@ class Inshop(BaseDataset):
             z_file_path     = self.dataset_folder / 'img.zip'
             split_file_path = self.dataset_folder / 'list_eval_partition.txt'
 
-            gdown.download(id=self.images_url, 
-                        output=str(z_file_path), 
-                        quiet=False)
+            gdown.download(
+                id=self.images_url, 
+                output=str(z_file_path), 
+                quiet=False
+            )
 
             with zipfile.ZipFile(z_file_path, 'r') as z_f:
                 z_f.extractall(str(self.dataset_folder))
 
             z_file_path.unlink()
 
-            gdown.download(id=self.split_url, 
-                        output=str(split_file_path), 
-                        quiet=False)
+            gdown.download(
+                id=self.split_url, 
+                output=str(split_file_path), 
+                quiet=False
+            )
             print(f'Dataset have been downloaded and extracted')
 
 

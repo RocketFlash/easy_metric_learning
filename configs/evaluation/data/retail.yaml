@@ -34,13 +34,6 @@ datasets:
     label_column: label
     fname_column: file_name
     use_bboxes: False
-  - name: shopee
-    type: simple 
-    dir: /mnt/datasets/metric_learning/datasets_opensource/shopee
-    annotations: /mnt/datasets/metric_learning/datasets_opensource/shopee/dataset_info.csv
-    label_column: label
-    fname_column: file_name
-    use_bboxes: False
   - name: dataset_v0
     type: simple 
     dir: /datasets/metric_learning/dataset_v0/

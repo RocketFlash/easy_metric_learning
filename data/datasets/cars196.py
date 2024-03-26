@@ -1,5 +1,6 @@
 import zipfile
 import wget
+import shutil
 import pandas as pd
 from scipy.io import loadmat
 from pathlib import Path
@@ -22,6 +23,7 @@ class Cars196(BaseDataset):
                 z_f.extractall(str(self.dataset_path))
             z_file.unlink()
             print(f'Dataset have been downloaded and extracted')
+            shutil.move(Path(self.dataset_path) / 'CARS196', self.dataset_folder)
 
 
     def prepare(self):

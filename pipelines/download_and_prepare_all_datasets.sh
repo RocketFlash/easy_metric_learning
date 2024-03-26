@@ -1,49 +1,59 @@
 #!/bin/bash
-SAVE_PATH="/datasets/metric_learning/"
+SAVE_PATH="/datasets/metric_learning/datasets_opensource"
 
 echo "Prepare cars196 dataset"
-python tools/datasets/prepare_cars196.py\
-    --download\
+python data/prepare_dataset.py\
+    --dataset cars\
     --save_path $SAVE_PATH
 
 echo "Prepare CUB200_2011 dataset"
-python tools/datasets/prepare_cub_200_2011.py\
-    --download\
+python data/prepare_dataset.py\
+    --dataset cub\
     --save_path $SAVE_PATH
 
 echo "Prepare inshop dataset"
-python tools/datasets/prepare_inshop.py\
-    --download\
+python data/prepare_dataset.py\
+    --dataset inshop\
     --save_path $SAVE_PATH
 
 echo "Prepare aliproducts dataset"
-python tools/datasets/prepare_aliproducts.py\
-    --download\
+python data/prepare_dataset.py\
+    --dataset aliproducts\
     --save_path $SAVE_PATH
 
 echo "Prepare MET dataset"
-python tools/datasets/prepare_met.py\
-    --download\
+python data/prepare_dataset.py\
+    --dataset met\
     --save_path $SAVE_PATH
 
 echo "Prepare products10k dataset"
-python tools/datasets/prepare_products10k.py\
-    --download\
+python data/prepare_dataset.py\
+    --dataset products10k\
     --save_path $SAVE_PATH
 
 echo "Prepare shopee dataset"
-python tools/datasets/prepare_shopee.py\
-    --download\
+python data/prepare_dataset.py\
+    --dataset shopee\
     --save_path $SAVE_PATH
 
 echo "Prepare stanford online products dataset"
-python tools/datasets/prepare_stanford_online_products.py\
-    --download\
+python data/prepare_dataset.py\
+    --dataset sop\
     --save_path $SAVE_PATH
 
 echo "Prepare R2PK dataset"
-python tools/datasets/prepare_r2pk.py\
-    --download\
+python data/prepare_dataset.py\
+    --dataset rp2k\
+    --save_path $SAVE_PATH
+
+echo "Prepare large fine food dataset"
+python data/prepare_dataset.py\
+    --dataset finefood\
+    --save_path $SAVE_PATH
+
+echo "Prepare inaturalist 2021 dataset"
+python data/prepare_dataset.py\
+    --dataset inaturalist_2021\
     --save_path $SAVE_PATH
 
 
