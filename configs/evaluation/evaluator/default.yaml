@@ -1,4 +1,4 @@
 type: base
 save_results: True    
-save_embeddings: False
+save_embeddings: ${save_embeddings}
 K: [1, 2, 5, 10]  

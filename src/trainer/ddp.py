@@ -49,7 +49,7 @@ class DDPTrainer:
             self.incremental_margin = get_incremental_margin(
                 m_max=self.accelerator.unwrap_model(self.model).margin.m,
                 m_min=config.margin.incremental_margin.min_m,
-                n_epochs=self.n_epochs,
+                n_epochs=config.epochs,
                 mode=config.margin.incremental_margin.type
             )
         else:

@@ -11,15 +11,17 @@ class AdaFace(nn.Module):
     Implementation of adaface
     Implementation taken from: https://github.com/mk-minchul/AdaFace 
     """
-    def __init__(self,
-                 in_features=512,
-                 out_features=70722,
-                 m=0.4,
-                 h=0.333,
-                 s=64.,
-                 t_alpha=1.0,
-                 ls_eps=0.0,
-                 use_batchnorm=False):
+    def __init__(
+            self,
+            in_features=512,
+            out_features=70722,
+            m=0.4,
+            h=0.333,
+            s=64.,
+            t_alpha=1.0,
+            ls_eps=0.0,
+            use_batchnorm=False
+        ):
         super(AdaFace, self).__init__()
         self.classnum = out_features
         self.in_features = in_features

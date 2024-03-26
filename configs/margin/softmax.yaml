@@ -1,0 +1,7 @@
+type: softmax
+
+autoscale: False
+dynamic_margin: 
+id_counts: 
+
+incremental_margin:

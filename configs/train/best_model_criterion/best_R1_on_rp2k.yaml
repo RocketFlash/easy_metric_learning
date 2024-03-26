@@ -1,0 +1,3 @@
+name: rp2k_R@1
+type: metric
+criterion: eval.rp2k.R@1

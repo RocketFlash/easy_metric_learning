@@ -99,7 +99,8 @@ class Logger():
         model_info_str = model_info_header
         model_info_str += f'{self.tab_string*2}{"Backbone":<15}: {config.backbone.type}\n'
         model_info_str += f'{self.tab_string*2}{"Head":<15}: {config.head.type}\n'
-        model_info_str += f'{self.tab_string*2}{"Margin":<15}: {config.margin.type}\n'
+        if 'margin' in config:
+            model_info_str += f'{self.tab_string*2}{"Margin":<15}: {config.margin.type}\n'
         model_info_str += f'{self.tab_string*2}{"Embeddings size":<15}: {config.embeddings_size}\n'
         self.info(model_info_str)
 

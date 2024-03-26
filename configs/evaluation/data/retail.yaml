@@ -1,0 +1,52 @@
+datasets:
+  - name: inshop
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/inshop
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/inshop/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: products10k
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/products10k
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/products10k/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: sop
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/Stanford_Online_Products
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/Stanford_Online_Products/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: rp2k
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/rp2k/
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/rp2k/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: aliproducts
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/aliproducts
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/aliproducts/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: shopee
+    type: simple 
+    dir: /mnt/datasets/metric_learning/datasets_opensource/shopee
+    annotations: /mnt/datasets/metric_learning/datasets_opensource/shopee/dataset_info.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  - name: dataset_v0
+    type: simple 
+    dir: /datasets/metric_learning/dataset_v0/
+    annotations: /datasets/metric_learning/dataset_v0/dataset_test.csv
+    label_column: label
+    fname_column: file_name
+    use_bboxes: False
+  
+                  

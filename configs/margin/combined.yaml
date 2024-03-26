@@ -1,0 +1,13 @@
+type: combined
+s: 30
+m1: 1
+m: 0.5
+m3: 0
+ls_eps: 0.1
+easy_margin: False
+
+autoscale: False
+dynamic_margin: 
+id_counts: 
+
+incremental_margin:

@@ -1,4 +1,5 @@
 from .base import BaseHead
+import torch.nn as nn
 
 
 def get_head(
@@ -12,4 +13,6 @@ def get_head(
             backbone_out_feats=backbone_out_feats,
             embeddings_size=head_config.embeddings_size,
             dropout_p=head_config.dropout_p)
+    else:
+        return nn.Identity()
     

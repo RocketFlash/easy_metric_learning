@@ -2,7 +2,7 @@ defaults:
   - backbone : efficientnetv2_b1
   - head : base
   - margin : arcface
-  - dataset : dataset_v0
+  - dataset : cars196
   - dataloader: default
   - loss: cross_entropy
   - evaluation/evaluator : default
@@ -33,6 +33,7 @@ img_w: 224
 n_workers: auto
 device : 0       
 visualize_batch: True  
+save_embeddings: False
 use_wandb  : True
 use_mlflow : True
 mlflow_server_uri : https://r3dev-mlflow.rebotics.net/
@@ -45,7 +46,7 @@ load_mode: emb
 run_info: ''
 run_name: '${margin.type}_${backbone.type}_${head.type}_${dataset.name}_img${img_h}x${img_w}_emb${embeddings_size}${run_info}'             
 project_name: 'product_recognition_v3'
-work_dirs: "./work_dirs/"
+work_dirs: "./work_dirs/train/"
 
 
 hydra:

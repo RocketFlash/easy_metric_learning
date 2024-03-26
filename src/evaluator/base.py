@@ -10,14 +10,23 @@ class BaseEvaluator:
     def __init__(
             self, 
             config,
-            model, 
+            model=None, 
             save_dir='./', 
             device='cpu',
+            model_info=None
         ):
 
         self.config = config
         self.model  = model
         self.device = device
+        self.model_info = model_info
+
+        if self.model_info is not None:
+            self.model = self.model_info['model']
+            if 'tf' in self.model_info['model_type']:
+                import tensorflow as tf
+            elif 'onnx' in self.model_info['model_type']:
+                import onnxruntime as ort
     
         self.save_results = config.evaluation.evaluator.save_results
         self.save_embeddings = config.evaluation.evaluator.save_embeddings
@@ -75,8 +84,29 @@ class BaseEvaluator:
         with torch.no_grad():
             for batch_index, (images, targets, fnames) in enumerate(tqdm_test):
                 if self.debug and batch_index>=10: break
-                images = images.to(self.device)
-                output = self.model.get_embeddings(images)
+                
+                if self.model_info is not None:
+                    if self.model_info['model_type'] in ['torch', 'traced']:
+                        images = images.to(self.device)
+                        output = self.model(images)
+                    elif self.model_info['model_type']=='onnx':
+                        output = self.model.run( None, {"input": images.numpy()})[0]
+                    elif self.model_info['model_type'] in ['tf_32', 'tf_16', 'tf_int', 'tf_dyn']:
+                        data_np = torch.permute(images, (0, 2, 3, 1)).numpy()
+                        tf_data = tf.convert_to_tensor(data_np)
+                        output  = self.model(input=tf_data)['output']
+                    elif self.model_info['model_type']=='tf_full_int':
+                        data_np = torch.permute(images, (0, 2, 3, 1)).numpy()
+                        input_scale, input_zero_point = self.model_info['input_details']["quantization"]
+                        output_scale, output_zero_point = self.model_info['output_details']['quantization']
+                        tf_sample_int8 = data_np / input_scale + input_zero_point
+                        tf_sample_int8 = tf_sample_int8.astype(self.model_info['input_details']["dtype"])
+                        tf_sample_int8 = tf.convert_to_tensor(tf_sample_int8)
+                        output = self.model(input=tf_sample_int8)
+                        output = output_scale * (output['output'].astype(np.float32) - output_zero_point)
+                else:
+                    images = images.to(self.device)
+                    output = self.model.get_embeddings(images)
 
                 if torch.is_tensor(output):
                     output = output.cpu().numpy()

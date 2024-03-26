@@ -34,7 +34,7 @@ def parse_args():
         '--min_freq', 
         type=int,
         default=10, 
-        help="min number of samples in frequency bin to split bin, if less ann whole bin in training set"
+        help="min number of samples in frequency bin to split bin, if less will add whole bin in training set"
     )
     parser.add_argument(
         '--max_n_samples', 

@@ -9,7 +9,7 @@ from utils import (get_stratified_kfold,
 def parse_args():
     parser = argparse.ArgumentParser(description='prepare dataset for training')
     parser.add_argument(
-        '--dataset_csv', 
+        '--dataset_info', 
         default="", 
         help="path to the csv file describing dataset"
     )
@@ -35,7 +35,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
 
-    dataset_csv  = Path(args.dataset_csv)
+    dataset_csv  = Path(args.dataset_info)
     dataset_path = dataset_csv.parents[0]
 
     df = pd.read_csv(

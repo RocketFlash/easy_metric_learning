@@ -53,7 +53,7 @@ class BaseTrainer:
             self.incremental_margin = get_incremental_margin(
                 m_max=self.model.margin.m,
                 m_min=config.margin.incremental_margin.min_m,
-                n_epochs=self.n_epochs,
+                n_epochs=config.epochs,
                 mode=config.margin.incremental_margin.type
             )
         else:
@@ -167,7 +167,9 @@ class BaseTrainer:
 
         stats = dict(
             m=self.model.margin.m,
-            losses={loss_name: loss_meter.avg for loss_name, loss_meter in loss_meters.items()},
+            losses={
+                loss_name: loss_meter.avg for loss_name, loss_meter in loss_meters.items()
+            },
         )
 
         return edict(stats)
@@ -222,7 +224,9 @@ class BaseTrainer:
                 tqdm_val.set_postfix(**info_params)
         
         stats = dict(
-            losses={loss_name: loss_meter.avg for loss_name, loss_meter in loss_meters.items()},
+            losses={
+                loss_name: loss_meter.avg for loss_name, loss_meter in loss_meters.items()
+            },
         )
 
         return edict(stats)

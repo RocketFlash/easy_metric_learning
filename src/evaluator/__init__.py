@@ -4,10 +4,11 @@ from .ddp import DDPEvaluator
 
 def get_evaluator(
         config,
-        model,
+        model=None,
         save_dir='./',
         device='cpu',
         accelerator=None,
+        model_info=None
     ):
     if accelerator is not None:
         evaluator = DDPEvaluator(
@@ -15,6 +16,7 @@ def get_evaluator(
             model=model, 
             save_dir=save_dir, 
             accelerator=accelerator,
+            model_info=model_info
         )
     else:
         evaluator = BaseEvaluator(
@@ -22,6 +24,7 @@ def get_evaluator(
             model=model, 
             save_dir=save_dir, 
             device=device, 
+            model_info=model_info
         )
 
     return evaluator

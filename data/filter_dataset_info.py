@@ -12,7 +12,7 @@ def parse_args():
     parser.add_argument('--min_size', type=int, default=-1, help="minimal image size")
     parser.add_argument('--max_size', type=int, default=-1, help="maximal image size")
     parser.add_argument('--dedup', action='store_true', help='remove duplicates')
-    parser.add_argument('--threshold', type=int, default=5, help="threshold for duplicates selection")
+    parser.add_argument('--threshold', type=int, default=10, help="threshold for duplicates selection")
     return parser.parse_args()
 
 

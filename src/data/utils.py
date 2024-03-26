@@ -142,10 +142,10 @@ def get_train_val_from_file(
     if 'is_test' in df_folds:
         df_train = df_folds[df_folds['is_test']==0]
         df_valid = None
+    elif 'fold' not in df_folds:
+        df_train = df_folds
+        df_valid = None
     else:
-        if 'fold' not in df_folds:
-            df_folds['fold'] = 0
-
         df_train = df_folds[((df_folds.fold != fold) & 
                             (df_folds.fold >= 0)) | 
                             (df_folds.fold == -1)]
@@ -153,15 +153,19 @@ def get_train_val_from_file(
                             (df_folds.fold >= 0)) | 
                             (df_folds.fold == -2)]
     
-    filtering_status_str = ''
+    filtering_samples_status_str = ''
+    filtering_labels_status_str = ''
     n_samples_before = len(df_train)
+    n_labels_before = len(df_train['label'].unique())
 
     if min_n_samples_per_label is not None:
         df_train = min_n_samples_per_label_filter(
             df_train, 
             min_n_samples=min_n_samples_per_label
         )
-        filtering_status_str += f' => min samples filtering [min n samples={min_n_samples_per_label}] ({len(df_train)})'
+        n_labels = len(df_train['label'].unique())
+        filtering_samples_status_str += f' => min samples filtering [min n samples={min_n_samples_per_label}] ({len(df_train)})'
+        filtering_labels_status_str += f' => min samples filtering [min n samples={min_n_samples_per_label}] ({n_labels})'
 
     if undersampling_max_n_samples is not None:
         df_train = undersampling(
@@ -169,7 +173,9 @@ def get_train_val_from_file(
             max_n_samples=undersampling_max_n_samples,
             random_state=random_state
         )
-        filtering_status_str += f' => undersampling [max n samples={undersampling_max_n_samples}] ({len(df_train)})'
+        n_labels = len(df_train['label'].unique())
+        filtering_samples_status_str += f' => undersampling [max n samples={undersampling_max_n_samples}] ({len(df_train)})'
+        filtering_labels_status_str += f' => undersampling [max n samples={undersampling_max_n_samples}] ({n_labels})'
         
 
     if oversampling_min_n_samples is not None:
@@ -178,13 +184,18 @@ def get_train_val_from_file(
             min_n_samples=oversampling_min_n_samples,
             random_state=random_state
         )
-        filtering_status_str += f' => oversampling [min n samples={oversampling_min_n_samples}] ({len(df_train)})'
+        n_labels = len(df_train['label'].unique())
+        filtering_samples_status_str += f' => oversampling [min n samples={oversampling_min_n_samples}] ({len(df_train)})'
+        filtering_labels_status_str += f' => oversampling [min n samples={oversampling_min_n_samples}] ({n_labels})'
 
-    if filtering_status_str:
-        before_str = f'N samples before filtering ({n_samples_before})'
-        filtering_status_str = before_str + filtering_status_str
+    if filtering_samples_status_str:
+        before_samples_str = f'N samples before filtering ({n_samples_before})'
+        before_labels_str = f'N labels before filtering ({n_labels_before})'
+        filtering_samples_status_str = before_samples_str + filtering_samples_status_str
+        filtering_labels_status_str = before_labels_str + filtering_labels_status_str
         if logger is not None:
-            logger.info(filtering_status_str)
+            logger.info(filtering_samples_status_str)
+            logger.info(filtering_labels_status_str)
 
     labels_train = df_train.label.unique()
     if df_valid is not None:

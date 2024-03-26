@@ -1,0 +1,9 @@
+type: adacos
+s: 30
+m: 0.5
+ls_eps: 0.1
+autoscale: False
+dynamic_margin: 
+id_counts: 
+
+incremental_margin:

@@ -1,0 +1,13 @@
+type: adaface
+s: 30
+m: 0.5
+h: 0.333
+t_alpha: 1.0
+ls_eps: 0.1
+use_batchnorm: False
+
+autoscale: False
+dynamic_margin: 
+id_counts: 
+
+incremental_margin:

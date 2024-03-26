@@ -23,6 +23,7 @@ class EmbeddigsNet(nn.Module):
         backbone, backbone_out_feats = get_backbone(config_backbone)
         self.head = get_head(config_head, backbone_out_feats)
         self.backbone = backbone
+        self.backbone_out_feats = backbone_out_feats
 
     
     def get_embeddings(self, x):

@@ -1,4 +1,4 @@
 type: faiss
 n_workers: ${n_workers}
 faiss_gpu: False
-save_results: True 
+save_results: False

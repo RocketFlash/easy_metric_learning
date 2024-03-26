@@ -1,0 +1,40 @@
+defaults:
+  - backbone : efficientnetv2_b1
+  - head : base
+  - dataset : cars196
+  - dataloader: default
+  - evaluation/evaluator : default
+  - evaluation/data : cars_cub
+  - evaluation/knn : faiss
+  - transform : default
+  - override hydra/hydra_logging: disabled  
+  - override hydra/job_logging: disabled  
+  - _self_
+
+debug : False
+ddp: False
+
+embeddings_size: 512
+batch_size : 256
+fold: 0 
+random_state : 28 
+
+img_h: 224
+img_w: 224
+
+n_workers: auto
+device : 0       
+visualize_batch: True  
+save_embeddings: False
+
+model_type: 'torch' 
+weights: 
+
+run_name: 'run_1'
+work_dirs: "./work_dirs/test/"
+
+
+hydra:
+  output_subdir: null 
+  run:
+    dir: work_dirs/${run_name}

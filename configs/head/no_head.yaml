@@ -1,0 +1,2 @@
+type: no_head
+embeddings_size: ${embeddings_size}

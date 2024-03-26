@@ -28,13 +28,14 @@ from src.utils import (load_checkpoint,
 
 @hydra.main(version_base=None,
             config_path='../configs/',
-            config_name='config')
+            config_name='config_train')
 def train(config):
     seed_everything(config.random_state)
 
     if config.n_workers=='auto':
         config.n_workers = multiprocessing.cpu_count()
 
+    accelerator = None
     if config.ddp:
         from accelerate import Accelerator
         from accelerate.utils import set_seed
@@ -56,7 +57,7 @@ def train(config):
     )
     logger.info_config(config)
     if config.debug: logger.info('DEBUG MODE')
-    OmegaConf.save(config, work_dir / "config.yaml")
+    OmegaConf.save(config, work_dir / "config_train.yaml")
     
     best_criterion_val = 10000 if config.train.best_model_criterion.type == 'loss' else -10000
     start_epoch = 1
@@ -74,15 +75,20 @@ def train(config):
     save_labels_to_ids(data_info_train.train.labels_to_ids, save_dir=work_dir)
     config.margin.id_counts = data_info_train.train.dataset_stats.id_counts
     
+    device = get_device(config.device)
     model = get_model(
         config_backbone=config.backbone,
         config_head=config.head,
         config_margin=config.margin,
         n_classes=data_info_train.train.dataset_stats.n_classes
     )
+
+    if config.head.type=='no_head':
+        config.embeddings_size = model.embeddings_net.backbone_out_feats
+        logger.info(f'Embeddings size changed to backbone output size {config.embeddings_size}')
+
     logger.info_model(config)
 
-    
     optimizer = get_optimizer(
         model=model, 
         optimizer_config=config.optimizer
@@ -94,7 +100,9 @@ def train(config):
             model=model, 
             optimizer=optimizer, 
             logger=logger, 
-            mode=config.load_mode
+            mode=config.load_mode,
+            device=device,
+            accelerator=accelerator
         )
         model       = checkpoint_data['model'] if 'model' in checkpoint_data else model
         optimizer   = checkpoint_data['optimizer'] if 'optimizer' in checkpoint_data else optimizer
@@ -103,9 +111,6 @@ def train(config):
             best_criterion_val = checkpoint_data['best_criterion_val']
         if 'criterion' in checkpoint_data:
             config.train.best_model_criterion.criterion = checkpoint_data['criterion'] 
-    
-    if is_main_process(accelerator):
-        exp_trackers = get_experiment_trackers(config)
 
     if config.ddp:
         device = accelerator.device
@@ -115,9 +120,10 @@ def train(config):
         if valid_loader is not None:
             valid_loader = accelerator.prepare(valid_loader)
     else:
-        accelerator = None
-        device = get_device(config.device)
         model = model.to(device)
+    
+    if is_main_process(accelerator):
+        exp_trackers = get_experiment_trackers(config)
 
     trainer = get_trainer(
         config,
@@ -171,13 +177,14 @@ def train(config):
             criterion=config.train.best_model_criterion.criterion,
             accelerator=accelerator
         )
+
         save_ckp(
             save_paths.last_emb_weights_path, 
             model=model, 
             emb_model_only=True,
             accelerator=accelerator
         )
-        
+
         if is_main_process(accelerator):
             stats = dict(
                 learning_rate=optimizer.param_groups[-1]['lr'],

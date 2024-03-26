@@ -1,6 +1,7 @@
 import timm
 import torch.nn as nn
 import functools
+from .unicom import load_model_unicom
 
 
 def disable_info(*args, **kwargs):
@@ -32,7 +33,8 @@ def get_backbone(backbone_config):
             backbone_config.model_type, 
             pretrained_on=backbone_config.pretrained_on
         )
-        
+    elif 'unicom' in backbone_type:
+        backbone = load_model_unicom(backbone_type)
     else:
         backbone = timm.create_model(backbone_type, 
                                      pretrained=backbone_config.pretrained, 
@@ -44,6 +46,8 @@ def get_backbone(backbone_config):
         else:
             backbone_out_feats = backbone.head.proj.in_features
             backbone.head.proj = nn.Identity()
+    elif 'unicom' in backbone_type:
+        backbone_out_feats = backbone.embedding_size
     elif 'maxvit' in backbone_type or\
        'convnext' in backbone_type or\
        'coatnet' in backbone_type:

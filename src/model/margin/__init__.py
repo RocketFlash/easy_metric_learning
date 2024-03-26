@@ -53,7 +53,7 @@ def get_margin(
             m=m,  
             ls_eps=config_margin.ls_eps
         )
-    elif margin_type=='adaface_bn':
+    elif margin_type=='adaface':
         margin = AdaFace(
             in_features=embeddings_size,
             out_features=n_classes,
@@ -62,16 +62,7 @@ def get_margin(
             s=s,
             t_alpha=config_margin.t_alpha,
             ls_eps=config_margin.ls_eps,
-            use_batchnorm=True
-        )
-    elif margin_type=='adaface':
-        margin = AdaFace(
-            in_features=embeddings_size,
-            out_features=n_classes,
-            m=m,
-            h=config_margin.h,
-            s=s,
-            t_alpha=config_margin.t_alpha
+            use_batchnorm=config_margin.use_batchnorm
         )
     elif margin_type=='cosface':
         margin = AddMarginProduct(

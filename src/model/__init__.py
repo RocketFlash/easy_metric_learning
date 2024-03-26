@@ -15,6 +15,9 @@ def get_model(
     )
     
     if config_margin is not None:
+        if config_head.type=='no_head':
+            config_head.embeddings_size = embeddings_model.backbone_out_feats
+            
         embeddings_size = config_head.embeddings_size
         margin = get_margin(
             config_margin=config_margin,

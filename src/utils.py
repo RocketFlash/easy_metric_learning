@@ -107,10 +107,14 @@ def load_ckp(
         ckp_path, 
         model, 
         optimizer=None, 
-        device=None
+        device=None,
+        accelerator=None
     ):
-
-    checkpoint = torch.load(ckp_path, map_location=device)
+    
+    if accelerator is not None:
+        checkpoint = torch.load(ckp_path, map_location=accelerator.device)
+    else:
+        checkpoint = torch.load(ckp_path, map_location=device)
 
     pretrained_dict = checkpoint['model']
     model_state_dict = model.state_dict()
@@ -120,7 +124,10 @@ def load_ckp(
 
     if optimizer is not None:
         try:
-            optimizer.load_state_dict(checkpoint['optimizer'])
+            if accelerator is not None:
+                optimizer.load_state_dict(checkpoint['optimizer'], map_location=accelerator.device)
+            else:
+                optimizer.load_state_dict(checkpoint['optimizer'], map_location=device)
         except:
             print('Cannot load optimizer params')
         
@@ -135,7 +142,9 @@ def load_checkpoint(
         model, 
         optimizer=None, 
         logger=None, 
-        mode='resume'
+        mode='resume',
+        device=None,
+        accelerator=None
     ):
 
     assert isfile(ckp_path), f"no checkpoint found at : {ckp_path}"
@@ -143,7 +152,13 @@ def load_checkpoint(
     checkpoint_data = {}
     if mode=='resume':
         if logger is not None: logger.info(f'resume training from: {ckp_path}')
-        model, optimizer, epoch, best_criterion_val = load_ckp(ckp_path, model, optimizer)
+        model, optimizer, epoch, best_criterion_val = load_ckp(
+            ckp_path, 
+            model, 
+            optimizer,
+            device=device,
+            accelerator=accelerator
+        )
         checkpoint_data['model']       = model
         checkpoint_data['optimizer']   = optimizer
         checkpoint_data['start_epoch'] = epoch + 1
@@ -155,12 +170,16 @@ def load_checkpoint(
         if hasattr(model, "embeddings_net"):
             model.embeddings_net, _, _, _ = load_ckp(
                 ckp_path, 
-                model.embeddings_net,  
+                model.embeddings_net, 
+                device=device, 
+                accelerator=accelerator
             )
         else:
             model, _, _, _ = load_ckp(
                 ckp_path, 
                 model,  
+                device=device,
+                accelerator=accelerator
             )
         checkpoint_data['model'] = model
         
@@ -168,13 +187,62 @@ def load_checkpoint(
         if logger is not None:  logger.info(f"load weights from: {ckp_path}")
         model, _, _, _ = load_ckp(
             ckp_path, 
-            model
+            model,
+            device=device,
+            accelerator=accelerator
         )
         checkpoint_data['model'] = model
     else:
         if logger is not None:  logger.info(f"wrong loading mode")
 
     return checkpoint_data
+
+
+def load_model_except_torch(
+        weights, 
+        model_type='torch', 
+        device='cpu',
+        logger=None
+    ):
+
+    model_info = {
+        'model_type': model_type
+    }
+    
+    if model_type=='traced':
+        if logger is not None:  logger.info(f"load traced model from: {weights}")
+        model = torch.jit.load(weights, map_location=device)
+        model = model.to(device)
+        model.eval()
+    elif model_type=='onnx':
+        if logger is not None:  logger.info(f"load onnx model from: {weights}")
+        import onnxruntime as ort
+        model = ort.InferenceSession(
+            weights,
+            providers=[
+                'CUDAExecutionProvider', 
+                'CPUExecutionProvider'
+            ]
+        )
+    elif model_type in ['tf_32', 'tf_16', 'tf_int', 'tf_dyn']:
+        if logger is not None:  logger.info(f"load tensorflow model from: {weights}")
+        import tensorflow as tf
+        interpreter = tf.lite.Interpreter(model_path=weights)
+        model = interpreter.get_signature_runner()
+    elif model_type=='tf_full_int':
+        if logger is not None:  logger.info(f"load tensorflow model from: {weights}")
+        import tensorflow as tf
+        interpreter = tf.lite.Interpreter(model_path=weights)
+        input_details = interpreter.get_input_details()[0]
+        output_details = interpreter.get_output_details()[0]
+        model = interpreter.get_signature_runner()
+        model_info['input_details'] = input_details
+        model_info['output_details'] = output_details
+    
+    model_info['model'] = model
+
+    return model_info
+
 
 def is_model_best(
         stats,

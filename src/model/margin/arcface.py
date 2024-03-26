@@ -4,6 +4,7 @@ from torch.nn import Parameter
 import torch.nn.functional as F
 import math
 
+
 class ArcMarginProduct(nn.Module):
     """
     Implementation of arcmargin 
@@ -126,7 +127,6 @@ class ArcMarginProduct(nn.Module):
             # make the function cos(theta+m) monotonic decreasing while theta in [0°,180°]
             self.th = math.cos(math.pi - m)
             self.mm = math.sin(math.pi - m) * m
-
 
 
 class AddMarginProduct(nn.Module):

@@ -97,9 +97,13 @@ def main(CONFIGS, args):
         model.eval()
     elif args.model_type=='onnx':
         import onnxruntime as ort
-        model = ort.InferenceSession(weights,
-                                     providers=['CUDAExecutionProvider', 
-                                                'CPUExecutionProvider'])
+        model = ort.InferenceSession(
+            weights,
+            providers=[
+                'CUDAExecutionProvider', 
+                'CPUExecutionProvider'
+            ]
+        )
     elif args.model_type in ['tf_32', 'tf_16', 'tf_int', 'tf_dyn']:
         import tensorflow as tf
         interpreter = tf.lite.Interpreter(model_path=weights)

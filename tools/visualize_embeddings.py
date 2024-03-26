@@ -1,8 +1,9 @@
 import sys
 sys.path.append("./")
 
-from src.utils import plot_embeddings, plot_embeddings_interactive
-from src.utils import get_mapper
+from src.utils import (plot_embeddings, 
+                       plot_embeddings_interactive)
+from src.data.utils import get_labels_to_ids
 import argparse
 import os
 from pathlib import Path
@@ -27,7 +28,7 @@ if __name__ == '__main__':
     mapper = None
     if args.mapper:
         assert os.path.isfile(args.mapper)
-        mapper=get_mapper(args.mapper)
+        mapper=get_labels_to_ids(args.mapper)
 
     save_path = Path(args.save_path)
     save_path.mkdir(exist_ok=True, parents=True)
@@ -45,20 +46,26 @@ if __name__ == '__main__':
 
     if args.interactive:
         n_components = 3 if args.plot_3d else 2
-        plot_embeddings_interactive(embeddings, 
-                                    labels,
-                                    file_names, 
-                                    save_path, 
-                                    dataset_path=dataset_path,
-                                    n_labels=args.n_labels, 
-                                    mapper=mapper, 
-                                    n_jobs=args.n_jobs,
-                                    method=args.method,
-                                    save_name=args.save_name, 
-                                    n_components=n_components)
+        plot_embeddings_interactive(
+            embeddings, 
+            labels,
+            file_names, 
+            save_path, 
+            dataset_path=dataset_path,
+            n_labels=args.n_labels, 
+            mapper=mapper, 
+            n_jobs=args.n_jobs,
+            method=args.method,
+            save_name=args.save_name, 
+            n_components=n_components
+        )
     else:
-        plot_embeddings(embeddings, labels, save_path, 
-                        n_labels=args.n_labels, 
-                        mapper=mapper, 
-                        method=args.method,
-                        n_jobs=args.n_jobs)
+        plot_embeddings(
+            embeddings, 
+            labels, 
+            save_path, 
+            n_labels=args.n_labels, 
+            mapper=mapper, 
+            method=args.method,
+            n_jobs=args.n_jobs
+        )
