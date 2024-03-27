@@ -1,3 +1,4 @@
+name: dataset_v0
 datasets:
   - name: dataset_v0
     type: simple 

@@ -214,6 +214,7 @@ def load_model_except_torch(
         model = torch.jit.load(weights, map_location=device)
         model = model.to(device)
         model.eval()
+
     elif model_type=='onnx':
         if logger is not None:  logger.info(f"load onnx model from: {weights}")
         import onnxruntime as ort

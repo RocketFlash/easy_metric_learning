@@ -1,3 +1,4 @@
+name: cars_cub
 datasets:
   - name: cars196
     type: simple 

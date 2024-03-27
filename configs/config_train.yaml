@@ -52,4 +52,4 @@ work_dirs: "./work_dirs/train/"
 hydra:
   output_subdir: null 
   run:
-    dir: work_dirs/${run_name}
+    dir: work_dirs/train/${run_name}

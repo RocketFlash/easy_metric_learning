@@ -1,3 +1,4 @@
+name: sop
 datasets:
   - name: sop
     type: simple 

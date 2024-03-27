@@ -23,10 +23,6 @@ class BaseEvaluator:
 
         if self.model_info is not None:
             self.model = self.model_info['model']
-            if 'tf' in self.model_info['model_type']:
-                import tensorflow as tf
-            elif 'onnx' in self.model_info['model_type']:
-                import onnxruntime as ort
     
         self.save_results = config.evaluation.evaluator.save_results
         self.save_embeddings = config.evaluation.evaluator.save_embeddings
@@ -60,6 +56,11 @@ class BaseEvaluator:
     
 
     def generate_embeddings(self, data_info):
+        if 'tf' in self.model_info['model_type']:
+            import tensorflow as tf
+        elif 'onnx' in self.model_info['model_type']:
+            import onnxruntime as ort
+
         embeddings = np.zeros(
             (data_info.dataset_stats.n_samples, 
                 self.config.embeddings_size), 

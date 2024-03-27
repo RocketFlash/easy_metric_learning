@@ -1,3 +1,4 @@
+name: inaturalist_2021
 datasets:
   - name: inaturalist_2021
     type: simple 

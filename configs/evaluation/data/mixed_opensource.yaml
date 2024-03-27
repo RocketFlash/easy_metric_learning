@@ -1,3 +1,4 @@
+name: mixed_opensource
 datasets:
   - name: cars196
     type: simple 
@@ -27,13 +28,13 @@ datasets:
     label_column: label
     fname_column: file_name
     use_bboxes: False
-  - name: products10k
-    type: simple 
-    dir: /mnt/datasets/metric_learning/datasets_opensource/products10k
-    annotations: /mnt/datasets/metric_learning/datasets_opensource/products10k/dataset_info.csv
-    label_column: label
-    fname_column: file_name
-    use_bboxes: False
+  # - name: products10k
+  #   type: simple 
+  #   dir: /mnt/datasets/metric_learning/datasets_opensource/products10k
+  #   annotations: /mnt/datasets/metric_learning/datasets_opensource/products10k/dataset_info.csv
+  #   label_column: label
+  #   fname_column: file_name
+  #   use_bboxes: False
   - name: sop
     type: simple 
     dir: /mnt/datasets/metric_learning/datasets_opensource/Stanford_Online_Products

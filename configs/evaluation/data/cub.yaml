@@ -1,3 +1,4 @@
+name: cub_200_2011
 datasets:
   - name: cub_200_2011
     type: simple 

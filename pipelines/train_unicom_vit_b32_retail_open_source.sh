@@ -1,6 +1,6 @@
 #!/bin/bash
 
-accelerate launch tools/train.py\
+python tools/train.py\
     backbone=unicom_vit_b32\
     margin=arcface_incremental_m\
     head=no_head\

@@ -1,3 +1,4 @@
+name: rp2k
 datasets:
   - name: rp2k
     type: simple 

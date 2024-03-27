@@ -1,3 +1,4 @@
+name: inshop
 datasets:
   - name: inshop
     type: simple 

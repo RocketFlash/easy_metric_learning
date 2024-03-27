@@ -1,3 +1,4 @@
+name: products10k
 datasets:
   - name: products10k
     type: simple 

@@ -2,6 +2,7 @@ import sys
 sys.path.append("./")
 
 import torch
+import pandas as pd
 import hydra
 from pathlib import Path
 import multiprocessing
@@ -67,9 +68,8 @@ def test(config):
             device=device,
             logger=logger
         )
-        model = model_info['model']
     
-    eval_save_dir = work_dir / 'test'
+    eval_save_dir = work_dir / 'eval_results'
     evaluator = get_evaluator(
         config,
         save_dir=eval_save_dir ,
@@ -77,13 +77,18 @@ def test(config):
         model_info=model_info
     )
     
+    all_metrics = {}
     for data_info in data_infos_test:       
         logger.info(f'Model evaluation on {data_info.dataset_name}')    
         eval_metrics = evaluator.evaluate(data_info)
 
+        all_metrics[data_info.dataset_name] = eval_metrics
         logger.info(f'{data_info.dataset_name} metrics:')
         for k_metric, v_metric in eval_metrics.items():
             logger.info(f'{k_metric}: {v_metric}')
+
+    all_metrics_df = pd.DataFrame.from_dict(all_metrics, orient='index')
+    all_metrics_df.to_csv(work_dir / f'eval_result_on_{config.evaluation.data.name}.csv')
 
 
 if __name__=="__main__":
