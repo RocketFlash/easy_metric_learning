@@ -2,6 +2,8 @@ defaults:
   - backbone : efficientnetv2_b1
   - head : base
   - margin : arcface
+  - distillation/teacher : no_teacher
+  - distillation/trainer : default
   - dataset : cars196
   - dataloader: default
   - loss: cross_entropy
@@ -25,6 +27,7 @@ batch_size : 256
 epochs : 15
 fold: 0 
 grad_accum_steps: 4
+backbone_lr_scaler: 1e-3
 random_state : 28 
 
 img_h: 224

@@ -1,0 +1,5 @@
+name: arcface_openclip-ViT-B16_laion2b_no_head_retail_full_img224x224_emb512
+
+model:
+  config: work_dirs/train/arcface_openclip-ViT-B16_laion2b_no_head_retail_full_img224x224_emb512/config_train.yaml
+  weights: work_dirs/train/arcface_openclip-ViT-B16_laion2b_no_head_retail_full_img224x224_emb512/last_emb.pt

@@ -1,4 +1,4 @@
-name: retail_open_source
+name: retail_full
 type: simple                                         
 
 dir: 
@@ -8,6 +8,7 @@ dir:
     - /mnt/datasets/metric_learning/datasets_opensource/rp2k
     - /mnt/datasets/metric_learning/datasets_opensource/aliproducts
     # - /mnt/datasets/metric_learning/datasets_opensource/shopee
+    - /datasets/metric_learning/dataset_v0/
 
 annotations: 
     - /mnt/datasets/metric_learning/datasets_opensource/Stanford_Online_Products/dataset_info.csv
@@ -16,6 +17,7 @@ annotations:
     - /mnt/datasets/metric_learning/datasets_opensource/rp2k/dataset_info.csv
     - /mnt/datasets/metric_learning/datasets_opensource/aliproducts/dataset_info.csv
     # - /mnt/datasets/metric_learning/datasets_opensource/shopee/dataset_info.csv
+    - /datasets/metric_learning/dataset_v0/dataset_info_filtered.csv
                   
 fold: 
 
@@ -23,8 +25,8 @@ label_column: label
 fname_column: file_name
 use_bboxes: True
 
-min_n_samples_per_label: 5
-undersampling_max_n_samples: 50
+min_n_samples_per_label: 4
+undersampling_max_n_samples: 20
 oversampling_min_n_samples: 10
 
 labels_to_ids_path: 

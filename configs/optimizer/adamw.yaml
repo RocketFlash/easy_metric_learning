@@ -5,4 +5,4 @@ optimizer:
   weight_decay: 1e-2
   lr: 1e-3
   
-backbone_lr_scaler: 1e-3
+backbone_lr_scaler: ${backbone_lr_scaler}

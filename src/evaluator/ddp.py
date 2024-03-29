@@ -10,7 +10,7 @@ class DDPEvaluator(BaseEvaluator):
             config,
             model, 
             save_dir='./', 
-            accelerator=None
+            accelerator=None,
         ):
         super().__init__(
             config=config,
@@ -61,7 +61,12 @@ class DDPEvaluator(BaseEvaluator):
             for batch_index, (images, targets, fnames) in enumerate(tqdm_test):
                 if self.debug and batch_index>=10: break
                 
-                output = self.accelerator.unwrap_model(self.model).get_embeddings(images)
+                model_ = self.accelerator.unwrap_model(self.model)
+                if hasattr(model_, "get_embeddings"):
+                    output = model_.get_embeddings(images)
+                else:
+                    output = model_(images)
+                    
                 output = self.accelerator.gather_for_metrics(output)
                 targets = self.accelerator.gather_for_metrics(targets)
                 

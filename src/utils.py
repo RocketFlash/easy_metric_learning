@@ -75,12 +75,14 @@ def save_ckp(
     ):
     if accelerator is not None:
         accelerator.wait_for_everyone() 
-        if emb_model_only:
-            model_state_dict = accelerator.unwrap_model(model).embeddings_net.state_dict()
+        model_ = accelerator.unwrap_model(model)
+
+        if emb_model_only and hasattr(model_, "embeddings_net"):
+            model_state_dict = model_.embeddings_net.state_dict()
         else:
-            model_state_dict = accelerator.unwrap_model(model).state_dict()
+            model_state_dict = model_.state_dict()
     else:
-        if emb_model_only:
+        if emb_model_only and hasattr(model, "embeddings_net"):
             model_state_dict = model.embeddings_net.state_dict()
         else:
             model_state_dict = model.state_dict()

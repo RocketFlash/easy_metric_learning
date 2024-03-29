@@ -1,142 +1,173 @@
-import os
 from tqdm.auto import tqdm
-import numpy as np
 import torch
-import torchvision
-import torch.nn as nn
 from torch.cuda import amp
 from easydict import EasyDict as edict
 
-from .utils import AverageMeter
-from .utils import batch_grid
-from .metric import accuracy, GAP
-from .margin.utils import get_incremental_margin
-from .transform import cutmix, mixup
-from .loss import MixCriterion
+from ..utils import (AverageMeter,
+                     is_main_process)
+from ..transform import mix_transform
+from ..loss import get_loss
+from ..visualization import save_batch_grid
+from ..scheduler import get_scheduler
 
 
-class DistillationTrainer:
+class DistillTrainer:
     def __init__(
             self, 
+            config,
             model, 
             model_teacher,
-            optimizer, 
-            logger, 
-            work_dir='./', 
-            device='cpu', 
+            optimizer,
             epoch=1,
-            n_epochs=10,
-            grad_accum_steps=1, 
-            amp_scaler=None, 
-            warmup_scheduler=None, 
-            is_debug=False,
-            visualize_batch=False,
-            p_mixup=0.0,
-            p_cutmix=0.0,
+            work_dir='./', 
+            device=None,
+            accelerator=None, 
+            ids_to_labels=None
         ):
-        self.model = model
+
+        self.config = config
+        self.model  = model
         self.model_teacher = model_teacher
         self.optimizer = optimizer
-        self.logger = logger
-        self.epoch = epoch
-        self.grad_accum_steps = grad_accum_steps
+        self.epoch  = epoch
         self.work_dir = work_dir
+        
         self.device = device
-        self.is_debug = is_debug
-        self.amp_scaler = amp_scaler
-        self.warmup_scheduler = warmup_scheduler
-        self.n_epochs = n_epochs
-        self.visualize_batch = visualize_batch
-        self.loss_distill = nn.MSELoss()
-        self.p_mixup  = p_mixup
-        self.p_cutmix = p_cutmix
-        self.alpha_mixup  = 0.2
-        self.alpha_cutmix = 1
+        self.accelerator = accelerator
+        self.ids_to_labels = ids_to_labels
+
+        self.n_epochs = config.epochs - epoch + 1
+        if 'T_max' in config.scheduler.scheduler:
+            config.scheduler.scheduler.T_max = self.n_epochs - 1
+
+        scheduler = get_scheduler(optimizer, scheduler_config=config.scheduler)
+
+        if accelerator is None:
+            self.loss_fns = get_loss(
+                loss_config=config.distillation.trainer.loss,
+                device=device
+            )
+            self.amp_scaler = amp.GradScaler() if device != 'cpu' and config.amp else None
+        else:
+            self.loss_fns = get_loss(loss_config=config.distillation.trainer)
+            self.scheduler = accelerator.prepare(scheduler)
+            self.amp_scaler = None
+
+        self.debug = config.debug
+        self.visualize_batch = config.visualize_batch
         
 
     def train_epoch(self, train_loader):
         self.model.train()
 
-        meter_loss_total  = AverageMeter()
+        loss_meters = {k: AverageMeter() for k, v in self.loss_fns.items()}
+        loss_meters['total_loss'] = AverageMeter()
         
-        tqdm_train = tqdm(train_loader, 
-                          total=int(len(train_loader)))
-        images_wdb = []
-
-        for batch_index, (data, targets) in enumerate(tqdm_train):
-            if self.is_debug and batch_index>=10: break
-
-            p = np.random.rand()
-            if self.p_cutmix>0 or self.p_mixup>0:
-                if p < self.p_cutmix and p < self.p_mixup:
-                    p = np.random.rand()
-                    if p < 0.5:
-                        data, targets = cutmix(data, targets, self.alpha_cutmix)
-                    else:
-                        data, targets = mixup(data, targets, self.alpha_mixup)
-                elif p < self.p_cutmix:
-                    data, targets = cutmix(data, targets, self.alpha_cutmix)
-                elif p < self.p_mixup:
-                    data, targets = mixup(data, targets, self.alpha_mixup)
-
-            data = data.to(self.device)
+        is_main_proc = is_main_process(self.accelerator)
             
-            if self.visualize_batch:
-                if not self.is_debug:
-                    if self.epoch == 1 and batch_index == 0:
-                        image_grid = batch_grid(data)
-                        save_path = os.path.join(self.work_dir, 
-                                                f'train_batch_{batch_index}.png')
-                        torchvision.utils.save_image(image_grid, save_path)
-                        images_wdb.append(wandb.Image(save_path, 
-                                                    caption=f'train_batch_{batch_index}'))
+        tqdm_train = tqdm(
+            train_loader, 
+            total=int(len(train_loader)),
+            disable=not is_main_proc
+        )
+        
+        for batch_index, (images, targets, file_names) in enumerate(tqdm_train):
+            if self.debug and batch_index>=10: break
 
-            if self.amp_scaler is not None:
-                with amp.autocast():
-                    output_student = self.model(data)
-                    output_teacher = self.model_teacher(data)
-                    
-                    loss = self.loss_distill(output_student, output_teacher)
-                    loss /= self.grad_accum_steps
+            images, targets, is_mixed = mix_transform(
+                images, 
+                targets,
+                cutmix_p=self.config.transform.cutmix.p,
+                cutmix_alpha=self.config.transform.cutmix.alpha,
+                mixup_p=self.config.transform.mixup.p,
+                mixup_alpha=self.config.transform.mixup.alpha
+            )
+            
+            if self.visualize_batch and is_main_proc:
+                if self.epoch == 1 and batch_index == 0:
+                    labels = [self.ids_to_labels[anno.item()] for anno in targets]
+                    save_batch_grid(
+                        images.cpu(), 
+                        labels,
+                        self.config.backbone.norm_std,
+                        self.config.backbone.norm_mean,
+                        save_dir=self.work_dir, 
+                        split='train', 
+                    )
 
-                self.amp_scaler.scale(loss).backward()
+            total_loss = 0
+            if self.accelerator is not None:
+                with self.accelerator.accumulate(self.model):
+                    output_student = self.model(images)
+                    output_teacher = self.model_teacher(images)
 
-                if ((batch_index + 1) % self.grad_accum_steps == 0) or (batch_index + 1 == len(train_loader)):
-                    self.amp_scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
-                    self.amp_scaler.step(self.optimizer)
-                    self.amp_scaler.update()
-                    self.optimizer.zero_grad()
-            else:
-                output_student = self.model(data)
-                output_teacher = self.model_teacher(data)
+                    for loss_name, loss_params in self.loss_fns.items():
+                        loss = loss_params.loss_fn(output_student, output_teacher) * loss_params.weight
+                        if self.accelerator.is_local_main_process:
+                            loss_meters[loss_name].update(loss.detach().item())
+                        total_loss += loss
 
-                loss = self.loss_distill(output_student, output_teacher)
-                loss /= self.grad_accum_steps
-                loss.backward()
-
-                if ((batch_index + 1) % self.grad_accum_steps == 0) or (batch_index + 1 == len(train_loader)):
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
+                    self.accelerator.backward(total_loss)
+                    if self.accelerator.sync_gradients:
+                        self.accelerator.clip_grad_norm_(self.model.parameters(), 5)
                     self.optimizer.step()
                     self.optimizer.zero_grad()
+            else:
+                if self.amp_scaler is not None:
+                    with amp.autocast():
+                        output_student = self.model(images)
+                        output_teacher = self.model_teacher(images)
 
-            if self.warmup_scheduler is not None:
-                if batch_index < len(tqdm_train)-1:
-                    with self.warmup_scheduler.dampening(): pass
+                        for loss_name, loss_params in self.loss_fns.items():
+                            loss = loss_params.loss_fn(output_student, output_teacher) * loss_params.weight
+                            loss_meters[loss_name].update(loss.detach().item())
+                            total_loss += loss
+
+                    self.amp_scaler.scale(total_loss / self.grad_accum_steps).backward()
+
+                    if ((batch_index + 1) % self.grad_accum_steps == 0) or (batch_index + 1 == len(train_loader)):
+                        self.amp_scaler.unscale_(self.optimizer)
+                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
+                        self.amp_scaler.step(self.optimizer)
+                        self.amp_scaler.update()
+                        self.optimizer.zero_grad()
+                else:
+                    output_student = self.model(images)
+                    output_teacher = self.model_teacher(images)
+                    
+                    for loss_name, loss_params in self.loss_fns.items():
+                        loss = loss_params.loss_fn(output_student, output_teacher) * loss_params.weight
+                        loss_meters[loss_name].update(loss.detach().item())
+                        total_loss += loss
+
+                    total_loss_grad_accum = total_loss / self.grad_accum_steps
+                    total_loss_grad_accum.backward()
+
+                    if ((batch_index + 1) % self.grad_accum_steps == 0) or (batch_index + 1 == len(train_loader)):
+                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
+                        self.optimizer.step()
+                        self.optimizer.zero_grad()
             
-            meter_loss_total.update(loss.detach().item())
-            info_params = dict(
-                epoch=self.epoch, 
-                loss=meter_loss_total.avg ,
-                lr=self.optimizer.param_groups[-1]['lr']
+            if is_main_proc:
+                loss_meters['total_loss'].update(total_loss.detach().item())
+
+                info_params = dict(
+                    epoch=self.epoch, 
+                    lr=self.optimizer.param_groups[-1]['lr'],
+                )
+
+                for loss_name, loss_meter in loss_meters.items():
+                    info_params[loss_name] = loss_meter.avg
+
+                tqdm_train.set_postfix(**info_params)
+
+        self.scheduler.step()
+
+        stats = {}
+        if is_main_proc:
+            stats = dict(
+                losses={loss_name: loss_meter.avg for loss_name, loss_meter in loss_meters.items()},
             )
-
-            tqdm_train.set_postfix(**info_params)
-
-        stats = dict(
-            loss=meter_loss_total.avg,
-            images_wdb=images_wdb,
-        )
 
         return edict(stats)
     
@@ -144,47 +175,60 @@ class DistillationTrainer:
     def valid_epoch(self, valid_loader):
         self.model.eval()
 
-        meter_loss_total  = AverageMeter()
-        tqdm_val = tqdm(valid_loader, total=int(len(valid_loader)))
-        images_wdb = []
+        loss_meters = {k: AverageMeter() for k, v in self.loss_fns.items()}
+        loss_meters['total_loss'] = AverageMeter()
 
-        with torch.no_grad():
-            for batch_index, (data, targets) in enumerate(tqdm_val):
-                if self.is_debug and batch_index>10: break
+        is_main_proc = is_main_process(self.accelerator)
 
-                if self.visualize_batch:
-                    if not self.is_debug:
-                        if self.epoch == 1 and batch_index == 0:
-                            image_grid = batch_grid(data)
-                            save_path = os.path.join(self.work_dir, 
-                                                    f'valid_batch_{batch_index}.png')
-                            torchvision.utils.save_image(image_grid, save_path)
-                            images_wdb.append(wandb.Image(save_path, 
-                                                        caption=f'valid_batch_{batch_index}'))
-
-                data = data.to(self.device)
-                targets = targets.to(self.device)
-                
-                output_student = self.model(data)
-                output_teacher = self.model_teacher(data)
-                loss = self.loss_distill(output_student, output_teacher)
-                
-                meter_loss_total.update(loss.detach().item())
-                
-                info_params = dict(
-                    epoch=self.epoch, 
-                    loss=meter_loss_total.avg 
-                )
-
-                tqdm_val.set_postfix(**info_params)
-        
-        stats = dict(
-            loss=meter_loss_total.avg,
-            images_wdb=images_wdb,
-            f1_cat=None,
-            loss_cat=None,
-            loss_margin=None
+        tqdm_val = tqdm(
+            valid_loader, 
+            total=int(len(valid_loader)),
+            disable=not is_main_proc
         )
+        
+        with torch.no_grad():
+            for batch_index, (images, targets, file_names) in enumerate(tqdm_val):
+                if self.debug and batch_index>10: break
+
+                if self.visualize_batch and is_main_proc:
+                    if self.epoch == 1 and batch_index == 0:
+                        labels = [self.ids_to_labels[anno.item()] for anno in targets]
+                        save_batch_grid(
+                            images.cpu(), 
+                            labels,
+                            self.config.backbone.norm_std,
+                            self.config.backbone.norm_mean,
+                            save_dir=self.work_dir, 
+                            split='valid', 
+                        )
+                
+                output_student = self.model(images)
+                output_teacher = self.model_teacher(images)
+
+                total_loss = 0
+                for loss_name, loss_params in self.loss_fns.items():
+                    loss = loss_params.loss_fn(output_student, output_teacher) * loss_params.weight
+                    if is_main_proc:
+                        loss_meters[loss_name].update(loss.detach().item())
+                    total_loss += loss
+
+                if is_main_proc:
+                    loss_meters['total_loss'].update(total_loss.detach().item())
+                
+                    info_params = dict(
+                        epoch=self.epoch, 
+                    )
+
+                    for loss_name, loss_meter in loss_meters.items():
+                        info_params[loss_name] = loss_meter.avg
+                    
+                    tqdm_val.set_postfix(**info_params)
+        
+        stats = {}
+        if is_main_proc:
+            stats = dict(
+                losses={loss_name: loss_meter.avg for loss_name, loss_meter in loss_meters.items()},
+            )
 
         return edict(stats)
 

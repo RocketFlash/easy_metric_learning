@@ -56,10 +56,11 @@ class BaseEvaluator:
     
 
     def generate_embeddings(self, data_info):
-        if 'tf' in self.model_info['model_type']:
-            import tensorflow as tf
-        elif 'onnx' in self.model_info['model_type']:
-            import onnxruntime as ort
+        if self.model_info is not None:
+            if 'tf' in self.model_info['model_type']:
+                import tensorflow as tf
+            elif 'onnx' in self.model_info['model_type']:
+                import onnxruntime as ort
 
         embeddings = np.zeros(
             (data_info.dataset_stats.n_samples, 
@@ -107,7 +108,10 @@ class BaseEvaluator:
                         output = output_scale * (output['output'].astype(np.float32) - output_zero_point)
                 else:
                     images = images.to(self.device)
-                    output = self.model.get_embeddings(images)
+                    if hasattr(self.model, "get_embeddings"):
+                        output = self.model.get_embeddings(images)
+                    else:
+                        output = self.model(images)
 
                 if torch.is_tensor(output):
                     output = output.cpu().numpy()

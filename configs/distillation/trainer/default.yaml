@@ -1,0 +1,5 @@
+losses:
+    - name: mse
+      weight: 1
+      loss_fn:
+        _target_: torch.nn.MSELoss

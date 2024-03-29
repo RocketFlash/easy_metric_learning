@@ -16,7 +16,6 @@ def get_evaluator(
             model=model, 
             save_dir=save_dir, 
             accelerator=accelerator,
-            model_info=model_info
         )
     else:
         evaluator = BaseEvaluator(

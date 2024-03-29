@@ -8,7 +8,6 @@ def get_loss(loss_config, device=None, weight=None):
     for loss_cfg in loss_config.losses:
         loss_fn = hydra.utils.instantiate(
             loss_cfg.get('loss_fn'), 
-            weight=weight,
             _convert_="object"
         )
         if device is not None:

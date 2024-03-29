@@ -41,6 +41,10 @@ if __name__ == '__main__':
         }
     )
 
+    print('image size statistics')
+    print(df.width.describe())
+    print(df.height.describe())
+
     counts_df = get_counts_df(df)
     counts_df.to_csv(dataset_path / 'class_counts.csv', index=False)
     

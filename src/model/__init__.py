@@ -1,5 +1,7 @@
+import omegaconf
 from .model import MLNet, get_model_embeddings
 from .margin import get_margin
+from ..utils import load_checkpoint
 
 
 def get_model(
@@ -33,3 +35,26 @@ def get_model(
         model = embeddings_model
     
     return model
+
+
+def get_model_teacher(
+        config_teacher,
+    ):
+        
+    config = omegaconf.OmegaConf.load(config_teacher.model.config)
+        
+    model_teacher = get_model(
+        config_backbone=config.backbone,
+        config_head=config.head,
+    )
+
+    if config_teacher.model.weights is not None:
+        checkpoint_data = load_checkpoint(
+            config_teacher.model.weights, 
+            model=model_teacher, 
+            mode='emb'
+        )
+        model_teacher = checkpoint_data['model'] if 'model' in checkpoint_data else model_teacher
+
+    model_teacher.eval()
+    return model_teacher

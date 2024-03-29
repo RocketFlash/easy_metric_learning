@@ -32,6 +32,10 @@ from src.utils import (load_checkpoint,
 def train(config):
     seed_everything(config.random_state)
 
+    if config.distillation.teacher.model is not None:
+        config.run_name = f'distill_{config.backbone.type}_{config.head.type}_{config.dataset.name}{config.run_info}'
+        config.run_name += f'_from_{config.distillation.teacher.name}'
+
     if config.n_workers=='auto':
         config.n_workers = multiprocessing.cpu_count()
 
@@ -112,6 +116,10 @@ def train(config):
         if 'criterion' in checkpoint_data:
             config.train.best_model_criterion.criterion = checkpoint_data['criterion'] 
 
+    if config.distillation.teacher.model is not None:
+        if hasattr(model, "embeddings_net"):
+            model = model.embeddings_net
+
     if config.ddp:
         device = accelerator.device
         model, optimizer, train_loader = accelerator.prepare(
@@ -133,7 +141,7 @@ def train(config):
         accelerator=accelerator,
         epoch=start_epoch,
         work_dir=work_dir,
-        ids_to_labels=data_info_train.train.ids_to_labels
+        ids_to_labels=data_info_train.train.ids_to_labels,
     )
 
     eval_save_dir = work_dir / 'eval'
