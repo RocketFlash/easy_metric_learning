@@ -96,7 +96,7 @@ def get_train_data_from_config(config, logger=None):
         dataset_stats = train_dataset_stats
 
     data_info_train = DataInfo(
-        dataset_name=config.dataset,
+        dataset_name=config.dataset.name,
         dataloader=train_loader,
         dataset=train_dataset,
         dataset_stats=train_dataset_stats,
@@ -105,7 +105,7 @@ def get_train_data_from_config(config, logger=None):
     )
 
     data_info_valid = DataInfo(
-        dataset_name=config.dataset,
+        dataset_name=config.dataset.name,
         dataloader=valid_loader,
         dataset=valid_dataset,
         dataset_stats=valid_dataset_stats,

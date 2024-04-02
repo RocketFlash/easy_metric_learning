@@ -11,11 +11,15 @@ class DDPEvaluator(BaseEvaluator):
             model, 
             save_dir='./', 
             accelerator=None,
+            is_eval=True,
+            pca=None
         ):
         super().__init__(
             config=config,
             model=model, 
             save_dir=save_dir, 
+            is_eval=is_eval,
+            pca=pca
         )
         self.accelerator = accelerator
 
@@ -23,6 +27,8 @@ class DDPEvaluator(BaseEvaluator):
     def evaluate(self, data_info):
         data_info.dataloader = self.accelerator.prepare(data_info.dataloader)
         embeddings, labels = self.generate_embeddings(data_info)
+        if self.pca is not None:
+            embeddings = self.pca.transform(embeddings)
 
         metrics = {}
         if self.accelerator.is_local_main_process:

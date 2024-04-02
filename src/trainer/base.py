@@ -111,7 +111,7 @@ class BaseTrainer:
             total_loss = 0
             if self.amp_scaler is not None:
                 with amp.autocast():
-                    output = self.model(images, targets)
+                    output, emb = self.model(images, targets)
 
                     for loss_name, loss_params in criterion.items():
                         loss = loss_params.loss_fn(output, targets) * loss_params.weight
@@ -127,7 +127,7 @@ class BaseTrainer:
                     self.amp_scaler.update()
                     self.optimizer.zero_grad()
             else:
-                output = self.model(images, targets)
+                output, emb = self.model(images, targets)
                 
                 for loss_name, loss_params in criterion.items():
                     loss = loss_params.loss_fn(output, targets) * loss_params.weight
@@ -204,7 +204,7 @@ class BaseTrainer:
                 images = images.to(self.device)
                 targets = targets.to(self.device)
                 
-                output = self.model(images, targets)
+                output, emb = self.model(images, targets)
 
                 total_loss = 0
                 for loss_name, loss_params in criterion.items():

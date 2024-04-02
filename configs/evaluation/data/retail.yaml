@@ -37,8 +37,8 @@ datasets:
     use_bboxes: False
   - name: dataset_v0
     type: simple 
-    dir: /datasets/metric_learning/dataset_v0/
-    annotations: /datasets/metric_learning/dataset_v0/dataset_test.csv
+    dir: /mnt/datasets/metric_learning/dataset_v0/
+    annotations: /mnt/datasets/metric_learning/dataset_v0/dataset_test.csv
     label_column: label
     fname_column: file_name
     use_bboxes: False

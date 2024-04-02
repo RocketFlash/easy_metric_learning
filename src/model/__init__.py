@@ -39,22 +39,44 @@ def get_model(
 
 def get_model_teacher(
         config_teacher,
+        device=None,
+        accelerator=None
     ):
         
     config = omegaconf.OmegaConf.load(config_teacher.model.config)
-        
-    model_teacher = get_model(
-        config_backbone=config.backbone,
-        config_head=config.head,
+    
+    model_teacher = load_emb_model_and_weights(
+        config.backbone,
+        config.head,
+        weights=config_teacher.model.weights,
+        device=device,
+        accelerator=accelerator
     )
-
-    if config_teacher.model.weights is not None:
-        checkpoint_data = load_checkpoint(
-            config_teacher.model.weights, 
-            model=model_teacher, 
-            mode='emb'
-        )
-        model_teacher = checkpoint_data['model'] if 'model' in checkpoint_data else model_teacher
 
     model_teacher.eval()
     return model_teacher
+
+
+def load_emb_model_and_weights(
+        config_backbone,
+        config_head,
+        weights=None,
+        device=None,
+        accelerator=None
+    ):
+    model = get_model(
+        config_backbone=config_backbone,
+        config_head=config_head,
+    )
+
+    if weights is not None:
+        checkpoint_data = load_checkpoint(
+            weights, 
+            model=model, 
+            mode='emb',
+            device=device,
+            accelerator=accelerator
+        )
+        model = checkpoint_data['model'] if 'model' in checkpoint_data else model
+
+    return model

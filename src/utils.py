@@ -36,33 +36,6 @@ def get_device(device_str):
     return device 
 
 
-def get_sample(
-        image_path, 
-        img_h=170, 
-        img_w=170,
-        data_type='general'
-    ):
-    image = cv2.imread(image_path)
-    transform = get_transform('test_aug',
-                              data_type=data_type, 
-                              image_size=(img_h, img_w))
-    augmented = transform(image=image)
-    img_torch = augmented['image']
-    return img_torch.unsqueeze(0)
-
-
-def get_images_paths(path):
-    pathlib_path = Path(path)
-    return [l for l in list(pathlib_path.glob('**/*.jpeg')) + \
-                       list(pathlib_path.glob('**/*.jpg')) + \
-                       list(pathlib_path.glob('**/*.png'))]
-
-
-def get_image(image_path):
-    image = cv2.imread(str(image_path))
-    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
-
-
 def save_ckp(
         save_path, 
         model, 

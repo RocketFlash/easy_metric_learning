@@ -8,7 +8,7 @@ dir:
     - /mnt/datasets/metric_learning/datasets_opensource/rp2k
     - /mnt/datasets/metric_learning/datasets_opensource/aliproducts
     # - /mnt/datasets/metric_learning/datasets_opensource/shopee
-    - /datasets/metric_learning/dataset_v0/
+    - /mnt/datasets/metric_learning/dataset_v0/
 
 annotations: 
     - /mnt/datasets/metric_learning/datasets_opensource/Stanford_Online_Products/dataset_info.csv
@@ -17,7 +17,7 @@ annotations:
     - /mnt/datasets/metric_learning/datasets_opensource/rp2k/dataset_info.csv
     - /mnt/datasets/metric_learning/datasets_opensource/aliproducts/dataset_info.csv
     # - /mnt/datasets/metric_learning/datasets_opensource/shopee/dataset_info.csv
-    - /datasets/metric_learning/dataset_v0/dataset_info_filtered.csv
+    - /mnt/datasets/metric_learning/dataset_v0/dataset_info_filtered.csv
                   
 fold: 
 

@@ -1,0 +1,67 @@
+train:
+  order:
+    [
+      resize,
+      normalize,
+      to_tensor
+    ]
+  resize:
+    _target_: albumentations.Resize
+    height: ${img_h}
+    width: ${img_w}
+    p: 1.0
+  normalize:
+    _target_: albumentations.Normalize
+    mean: ${backbone.norm_mean}
+    std: ${backbone.norm_std}
+    p: 1.0
+  to_tensor:
+    _target_: albumentations.pytorch.ToTensorV2
+
+valid:
+  order:
+    [
+      resize,
+      normalize,
+      to_tensor
+    ]
+  resize:
+    _target_: albumentations.Resize
+    height: ${img_h}
+    width: ${img_w}
+    p: 1.0
+  normalize:
+    _target_: albumentations.Normalize
+    mean: ${backbone.norm_mean}
+    std: ${backbone.norm_std}
+    p: 1.0
+  to_tensor:
+    _target_: albumentations.pytorch.ToTensorV2
+
+test:
+  order:
+    [
+      resize,
+      normalize,
+      to_tensor
+    ]
+  resize:
+    _target_: albumentations.Resize
+    height: ${img_h}
+    width: ${img_w}
+    p: 1.0
+  normalize:
+    _target_: albumentations.Normalize
+    mean: ${backbone.norm_mean}
+    std: ${backbone.norm_std}
+    p: 1.0
+  to_tensor:
+    _target_: albumentations.pytorch.ToTensorV2
+
+cutmix:
+  p: 0
+  alpha: 0.5
+
+mixup:
+  p: 0
+  alpha: 0.5

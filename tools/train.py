@@ -117,8 +117,9 @@ def train(config):
             config.train.best_model_criterion.criterion = checkpoint_data['criterion'] 
 
     if config.distillation.teacher.model is not None:
-        if hasattr(model, "embeddings_net"):
-            model = model.embeddings_net
+        if config.distillation.trainer.params.distill_loss_only:
+            if hasattr(model, "embeddings_net"):
+                model = model.embeddings_net
 
     if config.ddp:
         device = accelerator.device

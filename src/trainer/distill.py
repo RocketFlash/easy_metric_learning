@@ -35,6 +35,9 @@ class DistillTrainer:
         self.device = device
         self.accelerator = accelerator
         self.ids_to_labels = ids_to_labels
+        self.grad_accum_steps = config.train.trainer.grad_accum_steps
+        self.distill_loss_only = config.distillation.trainer.params.distill_loss_only
+        self.distill_loss_weight = config.distillation.trainer.params.distill_loss_weight
 
         self.n_epochs = config.epochs - epoch + 1
         if 'T_max' in config.scheduler.scheduler:
@@ -43,13 +46,18 @@ class DistillTrainer:
         scheduler = get_scheduler(optimizer, scheduler_config=config.scheduler)
 
         if accelerator is None:
-            self.loss_fns = get_loss(
-                loss_config=config.distillation.trainer.loss,
+            self.distill_loss_fns = get_loss(
+                loss_config=config.distillation.trainer,
                 device=device
             )
+            if not self.distill_loss_only:
+                self.loss_fns = get_loss(loss_config=config.loss, device=device)
+            self.scheduler = scheduler
             self.amp_scaler = amp.GradScaler() if device != 'cpu' and config.amp else None
         else:
-            self.loss_fns = get_loss(loss_config=config.distillation.trainer)
+            self.distill_loss_fns = get_loss(loss_config=config.distillation.trainer)
+            if not self.distill_loss_only:
+                self.loss_fns = get_loss(loss_config=config.loss)
             self.scheduler = accelerator.prepare(scheduler)
             self.amp_scaler = None
 
@@ -60,7 +68,9 @@ class DistillTrainer:
     def train_epoch(self, train_loader):
         self.model.train()
 
-        loss_meters = {k: AverageMeter() for k, v in self.loss_fns.items()}
+        loss_meters = {k: AverageMeter() for k, v in self.distill_loss_fns.items()}
+        if not self.distill_loss_only:
+            loss_meters.update({k: AverageMeter() for k, v in self.loss_fns.items()})
         loss_meters['total_loss'] = AverageMeter()
         
         is_main_proc = is_main_process(self.accelerator)
@@ -98,14 +108,27 @@ class DistillTrainer:
             total_loss = 0
             if self.accelerator is not None:
                 with self.accelerator.accumulate(self.model):
-                    output_student = self.model(images)
-                    output_teacher = self.model_teacher(images)
+                    if not self.distill_loss_only:
+                        output_student, emb_student = self.model(images, targets)
+                    else:
+                        emb_student = self.model(images)
 
-                    for loss_name, loss_params in self.loss_fns.items():
-                        loss = loss_params.loss_fn(output_student, output_teacher) * loss_params.weight
+                    with torch.no_grad():
+                        emb_teacher = self.model_teacher(images)
+
+                    for loss_name, loss_params in self.distill_loss_fns.items():
+                        loss = loss_params.loss_fn(emb_student, emb_teacher) * loss_params.weight
                         if self.accelerator.is_local_main_process:
                             loss_meters[loss_name].update(loss.detach().item())
                         total_loss += loss
+                    total_loss *= self.distill_loss_weight
+
+                    if not self.distill_loss_only:
+                        for loss_name, loss_params in self.loss_fns.items():
+                            loss = loss_params.loss_fn(output_student, targets) * loss_params.weight
+                            if self.accelerator.is_local_main_process:
+                                loss_meters[loss_name].update(loss.detach().item())
+                            total_loss += loss
 
                     self.accelerator.backward(total_loss)
                     if self.accelerator.sync_gradients:
@@ -115,13 +138,28 @@ class DistillTrainer:
             else:
                 if self.amp_scaler is not None:
                     with amp.autocast():
-                        output_student = self.model(images)
-                        output_teacher = self.model_teacher(images)
+                        images = images.to(self.device)
+                        targets = targets.to(self.device)
 
-                        for loss_name, loss_params in self.loss_fns.items():
-                            loss = loss_params.loss_fn(output_student, output_teacher) * loss_params.weight
+                        if not self.distill_loss_only:
+                            output_student, emb_student = self.model(images, targets)
+                        else:
+                            emb_student = self.model(images)
+
+                        with torch.no_grad():
+                            emb_teacher = self.model_teacher(images)
+
+                        for loss_name, loss_params in self.distill_loss_fns.items():
+                            loss = loss_params.loss_fn(emb_student, emb_teacher) * loss_params.weight
                             loss_meters[loss_name].update(loss.detach().item())
                             total_loss += loss
+                        total_loss *= self.distill_loss_weight
+
+                        if not self.distill_loss_only:
+                            for loss_name, loss_params in self.loss_fns.items():
+                                loss = loss_params.loss_fn(output_student, targets) * loss_params.weight
+                                loss_meters[loss_name].update(loss.detach().item())
+                                total_loss += loss
 
                     self.amp_scaler.scale(total_loss / self.grad_accum_steps).backward()
 
@@ -132,13 +170,28 @@ class DistillTrainer:
                         self.amp_scaler.update()
                         self.optimizer.zero_grad()
                 else:
-                    output_student = self.model(images)
-                    output_teacher = self.model_teacher(images)
+                    images = images.to(self.device)
+                    targets = targets.to(self.device)
+
+                    if not self.distill_loss_only:
+                        output_student, emb_student = self.model(images, targets)
+                    else:
+                        emb_student = self.model(images)
+
+                    with torch.no_grad():
+                        emb_teacher = self.model_teacher(images)
                     
-                    for loss_name, loss_params in self.loss_fns.items():
-                        loss = loss_params.loss_fn(output_student, output_teacher) * loss_params.weight
+                    for loss_name, loss_params in self.distill_loss_fns.items():
+                        loss = loss_params.loss_fn(emb_student, emb_teacher) * loss_params.weight
                         loss_meters[loss_name].update(loss.detach().item())
                         total_loss += loss
+                    total_loss *= self.distill_loss_weight
+
+                    if not self.distill_loss_only:
+                        for loss_name, loss_params in self.loss_fns.items():
+                            loss = loss_params.loss_fn(output_student, targets) * loss_params.weight
+                            loss_meters[loss_name].update(loss.detach().item())
+                            total_loss += loss
 
                     total_loss_grad_accum = total_loss / self.grad_accum_steps
                     total_loss_grad_accum.backward()
@@ -175,7 +228,9 @@ class DistillTrainer:
     def valid_epoch(self, valid_loader):
         self.model.eval()
 
-        loss_meters = {k: AverageMeter() for k, v in self.loss_fns.items()}
+        loss_meters = {k: AverageMeter() for k, v in self.distill_loss_fns.items()}
+        if not self.distill_loss_only:
+            loss_meters.update({k: AverageMeter() for k, v in self.loss_fns.items()})
         loss_meters['total_loss'] = AverageMeter()
 
         is_main_proc = is_main_process(self.accelerator)
@@ -201,16 +256,26 @@ class DistillTrainer:
                             save_dir=self.work_dir, 
                             split='valid', 
                         )
-                
-                output_student = self.model(images)
-                output_teacher = self.model_teacher(images)
+                if not self.distill_loss_only:
+                    output_student, emb_student = self.model(images)
+                else:
+                    emb_student = self.model(images)
+
+                emb_teacher = self.model_teacher(images)
 
                 total_loss = 0
                 for loss_name, loss_params in self.loss_fns.items():
-                    loss = loss_params.loss_fn(output_student, output_teacher) * loss_params.weight
+                    loss = loss_params.loss_fn(emb_student, emb_teacher) * loss_params.weight
                     if is_main_proc:
                         loss_meters[loss_name].update(loss.detach().item())
                     total_loss += loss
+                total_loss *= self.distill_loss_weight
+
+                if not self.distill_loss_only:
+                    for loss_name, loss_params in self.loss_fns.items():
+                        loss = loss_params.loss_fn(output_student, targets) * loss_params.weight
+                        loss_meters[loss_name].update(loss.detach().item())
+                        total_loss += loss
 
                 if is_main_proc:
                     loss_meters['total_loss'].update(total_loss.detach().item())

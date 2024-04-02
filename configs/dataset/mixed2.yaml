@@ -13,7 +13,7 @@ dir:
     - /mnt/datasets/metric_learning/datasets_opensource/largefinefoodai
     # - /mnt/datasets/metric_learning/datasets_opensource/aliproducts
     # - /mnt/datasets/metric_learning/datasets_opensource/shopee
-    - /datasets/metric_learning/dataset_v0/
+    - /mnt/datasets/metric_learning/dataset_v0/
 
 annotations: 
     - /mnt/datasets/metric_learning/datasets_opensource/cars196/dataset_info.csv
@@ -27,7 +27,7 @@ annotations:
     - /mnt/datasets/metric_learning/datasets_opensource/largefinefoodai/dataset_info.csv
     # - /mnt/datasets/metric_learning/datasets_opensource/aliproducts/dataset_info.csv
     # - /mnt/datasets/metric_learning/datasets_opensource/shopee/dataset_info.csv
-    - /datasets/metric_learning/dataset_v0/dataset_train.csv
+    - /mnt/datasets/metric_learning/dataset_v0/dataset_train.csv
                   
 fold: 
 

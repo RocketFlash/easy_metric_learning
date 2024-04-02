@@ -16,9 +16,13 @@ def get_trainer(
     ):
 
     if config.distillation.teacher.model is not None:
-        model_teacher = get_model_teacher(config.distillation.teacher)
+        model_teacher = get_model_teacher(
+            config.distillation.teacher,
+            accelerator=accelerator
+        )
         if config.ddp:
             model_teacher = accelerator.prepare(model_teacher)
+            # model_teacher = model_teacher.to(accelerator.device)
         else:
             model_teacher = model_teacher.to(device)
 

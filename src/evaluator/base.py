@@ -13,7 +13,9 @@ class BaseEvaluator:
             model=None, 
             save_dir='./', 
             device='cpu',
-            model_info=None
+            model_info=None,
+            is_eval=True,
+            pca=None
         ):
 
         self.config = config
@@ -23,24 +25,33 @@ class BaseEvaluator:
 
         if self.model_info is not None:
             self.model = self.model_info['model']
-    
-        self.save_results = config.evaluation.evaluator.save_results
-        self.save_embeddings = config.evaluation.evaluator.save_embeddings
+
+        if is_eval:
+            self.save_results = config.evaluation.evaluator.save_results
+            self.save_embeddings = config.evaluation.evaluator.save_embeddings
+            self.K = config.evaluation.evaluator.K
+            self.knn_algo = get_knn_search(
+                config.evaluation.knn,
+                K=self.K,
+                save_dir=save_dir
+            )
+        else:
+            self.save_results = False
+            self.save_embeddings = False
+
+        self.pca = pca
         self.save_dir = save_dir
         self.save_dir.mkdir(exist_ok=True)
-        self.K = config.evaluation.evaluator.K
-
-        self.knn_algo = get_knn_search(
-            config.evaluation.knn,
-            K=self.K,
-            save_dir=self.save_dir
-        )
-
         self.debug = config.debug
         
 
     def evaluate(self, data_info):
         embeddings, labels, file_names = self.generate_embeddings(data_info)
+        if self.pca is not None:
+            print('before pca', embeddings.shape)
+            embeddings = self.pca.transform(embeddings)
+            print('after pca', embeddings.shape)
+
         df_nearest = self.knn_algo.nearest_search(
             embeddings=embeddings, 
             labels=labels, 
@@ -55,7 +66,11 @@ class BaseEvaluator:
         return metrics
     
 
-    def generate_embeddings(self, data_info):
+    def generate_embeddings(
+            self, 
+            data_info,
+            n_batches=None
+        ):
         if self.model_info is not None:
             if 'tf' in self.model_info['model_type']:
                 import tensorflow as tf
@@ -77,9 +92,14 @@ class BaseEvaluator:
             dtype=object
         )
 
+        if n_batches is not None:
+            total_ = min(n_batches, int(len(data_info.dataloader)))
+        else:
+            total_ = int(len(data_info.dataloader))
+                         
         tqdm_test = tqdm(
             data_info.dataloader, 
-            total=int(len(data_info.dataloader))
+            total=total_
         )
         index = 0
         
@@ -87,12 +107,17 @@ class BaseEvaluator:
             for batch_index, (images, targets, fnames) in enumerate(tqdm_test):
                 if self.debug and batch_index>=10: break
                 
+                if n_batches is not None:
+                    if batch_index>=n_batches: break
+
                 if self.model_info is not None:
                     if self.model_info['model_type'] in ['torch', 'traced']:
                         images = images.to(self.device)
                         output = self.model(images)
                     elif self.model_info['model_type']=='onnx':
-                        output = self.model.run( None, {"input": images.numpy()})[0]
+                        output = self.model.run( 
+                            None, {"input": images.numpy()}
+                        )[0]
                     elif self.model_info['model_type'] in ['tf_32', 'tf_16', 'tf_int', 'tf_dyn']:
                         data_np = torch.permute(images, (0, 2, 3, 1)).numpy()
                         tf_data = tf.convert_to_tensor(data_np)
@@ -122,6 +147,12 @@ class BaseEvaluator:
                 labels[index:(index+batch_size)] = lbls
                 file_names[index:(index+batch_size)] = fnames
                 index += batch_size
+
+        if n_batches is not None:
+            n_samples = batch_size * n_batches
+            embeddings = embeddings[:n_samples,:]
+            labels = labels[:n_samples]
+            file_names = file_names[:n_samples]
 
         if self.save_embeddings:
             np.savez(

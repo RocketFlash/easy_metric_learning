@@ -7,7 +7,7 @@ dir:
     - /mnt/datasets/metric_learning/datasets_opensource/inshop 
     - /mnt/datasets/metric_learning/datasets_opensource/products10k
     - /mnt/datasets/metric_learning/datasets_opensource/largefinefoodai
-    - /datasets/metric_learning/dataset_v0/
+    - /mnt/datasets/metric_learning/dataset_v0/
 
 annotations: 
     - /mnt/datasets/metric_learning/datasets_opensource/cars196/dataset_info.csv
@@ -15,7 +15,7 @@ annotations:
     - /mnt/datasets/metric_learning/datasets_opensource/inshop/dataset_info.csv
     - /mnt/datasets/metric_learning/datasets_opensource/products10k/dataset_info.csv
     - /mnt/datasets/metric_learning/datasets_opensource/largefinefoodai/dataset_info.csv
-    - /datasets/metric_learning/dataset_v0/dataset_info_filtered.csv
+    - /mnt/datasets/metric_learning/dataset_v0/dataset_info_filtered.csv
                   
 fold: 
 

@@ -2,9 +2,9 @@ name: 'dataset_v0'
 type: 'simple'                                     
 
 dir: 
-    - "/datasets/metric_learning/dataset_v0"                                  
+    - "/mnt/datasets/metric_learning/dataset_v0"                                  
 annotations: 
-    - "/datasets/metric_learning/dataset_v0/dataset_train.csv" 
+    - "/mnt/datasets/metric_learning/dataset_v0/dataset_train.csv" 
                  
 fold: 
 

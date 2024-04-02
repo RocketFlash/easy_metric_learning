@@ -106,7 +106,7 @@ class DDPTrainer:
 
             total_loss = 0
             with self.accelerator.accumulate(self.model):
-                output = self.model(images, targets)
+                output, emb = self.model(images, targets)
                 for loss_name, loss_params in criterion.items():
                     loss = loss_params.loss_fn(output, targets) * loss_params.weight
                     if self.accelerator.is_local_main_process:
@@ -174,7 +174,7 @@ class DDPTrainer:
                             split='valid', 
                         )
                 
-                output = self.model(images, targets)
+                output, emb = self.model(images, targets)
 
                 total_loss = 0
                 for loss_name, loss_params in criterion.items():

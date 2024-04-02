@@ -5,5 +5,6 @@ losses:
         _target_: torch.nn.MSELoss
 
 params:
-  distill_loss_only: False
+  distill_loss_only: True
   distill_loss_weight: 1
+  

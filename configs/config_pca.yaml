@@ -1,11 +1,9 @@
 defaults:
   - backbone : efficientnetv2_b1
   - head : base
+  - dataset : cars196
   - dataloader: default
-  - evaluation/evaluator : default
-  - evaluation/data : cars_cub
-  - evaluation/knn : faiss
-  - transform : default
+  - transform : without_augs
   - override hydra/hydra_logging: disabled  
   - override hydra/job_logging: disabled  
   - _self_
@@ -14,6 +12,9 @@ debug : False
 ddp: False
 
 embeddings_size: 512
+n_components: 128
+n_batches: 100
+
 batch_size : 256
 fold: 0 
 random_state : 28 
@@ -28,10 +29,9 @@ save_embeddings: False
 model_type: 'torch' 
 model_config: ''
 weights: 
-pca_path: ''
 
 run_name: 'run_1'
-work_dirs: "./work_dirs/test/"
+work_dirs: "./work_dirs/pca/"
 
 
 hydra:

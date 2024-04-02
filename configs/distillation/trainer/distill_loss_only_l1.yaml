@@ -1,0 +1,10 @@
+losses:
+    - name: l1
+      weight: 1
+      loss_fn:
+        _target_: torch.nn.L1Loss
+
+params:
+  distill_loss_only: True
+  distill_loss_weight: 1
+  

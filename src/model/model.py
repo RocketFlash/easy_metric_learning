@@ -64,7 +64,7 @@ class MLNet(nn.Module):
     def forward(self, x, label):
         x_embedd = self.get_embeddings(x)
         x_margin = self.margin(x_embedd, label)
-        return x_margin
+        return x_margin, x_embedd
 
 
 def get_model_embeddings(

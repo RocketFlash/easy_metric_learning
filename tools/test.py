@@ -4,6 +4,7 @@ sys.path.append("./")
 import torch
 import pandas as pd
 import hydra
+import pickle
 from pathlib import Path
 import multiprocessing
 from omegaconf import OmegaConf
@@ -37,7 +38,18 @@ def test(config):
     data_infos_test = get_test_data_from_config(config)
     device = get_device(config.device)
 
+    if config.pca_path:
+        with open(config.pca_path, 'rb') as f:
+            pca = pickle.load(f)
+    else:
+        pca = None
+
     if config.model_type=='torch':
+        if config.model_config:
+            model_config = OmegaConf.load(config.model_config)
+            config.backbone = model_config.backbone
+            config.head = model_config.head
+
         model = get_model(
             config_backbone=config.backbone,
             config_head=config.head,
@@ -47,6 +59,7 @@ def test(config):
             config.embeddings_size = model.backbone_out_feats
             logger.info(f'Embeddings size changed to backbone output size {config.embeddings_size}')
 
+        
         logger.info_model(config)
 
         if config.weights is not None:
@@ -74,7 +87,8 @@ def test(config):
         config,
         save_dir=eval_save_dir ,
         device=device,
-        model_info=model_info
+        model_info=model_info,
+        pca=pca
     )
     
     all_metrics = {}
