@@ -18,6 +18,7 @@ def safe_random_choice(input_data, size):
     replace = len(input_data) < size
     return np.random.choice(input_data, size=size, replace=replace)
 
+
 def get_labels_to_indices(labels):
     """
     Creates labels_to_indices, which is a dictionary mapping each label
@@ -31,6 +32,7 @@ def get_labels_to_indices(labels):
     for k, v in labels_to_indices.items():
         labels_to_indices[k] = np.array(v, dtype=int)
     return labels_to_indices
+
 
 # modified from
 # https://raw.githubusercontent.com/bnulihaixia/Deep_metric/master/utils/sampler.py
@@ -72,7 +74,7 @@ class MPerClassSampler(Sampler):
         num_iters = self.calculate_num_iters()
         for _ in range(num_iters):
             np.random.shuffle(self.labels)
-            
+
             curr_label_set = self.labels[: self.batch_size // self.m_per_class]
             for label in curr_label_set:
                 t = self.labels_to_indices[label]
@@ -83,4 +85,6 @@ class MPerClassSampler(Sampler):
         return iter(idx_list)
 
     def calculate_num_iters(self):
-        return self.list_size // self.batch_size if self.batch_size < self.list_size else 1
+        return (
+            self.list_size // self.batch_size if self.batch_size < self.list_size else 1
+        )

@@ -5,6 +5,8 @@ easydict
 tqdm
 matplotlib
 numpy
+torch
+torchvision
 albumentations[imgaug]
 pyyaml
 scikit-learn
@@ -19,10 +21,16 @@ openpyxl
 imagededup
 imagesize
 open_clip_torch
+accelerate
+faiss-cpu
 onnx
 onnxruntime
-onnxruntime-gpu
 wget
 gdown
 hydra-core
 ipyplot
+lion-pytorch
+torch_optimizer
+kaggle
+pytest
+black

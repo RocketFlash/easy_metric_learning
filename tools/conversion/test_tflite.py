@@ -1,27 +1,43 @@
-import tensorflow as tf
-import torch
-import sys
+import argparse
 import os
 from pathlib import Path
-from tqdm import tqdm
-sys.path.insert(0, '../../')
-from src.utils import (get_images_paths,
-                       get_sample)
 
-if __name__ == '__main__':
-    USE_CPU = True
-    if USE_CPU:
+import sys
+
+sys.path.insert(0, "../../")
+
+import torch
+from tqdm import tqdm
+
+from src.utils import get_images_paths, get_sample
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Smoke-test a TFLite embedding model")
+    parser.add_argument("--model_path", required=True, help="path to .tflite model")
+    parser.add_argument("--dataset_path", required=True, help="folder with images")
+    parser.add_argument("--img_h", type=int, default=224)
+    parser.add_argument("--img_w", type=int, default=224)
+    parser.add_argument("--limit", type=int, default=20)
+    parser.add_argument(
+        "--cpu", action="store_true", help="hide CUDA devices from tensorflow"
+    )
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    if args.cpu:
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-        
-    model_path = '/home/ubuntu/easy_metric_learning/work_dirs/full_arcface_openclip-ViT-B32_laion2b_m_0_6_s_30_backbone_lr_scaler_fold0/weights/arcface_openclip-ViT-B32_laion2b_im224_emb512.tf/arcface_openclip-ViT-B32_laion2b_im224_emb512_simp_float16.tflite'
-    interpreter = tf.lite.Interpreter(model_path=model_path)
+
+    import tensorflow as tf
+
+    interpreter = tf.lite.Interpreter(model_path=args.model_path)
     tf_lite_model = interpreter.get_signature_runner()
 
-    dataset_path = Path('/datasets/metric_learning/mksp_170x170')
-    images_paths = get_images_paths(dataset_path)
-
-    for image_path in tqdm(images_paths):
-        sample = get_sample(str(image_path), img_h=224, img_w=224)
+    image_paths = get_images_paths(Path(args.dataset_path))[: args.limit]
+    for image_path in tqdm(image_paths):
+        sample = get_sample(str(image_path), img_h=args.img_h, img_w=args.img_w)
         tf_sample = tf.convert_to_tensor(torch.permute(sample, (0, 2, 3, 1)).numpy())
-        tt_lite_output = tf_lite_model(input=tf_sample)
-        print(tt_lite_output['output'][:, :8])
+        tf_lite_output = tf_lite_model(input=tf_sample)
+        print(tf_lite_output["output"][:, :8])

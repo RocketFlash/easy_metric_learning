@@ -169,7 +169,7 @@ Optional script arguments:
 
 ## Simple example
 
-In the **configs** folder you will find main configuration file **config.yaml**. It contains default training parameters. For example defaul backbone set to *efficientnetv2_b1* and default dataset is *cars196*. If you want to change any of the parameters you can enter it as an argument. Let's say you want to train a model for 10 epochs with backbone *openclip_vit_b32.yaml* , margin *arcface* on dataset *inshop* and evaluate model on *products10k* with batch size 32. You can change the values in the configuration file or set what you want as an argument and the remaining parameters will be default parameters from **config.yaml**. You can use the following command:
+In the **configs** folder you will find main training configuration file **config_train.yaml**. It contains default training parameters. For example default backbone set to *efficientnetv2_b1* and default dataset is *cars196*. If you want to change any of the parameters you can enter it as an argument. Let's say you want to train a model for 10 epochs with backbone *openclip_vit_b32.yaml* , margin *arcface* on dataset *inshop* and evaluate model on *products10k* with batch size 32. You can change the values in the configuration file or set what you want as an argument and the remaining parameters will be default parameters from **config_train.yaml**. You can use the following command:
 
 ```bash
 python tools/train.py backbone=openclip_vit_b32 dataset=inshop evaluation/data=products10k batch_size=32 epochs=10
@@ -195,5 +195,3 @@ Once you have configured Accelerate library you can run distributed training usi
 ```bash
 accelerate launch tools/train.py backbone=openclip_vit_l {and other configuration parameters}
 ```
-
-

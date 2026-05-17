@@ -5,16 +5,13 @@ from .base import BaseDataset
 
 
 class FoldersDataset(BaseDataset):
-    def __init__(self, save_path, dataset_folder='./'):
+    def __init__(self, save_path, dataset_folder="./"):
         super(FoldersDataset, self).__init__(
-            save_path=save_path,
-            dataset_folder=dataset_folder
+            save_path=save_path, dataset_folder=dataset_folder
         )
-
 
     def download(self):
         pass
-
 
     def prepare(self):
         pass

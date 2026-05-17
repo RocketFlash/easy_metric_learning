@@ -9,7 +9,6 @@ class FocalLoss(nn.Module):
         self.eps = eps
         self.ce = nn.CrossEntropyLoss()
 
-
     def forward(self, input, target):
         logp = self.ce(input, target)
         p = torch.exp(-logp)

@@ -3,9 +3,20 @@ import torch.nn as nn
 from torch.nn import Parameter
 import torch.nn.functional as F
 import math
+from .utils import build_one_hot, get_primary_label
+
 
 class SubcenterArcMarginProduct(nn.Module):
-    def __init__(self, in_features, out_features, K=3, s=30.0, m=0.50, easy_margin=False, ls_eps=0.0):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        K=3,
+        s=30.0,
+        m=0.50,
+        easy_margin=False,
+        ls_eps=0.0,
+    ):
         super(SubcenterArcMarginProduct, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -13,7 +24,7 @@ class SubcenterArcMarginProduct(nn.Module):
         self.m = m
         self.K = K
         self.ls_eps = ls_eps
-        self.weight = Parameter(torch.FloatTensor(out_features*self.K, in_features))
+        self.weight = Parameter(torch.FloatTensor(out_features * self.K, in_features))
         nn.init.xavier_uniform_(self.weight)
 
         self.easy_margin = easy_margin
@@ -35,18 +46,19 @@ class SubcenterArcMarginProduct(nn.Module):
             self.mm = math.sin(math.pi - m) * m
 
     def forward(self, x, label):
+        margin_label = get_primary_label(label)
         if isinstance(self.m, dict):
             cos_m_i, sin_m_i, th_i, mm_i = [], [], [], []
-            for l in label:
+            for l in margin_label:
                 l = l.detach().item()
                 cos_m_i.append(self.cos_m[l])
                 sin_m_i.append(self.sin_m[l])
                 th_i.append(self.th[l])
                 mm_i.append(self.mm[l])
-            cos_m_i = torch.Tensor(cos_m_i).to(label.device)
-            sin_m_i = torch.Tensor(sin_m_i).to(label.device)
-            th_i = torch.Tensor(th_i).to(label.device)
-            mm_i = torch.Tensor(mm_i).to(label.device)
+            cos_m_i = torch.Tensor(cos_m_i).to(margin_label.device)
+            sin_m_i = torch.Tensor(sin_m_i).to(margin_label.device)
+            th_i = torch.Tensor(th_i).to(margin_label.device)
+            mm_i = torch.Tensor(mm_i).to(margin_label.device)
 
         else:
             cos_m_i = self.cos_m
@@ -55,11 +67,11 @@ class SubcenterArcMarginProduct(nn.Module):
             mm_i = self.mm
 
         cosine = F.linear(F.normalize(x), F.normalize(self.weight))
-        
+
         if self.K > 1:
             cosine = torch.reshape(cosine, (-1, self.out_features, self.K))
             cosine, _ = torch.max(cosine, axis=2)
-        
+
         if isinstance(self.m, dict):
             cos_m_i = torch.unsqueeze(cos_m_i, 1)
             cos_m_i = cos_m_i.repeat(1, cosine.shape[1])
@@ -69,7 +81,6 @@ class SubcenterArcMarginProduct(nn.Module):
             th_i = th_i.repeat(1, cosine.shape[1])
             mm_i = torch.unsqueeze(mm_i, 1)
             mm_i = mm_i.repeat(1, cosine.shape[1])
-            
 
         sine = torch.sqrt((1.0 - torch.pow(cosine, 2)).clamp(0, 1))
         phi = cosine * cos_m_i - sine * sin_m_i
@@ -79,13 +90,14 @@ class SubcenterArcMarginProduct(nn.Module):
         else:
             phi = torch.where(cosine.float() > th_i, phi.float(), cosine.float() - mm_i)
 
-        one_hot = torch.zeros_like(cosine)
-        one_hot.scatter_(1, label.view(-1, 1).long(), 1)
+        one_hot = build_one_hot(
+            label, self.out_features, device=cosine.device, dtype=cosine.dtype
+        )
 
         if self.ls_eps > 0:
             one_hot = (1 - self.ls_eps) * one_hot + self.ls_eps / self.out_features
-        
-        output = (one_hot * phi) + ((1.0 - one_hot) * cosine) 
+
+        output = (one_hot * phi) + ((1.0 - one_hot) * cosine)
         output *= self.s
 
         return output

@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 def cutmix(data, targets, alpha):
     # Code from https://www.kaggle.com/code/riadalmadani/fastai-effb0-base-model-birdclef2023
     indices = torch.randperm(data.size(0))
@@ -16,11 +17,11 @@ def cutmix(data, targets, alpha):
     new_targets = [targets, shuffled_targets, lam]
     return data, new_targets
 
-        
+
 def rand_bbox(size, lam):
     W = size[2]
     H = size[3]
-    cut_rat = np.sqrt(1. - lam)
+    cut_rat = np.sqrt(1.0 - lam)
     cut_w = int(W * cut_rat)
     cut_h = int(H * cut_rat)
 

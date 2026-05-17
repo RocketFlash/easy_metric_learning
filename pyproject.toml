@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "easy-metric-learning"
+version = "0.1.0"
+description = "Metric learning training and evaluation framework"
+requires-python = ">=3.10"
+dependencies = [
+    "accelerate",
+    "albumentations[imgaug]",
+    "easydict",
+    "faiss-cpu",
+    "gdown",
+    "hydra-core",
+    "imageio",
+    "imagededup",
+    "imagesize",
+    "ipyplot",
+    "kaggle",
+    "lion-pytorch",
+    "matplotlib",
+    "mlflow",
+    "numpy",
+    "onnx",
+    "onnxruntime",
+    "open-clip-torch",
+    "opencv-python",
+    "openpyxl",
+    "pandas",
+    "plotly",
+    "pyarrow",
+    "pytorch-warmup",
+    "pyyaml",
+    "scikit-learn",
+    "timm",
+    "torch",
+    "torch-optimizer",
+    "torchvision",
+    "tqdm",
+    "umap-learn",
+    "wandb",
+    "wget",
+]
+
+[project.optional-dependencies]
+test = [
+    "black>=24",
+    "pytest>=7",
+]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]

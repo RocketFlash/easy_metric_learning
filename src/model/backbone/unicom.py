@@ -55,18 +55,27 @@ def _download(url: str, root: str):
     download_target = os.path.join(root, filename)
 
     if os.path.exists(download_target) and not os.path.isfile(download_target):
-        raise RuntimeError(
-            f"{download_target} exists and is not a regular file")
+        raise RuntimeError(f"{download_target} exists and is not a regular file")
 
     if os.path.isfile(download_target):
-        if hashlib.sha256(open(download_target, "rb").read()).hexdigest() == expected_sha256:
+        if (
+            hashlib.sha256(open(download_target, "rb").read()).hexdigest()
+            == expected_sha256
+        ):
             return download_target
         else:
             warnings.warn(
-                f"{download_target} exists, but the SHA256 checksum does not match; re-downloading the file")
+                f"{download_target} exists, but the SHA256 checksum does not match; re-downloading the file"
+            )
 
     with urllib.request.urlopen(url) as source, open(download_target, "wb") as output:
-        with tqdm(total=int(source.info().get("Content-Length")), ncols=80, unit='iB', unit_scale=True, unit_divisor=1024) as loop:
+        with tqdm(
+            total=int(source.info().get("Content-Length")),
+            ncols=80,
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as loop:
             while True:
                 buffer = source.read(8192)
                 if not buffer:
@@ -75,9 +84,13 @@ def _download(url: str, root: str):
                 output.write(buffer)
                 loop.update(len(buffer))
 
-    if hashlib.sha256(open(download_target, "rb").read()).hexdigest() != expected_sha256:
+    if (
+        hashlib.sha256(open(download_target, "rb").read()).hexdigest()
+        != expected_sha256
+    ):
         raise RuntimeError(
-            "Model has been downloaded but the SHA256 checksum does not not match")
+            "Model has been downloaded but the SHA256 checksum does not not match"
+        )
 
     return download_target
 
@@ -86,14 +99,16 @@ def _download(url: str, root: str):
 def load_model_unicom(name: str, download_root: str = None):
     if name in _MODELS:
         model_path = _download(
-            _MODELS[name], download_root or os.path.expanduser("~/.cache/unicom"))
+            _MODELS[name], download_root or os.path.expanduser("~/.cache/unicom")
+        )
     elif os.path.isfile(name):
         model_path = name
     else:
         raise RuntimeError(
-            f"Model {name} not found; available models = {available_models()}")
-    with open(model_path, 'rb') as opened_file:
-        state_dict = torch.load(opened_file)
+            f"Model {name} not found; available models = {available_models()}"
+        )
+    with open(model_path, "rb") as opened_file:
+        state_dict = torch.load(opened_file, weights_only=True)
 
     model = load_model(name)
     state_dict_fp32 = {}
@@ -105,20 +120,43 @@ def load_model_unicom(name: str, download_root: str = None):
 
 
 class VisionTransformer(nn.Module):
-    def __init__(self, input_size=224, patch_size=32, in_channels=3, dim=768, embedding_size=768,
-                 depth=12, num_heads=12, mlp_ratio=4, drop_path_rate=0.0, using_checkpoint=True):
+    def __init__(
+        self,
+        input_size=224,
+        patch_size=32,
+        in_channels=3,
+        dim=768,
+        embedding_size=768,
+        depth=12,
+        num_heads=12,
+        mlp_ratio=4,
+        drop_path_rate=0.0,
+        using_checkpoint=True,
+    ):
         super().__init__()
         self.dim = dim
         self.patch_embed = PatchEmbedding(
-            input_size, patch_size, in_channels, dim,)
-        self.pos_embed = nn.Parameter(torch.zeros(
-            1, self.patch_embed.num_patches, dim))
+            input_size,
+            patch_size,
+            in_channels,
+            dim,
+        )
+        self.pos_embed = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches, dim))
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]
 
         self.blocks = nn.ModuleList(
             [
-                Block(dim, num_heads, mlp_ratio, dpr[i], self.patch_embed.num_patches, using_checkpoint) for i in range(depth)
-            ])
+                Block(
+                    dim,
+                    num_heads,
+                    mlp_ratio,
+                    dpr[i],
+                    self.patch_embed.num_patches,
+                    using_checkpoint,
+                )
+                for i in range(depth)
+            ]
+        )
         self.norm = nn.LayerNorm(dim)
         self.embedding_size = embedding_size
 
@@ -126,7 +164,8 @@ class VisionTransformer(nn.Module):
             nn.Linear(dim * self.patch_embed.num_patches, dim, False),
             nn.BatchNorm1d(dim, eps=2e-5),
             nn.Linear(dim, embedding_size, False),
-            nn.BatchNorm1d(embedding_size, eps=2e-5))
+            nn.BatchNorm1d(embedding_size, eps=2e-5),
+        )
 
         trunc_normal_(self.pos_embed, std=0.02)
         self.apply(self._init_weights)
@@ -177,15 +216,18 @@ class Attention(nn.Module):
         super().__init__()
         self.num_heads = num_heads
         head_dim = dim // num_heads
-        self.scale = head_dim ** -0.5
+        self.scale = head_dim**-0.5
         self.qkv = nn.Linear(dim, dim * 3, bias=False)
         self.proj = nn.Linear(dim, dim)
 
     def forward(self, x):
         with torch.cuda.amp.autocast(True):
             B, L, D = x.shape
-            qkv = self.qkv(x).reshape(B, L, 3, self.num_heads,
-                                      D // self.num_heads).permute(2, 0, 3, 1, 4)
+            qkv = (
+                self.qkv(x)
+                .reshape(B, L, 3, self.num_heads, D // self.num_heads)
+                .permute(2, 0, 3, 1, 4)
+            )
         with torch.cuda.amp.autocast(False):
             q, k, v = qkv[0].float(), qkv[1].float(), qkv[2].float()
             attn = (q @ k.transpose(-2, -1)) * self.scale
@@ -197,7 +239,15 @@ class Attention(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, dim: int, num_heads: int, mlp_ratio: int = 4, drop_path: float = 0.0, patch_n: int = 32, using_checkpoint=False):
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int,
+        mlp_ratio: int = 4,
+        drop_path: float = 0.0,
+        patch_n: int = 32,
+        using_checkpoint=False,
+    ):
         super().__init__()
         self.using_checkpoint = using_checkpoint
         self.norm1 = nn.LayerNorm(dim)
@@ -208,7 +258,9 @@ class Block(nn.Module):
         else:
             self.drop_path = nn.Identity()
         self.mlp = Mlp(dim, dim * mlp_ratio)
-        self.extra_gflops = (num_heads * patch_n * (dim // num_heads) * patch_n * 2) / (1000**3)
+        self.extra_gflops = (num_heads * patch_n * (dim // num_heads) * patch_n * 2) / (
+            1000**3
+        )
 
     def forward_impl(self, x):
         with torch.cuda.amp.autocast(True):
@@ -224,7 +276,9 @@ class Block(nn.Module):
 
 
 class PatchEmbedding(nn.Module):
-    def __init__(self, input_size=224, patch_size=32, in_channels: int = 3, dim: int = 768):
+    def __init__(
+        self, input_size=224, patch_size=32, in_channels: int = 3, dim: int = 768
+    ):
         super().__init__()
         if isinstance(input_size, int):
             input_size = (input_size, input_size)
@@ -234,7 +288,8 @@ class PatchEmbedding(nn.Module):
         W = input_size[1] // patch_size[1]
         self.num_patches = H * W
         self.proj = nn.Conv2d(
-            in_channels, dim, kernel_size=patch_size, stride=patch_size)
+            in_channels, dim, kernel_size=patch_size, stride=patch_size
+        )
 
     def forward(self, x):
         x = self.proj(x).flatten(2).transpose(1, 2)
@@ -244,20 +299,52 @@ class PatchEmbedding(nn.Module):
 def build_model(name="ViT-L/14@336px"):
     if name == "unicom_vit_b32":
         model = VisionTransformer(
-            input_size=224, patch_size=32, in_channels=3, dim=768, embedding_size=512,
-            depth=12, num_heads=12, drop_path_rate=0.1, using_checkpoint=True)
+            input_size=224,
+            patch_size=32,
+            in_channels=3,
+            dim=768,
+            embedding_size=512,
+            depth=12,
+            num_heads=12,
+            drop_path_rate=0.1,
+            using_checkpoint=True,
+        )
     elif name == "unicom_vit_b16":
         model = VisionTransformer(
-            input_size=224, patch_size=16, in_channels=3, dim=768, embedding_size=768,
-            depth=12, num_heads=12, drop_path_rate=0.1, using_checkpoint=True)
+            input_size=224,
+            patch_size=16,
+            in_channels=3,
+            dim=768,
+            embedding_size=768,
+            depth=12,
+            num_heads=12,
+            drop_path_rate=0.1,
+            using_checkpoint=True,
+        )
     elif name == "unicom_vit_l14":
         model = VisionTransformer(
-            input_size=224, patch_size=14, in_channels=3, dim=1024, embedding_size=768,
-            depth=24, num_heads=16, drop_path_rate=0.1, using_checkpoint=True)
+            input_size=224,
+            patch_size=14,
+            in_channels=3,
+            dim=1024,
+            embedding_size=768,
+            depth=24,
+            num_heads=16,
+            drop_path_rate=0.1,
+            using_checkpoint=True,
+        )
     elif name == "unicom_vit_l14_336":
         model = VisionTransformer(
-            input_size=336, patch_size=14, in_channels=3, dim=1024, embedding_size=768,
-            depth=24, num_heads=16, drop_path_rate=0.1, using_checkpoint=True)
+            input_size=336,
+            patch_size=14,
+            in_channels=3,
+            dim=1024,
+            embedding_size=768,
+            depth=24,
+            num_heads=16,
+            drop_path_rate=0.1,
+            using_checkpoint=True,
+        )
     return model
 
 

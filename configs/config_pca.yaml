@@ -14,6 +14,7 @@ ddp: False
 embeddings_size: 512
 n_components: 128
 n_batches: 100
+whiten: False
 
 batch_size : 256
 fold: 0 
@@ -37,4 +38,4 @@ work_dirs: "./work_dirs/pca/"
 hydra:
   output_subdir: null 
   run:
-    dir: work_dirs/test/${run_name}
+    dir: work_dirs/pca/${run_name}

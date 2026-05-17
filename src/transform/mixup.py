@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 def mixup(data, targets, alpha):
     # Code from https://www.kaggle.com/code/riadalmadani/fastai-effb0-base-model-birdclef2023
     indices = torch.randperm(data.size(0))

@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import json
 import torch
+import warnings
 from omegaconf import OmegaConf
 from omegaconf.listconfig import ListConfig
 from dataclasses import dataclass
@@ -17,18 +18,23 @@ def get_labels_to_ids_map(labels):
         if label not in labels_to_ids:
             labels_to_ids[label] = idx
             ids_to_labels[idx] = label
-            idx+=1
-    
+            idx += 1
+
     return labels_to_ids, ids_to_labels
 
 
 def collate_fn(batch):
+    n_dropped = sum(sample is None for sample in batch)
     batch = list(filter(lambda x: x is not None, batch))
+    if not batch:
+        raise ValueError("All samples in batch failed to load")
+    if n_dropped:
+        warnings.warn(f"Dropped {n_dropped} invalid samples from batch", RuntimeWarning)
     return torch.utils.data.dataloader.default_collate(batch)
 
 
-def worker_init_fn(worker_id):                                                          
-    np.random.seed(np.random.get_state()[1][0] + worker_id)
+def worker_init_fn(worker_id):
+    np.random.seed(torch.initial_seed() % 2**32)
 
 
 def get_labels_to_ids(labels_to_ids_path):
@@ -37,13 +43,13 @@ def get_labels_to_ids(labels_to_ids_path):
             labels_to_ids = json.load(file)
     else:
         labels_to_ids = None
-    
+
     return labels_to_ids
 
 
-def save_labels_to_ids(labels_to_ids, save_dir='./'):
+def save_labels_to_ids(labels_to_ids, save_dir="./"):
     save_dir = Path(save_dir)
-    with open(save_dir / 'labels_to_ids.json', 'w') as fp:
+    with open(save_dir / "labels_to_ids.json", "w") as fp:
         json.dump(labels_to_ids, fp)
 
 
@@ -57,69 +63,51 @@ def get_object_from_omegaconf(obj):
 def read_pd(file_path):
     file_path = Path(file_path)
 
-    if file_path.suffix=='.feather':
+    if file_path.suffix == ".feather":
         df = pd.read_feather(file_path)
     else:
         df = pd.read_csv(
-            file_path, 
-            dtype={ 
-                'label': str,
-                'file_name': str,
-                'width': int,
-                'height': int,
-                'hash' : str,
-                'is_test':int,
-            }
+            file_path,
+            dtype={
+                "label": str,
+                "file_name": str,
+                "width": int,
+                "height": int,
+                "hash": str,
+                "is_test": int,
+            },
         )
 
     return df
 
 
-def min_n_samples_per_label_filter(
-        df, 
-        min_n_samples=5
-    ):
-    label_counts = df['label'].value_counts()
+def min_n_samples_per_label_filter(df, min_n_samples=5):
+    label_counts = df["label"].value_counts()
     labels_to_keep = label_counts[label_counts >= min_n_samples].index
-    df = df[df['label'].isin(labels_to_keep)]
+    df = df[df["label"].isin(labels_to_keep)]
     return df
 
 
-def undersampling(
-        df, 
-        max_n_samples=100,
-        random_state=28
-    ):
+def undersampling(df, max_n_samples=100, random_state=28):
     train_groups = []
-    for label, group in df.groupby('label'):
+    for label, group in df.groupby("label"):
         group = group.reset_index(drop=True)
-        if len(group)>max_n_samples:
-            group = group.sample(
-                max_n_samples, 
-                random_state=random_state
-            )
+        if len(group) > max_n_samples:
+            group = group.sample(max_n_samples, random_state=random_state)
         train_groups.append(group)
     df = pd.concat(train_groups).reset_index(drop=True)
     return df
 
 
-def oversampling(
-        df, 
-        min_n_samples=20,
-        random_state=28
-    ):
+def oversampling(df, min_n_samples=20, random_state=28):
     resampled_dfs = []
-    for label, group in df.groupby('label'):
+    for label, group in df.groupby("label"):
         if len(group) < min_n_samples:
             num_samples_needed = min_n_samples - len(group)
             resampled_group = group.sample(
-                n=num_samples_needed, 
-                replace=True, 
-                random_state=random_state
-            )  
-            resampled_dfs.append(
-                pd.concat([group, resampled_group])
+                n=num_samples_needed, replace=True, random_state=random_state
             )
+            resampled_dfs.append(pd.concat([group, resampled_group]))
         else:
             resampled_dfs.append(group)
 
@@ -128,69 +116,67 @@ def oversampling(
 
 
 def get_train_val_from_file(
-        annotation_file, 
-        fold=0,
-        min_n_samples_per_label=None,
-        undersampling_max_n_samples=None,
-        oversampling_min_n_samples=None,
-        random_state=28,
-        logger=None
-    ):
+    annotation_file,
+    fold=0,
+    min_n_samples_per_label=None,
+    undersampling_max_n_samples=None,
+    oversampling_min_n_samples=None,
+    random_state=28,
+    logger=None,
+):
     if logger is not None:
         logger.info(annotation_file)
     df_folds = read_pd(annotation_file)
-    if 'is_test' in df_folds:
-        df_train = df_folds[df_folds['is_test']==0]
+    if "is_test" in df_folds:
+        df_train = df_folds[df_folds["is_test"] == 0]
         df_valid = None
-    elif 'fold' not in df_folds:
+    elif "fold" not in df_folds:
         df_train = df_folds
         df_valid = None
     else:
-        df_train = df_folds[((df_folds.fold != fold) & 
-                            (df_folds.fold >= 0)) | 
-                            (df_folds.fold == -1)]
-        df_valid = df_folds[((df_folds.fold == fold) & 
-                            (df_folds.fold >= 0)) | 
-                            (df_folds.fold == -2)]
-    
-    filtering_samples_status_str = ''
-    filtering_labels_status_str = ''
+        df_train = df_folds[
+            ((df_folds.fold != fold) & (df_folds.fold >= 0)) | (df_folds.fold == -1)
+        ]
+        df_valid = df_folds[
+            ((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)
+        ]
+
+    filtering_samples_status_str = ""
+    filtering_labels_status_str = ""
     n_samples_before = len(df_train)
-    n_labels_before = len(df_train['label'].unique())
+    n_labels_before = len(df_train["label"].unique())
 
     if min_n_samples_per_label is not None:
         df_train = min_n_samples_per_label_filter(
-            df_train, 
-            min_n_samples=min_n_samples_per_label
+            df_train, min_n_samples=min_n_samples_per_label
         )
-        n_labels = len(df_train['label'].unique())
-        filtering_samples_status_str += f' => min samples filtering [min n samples={min_n_samples_per_label}] ({len(df_train)})'
-        filtering_labels_status_str += f' => min samples filtering [min n samples={min_n_samples_per_label}] ({n_labels})'
+        n_labels = len(df_train["label"].unique())
+        filtering_samples_status_str += f" => min samples filtering [min n samples={min_n_samples_per_label}] ({len(df_train)})"
+        filtering_labels_status_str += f" => min samples filtering [min n samples={min_n_samples_per_label}] ({n_labels})"
 
     if undersampling_max_n_samples is not None:
         df_train = undersampling(
-            df_train, 
+            df_train,
             max_n_samples=undersampling_max_n_samples,
-            random_state=random_state
+            random_state=random_state,
         )
-        n_labels = len(df_train['label'].unique())
-        filtering_samples_status_str += f' => undersampling [max n samples={undersampling_max_n_samples}] ({len(df_train)})'
-        filtering_labels_status_str += f' => undersampling [max n samples={undersampling_max_n_samples}] ({n_labels})'
-        
+        n_labels = len(df_train["label"].unique())
+        filtering_samples_status_str += f" => undersampling [max n samples={undersampling_max_n_samples}] ({len(df_train)})"
+        filtering_labels_status_str += f" => undersampling [max n samples={undersampling_max_n_samples}] ({n_labels})"
 
     if oversampling_min_n_samples is not None:
         df_train = oversampling(
-            df_train, 
+            df_train,
             min_n_samples=oversampling_min_n_samples,
-            random_state=random_state
+            random_state=random_state,
         )
-        n_labels = len(df_train['label'].unique())
-        filtering_samples_status_str += f' => oversampling [min n samples={oversampling_min_n_samples}] ({len(df_train)})'
-        filtering_labels_status_str += f' => oversampling [min n samples={oversampling_min_n_samples}] ({n_labels})'
+        n_labels = len(df_train["label"].unique())
+        filtering_samples_status_str += f" => oversampling [min n samples={oversampling_min_n_samples}] ({len(df_train)})"
+        filtering_labels_status_str += f" => oversampling [min n samples={oversampling_min_n_samples}] ({n_labels})"
 
     if filtering_samples_status_str:
-        before_samples_str = f'N samples before filtering ({n_samples_before})'
-        before_labels_str = f'N labels before filtering ({n_labels_before})'
+        before_samples_str = f"N samples before filtering ({n_samples_before})"
+        before_labels_str = f"N labels before filtering ({n_labels_before})"
         filtering_samples_status_str = before_samples_str + filtering_samples_status_str
         filtering_labels_status_str = before_labels_str + filtering_labels_status_str
         if logger is not None:
@@ -199,66 +185,64 @@ def get_train_val_from_file(
 
     labels_train = df_train.label.unique()
     if df_valid is not None:
-        df_valid = df_valid[df_valid['label'].isin(labels_train)]
+        df_valid = df_valid[df_valid["label"].isin(labels_train)]
 
     return df_train, df_valid
 
 
 def get_train_val_split(
-        annotation, 
-        fold=0,
-        min_n_samples_per_label=None,
-        undersampling_max_n_samples=None,
-        oversampling_min_n_samples=None,
-        random_state=28,
-        logger=None
-    ):
+    annotation,
+    fold=0,
+    min_n_samples_per_label=None,
+    undersampling_max_n_samples=None,
+    oversampling_min_n_samples=None,
+    random_state=28,
+    logger=None,
+):
     if isinstance(annotation, list):
         df_train = []
         df_valid = []
         for annotation_file in annotation:
-            (df_train_i, 
-             df_valid_i) = get_train_val_from_file(
-                 annotation_file, 
-                 fold=fold,
-                 min_n_samples_per_label=min_n_samples_per_label,
-                 undersampling_max_n_samples=undersampling_max_n_samples,
-                 oversampling_min_n_samples=oversampling_min_n_samples,
-                 random_state=random_state,
-                 logger=logger
+            df_train_i, df_valid_i = get_train_val_from_file(
+                annotation_file,
+                fold=fold,
+                min_n_samples_per_label=min_n_samples_per_label,
+                undersampling_max_n_samples=undersampling_max_n_samples,
+                oversampling_min_n_samples=oversampling_min_n_samples,
+                random_state=random_state,
+                logger=logger,
             )
             df_train.append(df_train_i)
             if df_valid_i is not None:
                 df_valid.append(df_valid_i)
         if not df_valid:
             df_valid = None
-            
+
     else:
-        (df_train, 
-         df_valid) = get_train_val_from_file(
-             annotation, 
-             fold=fold,
-             min_n_samples_per_label=min_n_samples_per_label,
-             undersampling_max_n_samples=undersampling_max_n_samples,
-             oversampling_min_n_samples=oversampling_min_n_samples,
-             random_state=random_state,
-             logger=logger
+        df_train, df_valid = get_train_val_from_file(
+            annotation,
+            fold=fold,
+            min_n_samples_per_label=min_n_samples_per_label,
+            undersampling_max_n_samples=undersampling_max_n_samples,
+            oversampling_min_n_samples=oversampling_min_n_samples,
+            random_state=random_state,
+            logger=logger,
         )
-        
+
     return df_train, df_valid
 
 
 def get_test_from_file(annotation_file, fold=0):
     df_folds = read_pd(annotation_file)
-    if 'is_test' in df_folds:
-        df_test = df_folds[df_folds['is_test']==1]
+    if "is_test" in df_folds:
+        df_test = df_folds[df_folds["is_test"] == 1]
     else:
-        if 'fold' not in df_folds:
-            df_folds['fold'] = 0
+        if "fold" not in df_folds:
+            df_folds["fold"] = 0
 
-        df_test = df_folds[((df_folds.fold == fold) & 
-                            (df_folds.fold >= 0)) | 
-                            (df_folds.fold == -2)]
+        df_test = df_folds[
+            ((df_folds.fold == fold) & (df_folds.fold >= 0)) | (df_folds.fold == -2)
+        ]
 
     return df_test
 
@@ -267,22 +251,16 @@ def get_test_split(annotation, fold=0):
     if isinstance(annotation, list):
         df_test = []
         for annotation_file in annotation:
-            df_test_i = get_test_from_file(
-                 annotation_file, 
-                 fold=fold
-            )
-            df_test.append(df_test_i)    
+            df_test_i = get_test_from_file(annotation_file, fold=fold)
+            df_test.append(df_test_i)
     else:
-        df_test = get_test_from_file(
-             annotation, 
-             fold=fold
-        )
-        
+        df_test = get_test_from_file(annotation, fold=fold)
+
     return df_test
 
 
 @dataclass
-class DatasetStats():
+class DatasetStats:
     n_classes: int
     n_samples: int
     label_counts: dict
@@ -290,26 +268,17 @@ class DatasetStats():
     split: str
 
     def __repr__(self):
-        tab_string = '    '
-        repr_str = ''
-        repr_str += f'{tab_string*2}classes : {self.n_classes}\n'
-        repr_str += f'{tab_string*2}samples : {self.n_samples}\n'
+        tab_string = "    "
+        repr_str = ""
+        repr_str += f"{tab_string*2}classes : {self.n_classes}\n"
+        repr_str += f"{tab_string*2}samples : {self.n_samples}\n"
         return repr_str
-    
 
-def get_dataset_stats(
-        df, 
-        labels_to_ids,
-        label_column='label',
-        split='train'
-    ):
-    
+
+def get_dataset_stats(df, labels_to_ids, label_column="label", split="train"):
+
     if isinstance(df, list):
-        df = pd.concat(
-            df, 
-            ignore_index=True, 
-            sort=False
-        )
+        df = pd.concat(df, ignore_index=True, sort=False)
 
     label_counts = dict(df[label_column].value_counts())
     id_counts = {labels_to_ids[k]: int(v) for k, v in label_counts.items()}
@@ -319,7 +288,7 @@ def get_dataset_stats(
         n_samples=len(df),
         label_counts=label_counts,
         id_counts=id_counts,
-        split=split
+        split=split,
     )
 
     return dataset_stats
@@ -327,21 +296,9 @@ def get_dataset_stats(
 
 def combine_dfs(df1, df2):
     if isinstance(df1, list):
-        df1 = pd.concat(
-            df1, 
-            ignore_index=True, 
-            sort=False
-        )
+        df1 = pd.concat(df1, ignore_index=True, sort=False)
 
     if isinstance(df2, list):
-        df2 = pd.concat(
-            df2, 
-            ignore_index=True, 
-            sort=False
-        )
-        
-    return pd.concat(
-        [df1, df2], 
-        ignore_index=True, 
-        sort=False
-    )
+        df2 = pd.concat(df2, ignore_index=True, sort=False)
+
+    return pd.concat([df1, df2], ignore_index=True, sort=False)

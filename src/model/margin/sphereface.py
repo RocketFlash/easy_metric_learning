@@ -3,11 +3,13 @@ import torch.nn as nn
 from torch.nn import Parameter
 import torch.nn.functional as F
 import math
+from .utils import build_one_hot
+
 
 class SphereFace(nn.Module):
     """
     Implementation of sphereface
-    Implementation taken from: https://github.com/4uiiurz1/pytorch-adacos 
+    Implementation taken from: https://github.com/4uiiurz1/pytorch-adacos
     """
 
     def __init__(self, in_features, out_features, ls_eps=0, s=30.0, m=1.35):
@@ -23,15 +25,16 @@ class SphereFace(nn.Module):
     def forward(self, input, label=None):
         x = F.normalize(input)
         W = F.normalize(self.W)
-        
+
         logits = F.linear(x, W)
         if label is None:
             return logits
-        
+
         theta = torch.acos(torch.clamp(logits, -1.0 + 1e-7, 1.0 - 1e-7))
         target_logits = torch.cos(self.m * theta)
-        one_hot = torch.zeros_like(logits)
-        one_hot.scatter_(1, label.view(-1, 1).long(), 1)
+        one_hot = build_one_hot(
+            label, self.out_features, device=logits.device, dtype=logits.dtype
+        )
 
         if self.ls_eps > 0:
             one_hot = (1 - self.ls_eps) * one_hot + self.ls_eps / self.out_features

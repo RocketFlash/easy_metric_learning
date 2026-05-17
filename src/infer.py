@@ -5,9 +5,8 @@ from .transform import get_transform
 import torch
 from tqdm import tqdm
 
-def generate_embeddings(embeddings_model, 
-                       dataloader,  
-                       device='cpu'):
+
+def generate_embeddings(embeddings_model, dataloader, device="cpu"):
 
     data_labels, data_encodings = [], []
     encoded_data = {}
@@ -24,16 +23,16 @@ def generate_embeddings(embeddings_model,
                 data_encodings.append(encoding)
                 data_labels.append(int(label.cpu()))
 
-    encoded_data['labels'] = np.array(data_labels)
-    encoded_data['embeddings'] = np.array(data_encodings)
-    
+    encoded_data["labels"] = np.array(data_labels)
+    encoded_data["embeddings"] = np.array(data_encodings)
+
     return encoded_data
 
 
-def get_embeddings(image, embeddings_model, transform=None, device='cpu'):
+def get_embeddings(image, embeddings_model, transform=None, device="cpu"):
     if transform:
         sample = transform(image=image)
-        image = sample['image']
+        image = sample["image"]
     image = torch.from_numpy(image)
     img_torch = image.unsqueeze(0)
     images = img_torch.to(device=device)
@@ -42,23 +41,25 @@ def get_embeddings(image, embeddings_model, transform=None, device='cpu'):
     return output.squeeze().cpu().numpy()
 
 
-def infer(image, embeddings_model,
-                 input_size=(400, 400), 
-                 show_time=False,
-                 device='cpu',
-                 config=None):
-    
-    if config:
-        input_size=(config["DATA"]["IMG_SIZE"], 
-                    config["DATA"]["IMG_SIZE"])
-                               
-        device=config["GENERAL"]["DEVICE"]
+def infer(
+    image,
+    embeddings_model,
+    input_size=(400, 400),
+    show_time=False,
+    device="cpu",
+    config=None,
+):
 
-    transform = get_transform('test_aug', image_size=input_size)
+    if config:
+        input_size = (config["DATA"]["IMG_SIZE"], config["DATA"]["IMG_SIZE"])
+
+        device = config["GENERAL"]["DEVICE"]
+
+    transform = get_transform("test_aug", image_size=input_size)
     t = time.time()
 
     output = get_embeddings(image, embeddings_model, transform, device)
-    processing_time = (time.time() - t)
+    processing_time = time.time() - t
 
     if show_time:
         return output, processing_time

@@ -6,29 +6,23 @@ from torchvision import transforms
 
 
 def get_inverse_transfrom(mean, std):
-    inv_std  = [1/x for x in std]
+    inv_std = [1 / x for x in std]
     inv_mean = [-x for x in mean]
 
     return transforms.Compose(
         [
-            transforms.Normalize(
-                mean=[ 0., 0., 0. ],
-                std=inv_std
-            ),
-            transforms.Normalize(
-                mean=inv_mean,
-                std=[ 1., 1., 1. ]
-            ),
+            transforms.Normalize(mean=[0.0, 0.0, 0.0], std=inv_std),
+            transforms.Normalize(mean=inv_mean, std=[1.0, 1.0, 1.0]),
         ]
     )
+
 
 def get_transform(transform_config):
     transforms = []
 
     for augmentation_name in transform_config.get("order"):
         transform = hydra.utils.instantiate(
-            transform_config.get(augmentation_name), 
-            _convert_="object"
+            transform_config.get(augmentation_name), _convert_="object"
         )
         transforms.append(transform)
 

@@ -9,19 +9,20 @@ from collections import Counter
 
 
 class MXDataset(Dataset):
-    '''
+    """
     Modified code from https://github.com/deepinsight/insightface
-    '''
+    """
+
     def __init__(self, root_dir, transform, calc_cl_count=False, use_cache=False):
         super(MXDataset, self).__init__()
 
         import mxnet as mx
-        
+
         self.transform = transform
         self.root_dir = root_dir
-        path_imgrec = os.path.join(root_dir, 'train.rec')
-        path_imgidx = os.path.join(root_dir, 'train.idx')
-        self.imgrec = mx.recordio.MXIndexedRecordIO(path_imgidx, path_imgrec, 'r')
+        path_imgrec = os.path.join(root_dir, "train.rec")
+        path_imgidx = os.path.join(root_dir, "train.idx")
+        self.imgrec = mx.recordio.MXIndexedRecordIO(path_imgidx, path_imgrec, "r")
         s = self.imgrec.read_idx(0)
         header, _ = mx.recordio.unpack(s)
         if header.flag > 0:
@@ -29,8 +30,8 @@ class MXDataset(Dataset):
             self.imgidx = np.array(range(1, int(header.label[0])))
         else:
             self.imgidx = np.array(list(self.imgrec.keys))
-        
-        prop = open(os.path.join(root_dir, "property"), "r").read().strip().split(',')
+
+        prop = open(os.path.join(root_dir, "property"), "r").read().strip().split(",")
         assert len(prop) == 3
         self.num_classes = int(prop[0])
 
@@ -39,7 +40,7 @@ class MXDataset(Dataset):
         self.labels = []
 
         if self.use_cache:
-            print('Data caching...')
+            print("Data caching...")
             for im_i in tqdm(self.imgidx):
                 s = self.imgrec.read_idx(im_i)
                 header, img = mx.recordio.unpack(s)
@@ -51,7 +52,7 @@ class MXDataset(Dataset):
 
                 if self.transform is not None:
                     sample = self.transform(image=image)
-                    image = sample['image']
+                    image = sample["image"]
 
                 self.cached_data.append(image)
                 self.labels.append(label)
@@ -86,7 +87,7 @@ class MXDataset(Dataset):
 
             if self.transform is not None:
                 sample = self.transform(image=image)
-                image = sample['image']
+                image = sample["image"]
 
         return image, label
 

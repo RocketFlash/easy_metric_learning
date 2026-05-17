@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class Softmax(nn.Module):
     def __init__(self, in_features, out_features):
         super(Softmax, self).__init__()
@@ -8,5 +9,5 @@ class Softmax(nn.Module):
         self.out_features = out_features
         self.fc = nn.Linear(self.in_features, self.out_features)
 
-    def forward(self, x):
+    def forward(self, x, label=None):
         return self.fc(x)

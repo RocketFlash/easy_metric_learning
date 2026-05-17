@@ -11,10 +11,10 @@ class SoftCrossEntropyLoss(nn.NLLLoss):
         self.label_smoothing = label_smoothing
         self.confidence = 1 - self.label_smoothing
         self.num_classes = num_classes
-        self.register_buffer('weight', Variable(weight))
+        self.register_buffer("weight", Variable(weight))
 
         assert label_smoothing >= 0.0 and label_smoothing <= 1.0
-        
+
     def forward(self, input_data, target):
         input_data = F.log_softmax(input_data, dim=-1)
 

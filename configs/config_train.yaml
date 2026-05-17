@@ -39,7 +39,7 @@ visualize_batch: True
 save_embeddings: False
 use_wandb  : True
 use_mlflow : True
-mlflow_server_uri : https://r3dev-mlflow.rebotics.net/
+mlflow_server_uri : ${oc.env:MLFLOW_TRACKING_URI,''}
 
 amp: True
                   

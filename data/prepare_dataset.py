@@ -13,63 +13,54 @@ from datasets.finefood import FineFood
 from datasets.shopee import Shopee
 from datasets.inaturalist_2021 import Inaturalist2021
 
-
 name_to_dataset_dict = {
-    'sop' : SOP,
-    'cars' : Cars196,
-    'cub' : CUB,
-    'inshop' : Inshop,
-    'aliproducts' : Aliproducts,
-    'rp2k' : RP2K,
-    'products10k' : Products10K,
-    'met' : MET,
-    'hnm' : HNM,
-    'finefood' : FineFood,
-    'shopee' : Shopee,
-    'inaturalist_2021': Inaturalist2021
+    "sop": SOP,
+    "cars": Cars196,
+    "cub": CUB,
+    "inshop": Inshop,
+    "aliproducts": Aliproducts,
+    "rp2k": RP2K,
+    "products10k": Products10K,
+    "met": MET,
+    "hnm": HNM,
+    "finefood": FineFood,
+    "shopee": Shopee,
+    "inaturalist_2021": Inaturalist2021,
 }
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--dataset', 
-        type=str, 
+        "--dataset",
+        type=str,
         choices=[
-            'folders',
-            'sop', 
-            'cars',
-            'cub',
-            'inshop',
-            'aliproducts',
-            'rp2k',
-            'products10k',
-            'met',
-            'hnm',
-            'finefood',
-            'shopee',
-            'inaturalist_2021'
+            "folders",
+            "sop",
+            "cars",
+            "cub",
+            "inshop",
+            "aliproducts",
+            "rp2k",
+            "products10k",
+            "met",
+            "hnm",
+            "finefood",
+            "shopee",
+            "inaturalist_2021",
         ],
-        default='sop', 
-        help='dataset type'
+        default="sop",
+        help="dataset type",
     )
-    
-    parser.add_argument(
-        '--save_path', 
-        type=str, 
-        default='./', 
-        help='save path'
-    )
-    
-    return parser.parse_args()
-    
 
-if __name__ == '__main__':
+    parser.add_argument("--save_path", type=str, default="./", help="save path")
+
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
     args = parse_args()
     DatasetClass = name_to_dataset_dict[args.dataset]
     dataset = DatasetClass(save_path=Path(args.save_path))
     dataset.download()
     dataset.prepare()
-
-
-    

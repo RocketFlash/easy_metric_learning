@@ -3,21 +3,22 @@ import torch.nn as nn
 from torch.nn import Parameter
 import torch.nn.functional as F
 import math
+from .utils import build_one_hot, get_primary_label
 
 
 class ArcMarginProduct(nn.Module):
     """
-    Implementation of arcmargin 
-    Implementation taken from: https://github.com/wujiyang/Face_Pytorch/blob/master/margin/ArcMarginProduct.py 
+    Implementation of arcmargin
+    Implementation taken from: https://github.com/wujiyang/Face_Pytorch/blob/master/margin/ArcMarginProduct.py
     ...
     Attributes
     ----------
-    in_features : 
+    in_features :
         number of input features
-    out_features : 
-        number of output features 
-    s : 
-        norm of input feature 
+    out_features :
+        number of output features
+    s :
+        norm of input feature
     m :
         margin cos(theta + m)
     easy_margin:
@@ -25,7 +26,10 @@ class ArcMarginProduct(nn.Module):
     ls_eps :
         label smoothing
     """
-    def __init__(self, in_features, out_features, s=30.0, m=0.50, easy_margin=False, ls_eps=0.0):
+
+    def __init__(
+        self, in_features, out_features, s=30.0, m=0.50, easy_margin=False, ls_eps=0.0
+    ):
         super(ArcMarginProduct, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -54,18 +58,19 @@ class ArcMarginProduct(nn.Module):
             self.mm = math.sin(math.pi - m) * m
 
     def forward(self, x, label):
+        margin_label = get_primary_label(label)
         if isinstance(self.m, dict):
             cos_m_i, sin_m_i, th_i, mm_i = [], [], [], []
-            for l in label:
+            for l in margin_label:
                 l = l.detach().item()
                 cos_m_i.append(self.cos_m[l])
                 sin_m_i.append(self.sin_m[l])
                 th_i.append(self.th[l])
                 mm_i.append(self.mm[l])
-            cos_m_i = torch.Tensor(cos_m_i).to(label.device)
-            sin_m_i = torch.Tensor(sin_m_i).to(label.device)
-            th_i = torch.Tensor(th_i).to(label.device)
-            mm_i = torch.Tensor(mm_i).to(label.device)
+            cos_m_i = torch.Tensor(cos_m_i).to(margin_label.device)
+            sin_m_i = torch.Tensor(sin_m_i).to(margin_label.device)
+            th_i = torch.Tensor(th_i).to(margin_label.device)
+            mm_i = torch.Tensor(mm_i).to(margin_label.device)
         else:
             cos_m_i = self.cos_m
             sin_m_i = self.sin_m
@@ -92,24 +97,18 @@ class ArcMarginProduct(nn.Module):
         else:
             phi = torch.where(cosine.float() > th_i, phi.float(), cosine.float() - mm_i)
 
-        one_hot = torch.zeros_like(cosine)
-        if isinstance(label, list):
-            label1, label2, lam = label
-            one_hot.scatter_(1, label1.view(-1, 1).long(), lam)
-            one_hot.scatter_(1, label2.view(-1, 1).long(), (1 - lam))
-        else:
-            one_hot.scatter_(1, label.view(-1, 1).long(), 1)
+        one_hot = build_one_hot(
+            label, self.out_features, device=cosine.device, dtype=cosine.dtype
+        )
 
         if self.ls_eps > 0:
             one_hot = (1 - self.ls_eps) * one_hot + self.ls_eps / self.out_features
 
-        
         output = (one_hot * phi) + ((1.0 - one_hot) * cosine)
         output *= self.s
 
         return output
 
-    
     def update(self, m=0.5):
         self.m = m
         if isinstance(m, dict):
@@ -149,21 +148,20 @@ class AddMarginProduct(nn.Module):
         self.weight = Parameter(torch.FloatTensor(out_features, in_features))
         nn.init.xavier_uniform_(self.weight)
 
-
     def forward(self, input, label):
         cosine = F.linear(F.normalize(input), F.normalize(self.weight))
         phi = cosine - self.m
-        one_hot = torch.zeros(cosine.size(), device='cuda')
-        one_hot.scatter_(1, label.view(-1, 1).long(), 1)
+        one_hot = build_one_hot(
+            label, self.out_features, device=cosine.device, dtype=cosine.dtype
+        )
 
         if self.ls_eps > 0:
             one_hot = (1 - self.ls_eps) * one_hot + self.ls_eps / self.out_features
-       
-        output = (one_hot * phi) + ((1.0 - one_hot) * cosine)  
+
+        output = (one_hot * phi) + ((1.0 - one_hot) * cosine)
         output *= self.s
 
         return output
-
 
     def update(self, m=0.5):
         self.m = m

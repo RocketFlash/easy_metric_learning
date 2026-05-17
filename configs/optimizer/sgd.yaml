@@ -1,9 +1,9 @@
 type: sgd
 optimizer:
-  _target_: torch.optim.AdamW
+  _target_: torch.optim.SGD
+  lr: 1e-2
   nesterov: True
   weight_decay: 1e-5
   momentum: 0.9
 
 backbone_lr_scaler: 1e-3
-  

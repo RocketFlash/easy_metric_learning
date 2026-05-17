@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append("./")
 
 import hydra
@@ -10,15 +11,13 @@ from src.data import get_test_data_from_config
 from src.evaluator import get_evaluator
 
 
-@hydra.main(version_base=None,
-            config_path='../configs/',
-            config_name='config')
+@hydra.main(version_base=None, config_path="../configs/", config_name="config_test")
 def test_dataloader(config):
     seed_everything(config.random_state)
 
     work_dir = Path(config.work_dirs) / config.run_name
-    work_dir.mkdir(exist_ok=True)
-    
+    work_dir.mkdir(exist_ok=True, parents=True)
+
     data_infos_test = get_test_data_from_config(config)
 
     device = get_device(config.device)
@@ -30,14 +29,14 @@ def test_dataloader(config):
     evaluator = get_evaluator(
         config,
         model=model,
-        work_dir=work_dir,
+        save_dir=work_dir,
         device=device,
     )
-    
+
     for data_info in data_infos_test:
         metrics = evaluator.evaluate(data_info)
         print(metrics)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_dataloader()

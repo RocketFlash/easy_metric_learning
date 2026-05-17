@@ -4,17 +4,12 @@ from .mixup import mixup
 
 
 def mix_transform(
-        images, 
-        targets,
-        cutmix_p=0,
-        cutmix_alpha=0.1,
-        mixup_p=0,
-        mixup_alpha=0.1
-    ):
+    images, targets, cutmix_p=0, cutmix_alpha=0.1, mixup_p=0, mixup_alpha=0.1
+):
     p = np.random.rand()
     is_mixed = False
 
-    if cutmix_p>0 or mixup_p>0:
+    if cutmix_p > 0 or mixup_p > 0:
         if p < cutmix_p and p < mixup_p:
             p = np.random.rand()
             if p < 0.5:

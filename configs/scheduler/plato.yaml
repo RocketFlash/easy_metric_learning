@@ -1,7 +1,6 @@
 scheduler:
   _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
-  mode:
+  mode: min
   factor: 0.1
-  patience:
+  patience: 2
   verbose: True
-  
