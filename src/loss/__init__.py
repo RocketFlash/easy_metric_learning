@@ -10,6 +10,14 @@ def get_loss(loss_config, device=None, weight=None):
         if device is not None:
             loss_fn = loss_fn.to(device)
 
-        loss_fns[loss_cfg.name] = edict({"loss_fn": loss_fn, "weight": loss_cfg.weight})
+        loss_fns[loss_cfg.name] = edict(
+            {
+                "loss_fn": loss_fn,
+                "weight": loss_cfg.weight,
+                "input": loss_cfg.get("input", "output"),
+                "mixable": loss_cfg.get("mixable", True),
+                "xbm": loss_cfg.get("xbm", True),
+            }
+        )
 
     return loss_fns

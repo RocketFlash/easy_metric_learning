@@ -9,6 +9,7 @@ from src.optimizer import get_optimizer
 from src.model import get_model
 from src.utils import get_device
 from src.data import get_train_data_from_config
+from src.trainer.loss_inputs import calculate_weighted_loss
 
 
 @hydra.main(version_base=None, config_path="../configs/", config_name="config_train")
@@ -16,6 +17,7 @@ def test_dataloader(config):
     data_info = get_train_data_from_config(config)
     train_loader = data_info.train.dataloader
     labels_to_ids = data_info.train.labels_to_ids
+    config.n_classes = data_info.train.dataset_stats.n_classes
 
     config.margin.id_counts = data_info.train.dataset_stats.id_counts
 
@@ -44,7 +46,13 @@ def test_dataloader(config):
 
         pred, emb = model(images, annos)
         for loss_name, loss_params in loss_fns.items():
-            loss = loss_params.loss_fn(pred, annos) * loss_params.weight
+            loss = calculate_weighted_loss(
+                loss_params,
+                pred,
+                emb,
+                annos,
+                images=images,
+            )
             print(f"{loss_name} : {loss}")
         break
 

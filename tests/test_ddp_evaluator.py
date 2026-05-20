@@ -35,3 +35,22 @@ def test_ddp_file_name_gather_fails_loudly_on_short_result(tmp_path):
 
     with pytest.raises(RuntimeError, match="Gathered 1 file names"):
         evaluator._gather_file_names(["a.jpg"], batch_size=2)
+
+
+def test_ddp_file_name_gather_rejects_unsafe_padded_object_result(
+    tmp_path, monkeypatch
+):
+    evaluator = DDPEvaluator(
+        config=SimpleNamespace(debug=False),
+        model=object(),
+        save_dir=tmp_path,
+        accelerator=ObjectGatherAccelerator(),
+        is_eval=False,
+    )
+    monkeypatch.setattr(
+        "accelerate.utils.gather_object",
+        lambda file_names: ["a.jpg", "b.jpg", "pad.jpg"],
+    )
+
+    with pytest.raises(RuntimeError, match="padded DDP samples"):
+        evaluator._gather_file_names(["a.jpg", "b.jpg"], batch_size=2)

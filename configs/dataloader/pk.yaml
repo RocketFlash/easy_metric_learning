@@ -1,0 +1,11 @@
+batch_size: ${batch_size}
+n_workers: ${n_workers}
+pin_memory: True
+
+sampler:
+  type: pk
+  p: 64
+  k: 4
+  batch_size: ${batch_size}
+  length_before_new_iter: 100000
+  seed: ${random_state}

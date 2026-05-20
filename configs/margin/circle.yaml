@@ -1,0 +1,9 @@
+type: circle
+s: 256
+m: 0.25
+ls_eps: 0.1
+autoscale: False
+dynamic_margin:
+id_counts:
+
+incremental_margin:

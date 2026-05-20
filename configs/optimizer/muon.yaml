@@ -1,0 +1,9 @@
+type: muon
+optimizer:
+  _target_: src.optimizer.muon.Muon
+  lr: 1e-3
+  momentum: 0.95
+  weight_decay: 1e-2
+  ns_steps: 5
+
+backbone_lr_scaler: ${backbone_lr_scaler}

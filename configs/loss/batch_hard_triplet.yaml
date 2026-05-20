@@ -1,0 +1,8 @@
+losses:
+    - name: batch_hard_triplet
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.pair.BatchHardTripletLoss
+        margin: 0.2
+        squared: False

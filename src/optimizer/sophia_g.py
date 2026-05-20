@@ -14,6 +14,7 @@ class SophiaG(Optimizer):
         betas=(0.965, 0.99),
         rho=0.04,
         weight_decay=1e-1,
+        bs=5120,
         *,
         maximize: bool = False,
         capturable: bool = False,
@@ -33,6 +34,7 @@ class SophiaG(Optimizer):
             betas=betas,
             rho=rho,
             weight_decay=weight_decay,
+            bs=bs,
             maximize=maximize,
             capturable=capturable,
         )
@@ -81,7 +83,7 @@ class SophiaG(Optimizer):
                 state["hessian"].mul_(beta2).addcmul_(p.grad, p.grad, value=1 - beta2)
 
     @torch.no_grad()
-    def step(self, closure=None, bs=5120):
+    def step(self, closure=None, bs=None):
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -94,6 +96,7 @@ class SophiaG(Optimizer):
             state_steps = []
             hessian = []
             beta1, beta2 = group["betas"]
+            group_bs = group["bs"] if bs is None else bs
 
             for p in group["params"]:
                 if p.grad is None:
@@ -128,7 +131,9 @@ class SophiaG(Optimizer):
                 hessian.append(state["hessian"])
 
                 if self.defaults["capturable"]:
-                    bs = torch.ones((1,), dtype=torch.float, device=p.device) * bs
+                    group_bs = (
+                        torch.ones((1,), dtype=torch.float, device=p.device) * group_bs
+                    )
 
             sophiag(
                 params_with_grad,
@@ -136,7 +141,7 @@ class SophiaG(Optimizer):
                 exp_avgs,
                 hessian,
                 state_steps,
-                bs=bs,
+                bs=group_bs,
                 beta1=beta1,
                 beta2=beta2,
                 rho=group["rho"],

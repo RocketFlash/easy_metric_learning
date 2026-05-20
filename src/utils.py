@@ -20,6 +20,9 @@ from easydict import EasyDict as edict
 from omegaconf import OmegaConf
 
 IMAGE_EXTENSIONS = (".jpeg", ".jpg", ".png", ".bmp", ".webp")
+MODULE_CLASS_ALIASES = {
+    "EmbeddigsNet": "EmbeddingsNet",
+}
 
 
 def is_main_process(accelerator):
@@ -51,6 +54,10 @@ def _get_module_class_names(model):
         }
     )
     return module_classes
+
+
+def _canonical_module_class_name(class_name):
+    return MODULE_CLASS_ALIASES.get(class_name, class_name)
 
 
 def _get_legacy_checkpoint_safe_globals():
@@ -159,11 +166,12 @@ def save_ckp(
         checkpoint.update(
             {
                 "epoch": epoch,
-                "optimizer": optimizer.state_dict(),
                 "best_criterion_val": best_criterion_val,
                 "criterion": criterion,
             }
         )
+        if optimizer is not None:
+            checkpoint["optimizer"] = optimizer.state_dict()
 
     if accelerator is not None:
         accelerator.save(checkpoint, save_path)
@@ -199,7 +207,9 @@ def load_ckp(
         current_module_classes = _get_module_class_names(model)
         for name, checkpoint_class in checkpoint["model_module_classes"].items():
             current_class = current_module_classes.get(name)
-            if current_class is not None and current_class != checkpoint_class:
+            if current_class is not None and _canonical_module_class_name(
+                current_class
+            ) != _canonical_module_class_name(checkpoint_class):
                 module_class_mismatches.append((name, checkpoint_class, current_class))
 
     for key, value in pretrained_dict.items():
@@ -446,6 +456,10 @@ def get_save_paths(work_dir):
     last_weights_name = "last.pt"
     best_emb_weights_name = "best_emb.pt"
     last_emb_weights_name = "last_emb.pt"
+    best_averaged_weights_name = "best_averaged.pt"
+    last_averaged_weights_name = "last_averaged.pt"
+    best_averaged_emb_weights_name = "best_averaged_emb.pt"
+    last_averaged_emb_weights_name = "last_averaged_emb.pt"
 
     save_paths = edict(
         dict(
@@ -453,6 +467,10 @@ def get_save_paths(work_dir):
             last_weights_path=work_dir / last_weights_name,
             best_emb_weights_path=work_dir / best_emb_weights_name,
             last_emb_weights_path=work_dir / last_emb_weights_name,
+            best_averaged_weights_path=work_dir / best_averaged_weights_name,
+            last_averaged_weights_path=work_dir / last_averaged_weights_name,
+            best_averaged_emb_weights_path=work_dir / best_averaged_emb_weights_name,
+            last_averaged_emb_weights_path=work_dir / last_averaged_emb_weights_name,
         )
     )
 
@@ -602,6 +620,7 @@ def plot_embeddings_interactive(
             for k, v in label_to_fname.items():
                 img_path = str(dataset_path / v)
                 img = cv2.imread(img_path)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(img, (100, 100))
                 img = Image.fromarray(img)
                 buff = _BytesIO()

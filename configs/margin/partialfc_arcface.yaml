@@ -1,0 +1,12 @@
+type: partialfc_arcface
+s: 64
+m: 0.5
+sample_rate: 0.1
+min_sample_classes: 1024
+easy_margin: False
+ls_eps: 0.1
+autoscale: False
+dynamic_margin:
+id_counts:
+
+incremental_margin:

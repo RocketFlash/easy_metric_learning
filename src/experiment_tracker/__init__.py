@@ -37,4 +37,37 @@ def get_experiment_trackers(config):
             if use_mlflow:
                 exp_trackers["mlflow"] = MLFlowTracker(config, config_dict)
 
+    if getattr(config, "use_tensorboard", False):
+        try:
+            from .tensorboard import TensorBoardTracker
+
+            exp_trackers["tensorboard"] = TensorBoardTracker(config, config_dict)
+        except ModuleNotFoundError as exc:
+            if exc.name != "tensorboard":
+                raise
+            print("tensorboard is not installed")
+
+    if getattr(config, "use_aim", False):
+        try:
+            from .aim import AimTracker
+
+            exp_trackers["aim"] = AimTracker(config, config_dict)
+        except ModuleNotFoundError as exc:
+            if exc.name != "aim":
+                raise
+            print("aim is not installed")
+
+    if getattr(config, "use_neptune", False):
+        if not getattr(config, "neptune_project", ""):
+            print("neptune project is not configured; skipping neptune")
+        else:
+            try:
+                from .neptune import NeptuneTracker
+
+                exp_trackers["neptune"] = NeptuneTracker(config, config_dict)
+            except ModuleNotFoundError as exc:
+                if exc.name != "neptune":
+                    raise
+                print("neptune is not installed")
+
     return exp_trackers

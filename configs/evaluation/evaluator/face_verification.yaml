@@ -1,0 +1,20 @@
+type: face_verification
+save_results: True
+save_embeddings: ${save_embeddings}
+
+fars: [0.0001, 0.001, 0.01]
+normalize: True
+accuracy_folds: 10
+
+# CSV with columns file1, file2, is_same. If unset, pairs are derived from
+# labels, which is useful for small smoke tests. pair_protocol can be csv,
+# lfw, agedb, cfp, or whitespace.
+pairs_path:
+pair_protocol: csv
+protocol_kwargs:
+  image_ext: ".jpg"
+pair_columns:
+  file1: file1
+  file2: file2
+  label: is_same
+max_pairs: 100000

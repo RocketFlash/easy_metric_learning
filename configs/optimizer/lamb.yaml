@@ -1,0 +1,9 @@
+type: lamb
+optimizer:
+  _target_: src.optimizer.lamb.LAMB
+  eps: 1e-6
+  weight_decay: 1e-2
+  lr: 1e-3
+  betas: [0.9, 0.999]
+
+backbone_lr_scaler: ${backbone_lr_scaler}

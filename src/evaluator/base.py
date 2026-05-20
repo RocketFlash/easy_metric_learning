@@ -3,7 +3,11 @@ import torch
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from ..metric.basic import recall_at_k
+from ..metric.basic import (
+    mean_average_precision_at_r,
+    nearest_label_nmi,
+    recall_at_k,
+)
 from .knn import get_knn_search
 
 
@@ -170,6 +174,9 @@ class BaseEvaluator:
 
         for k in self.K:
             metrics[f"R@{k}"] = round(recall_at_k(gts, predictions, k=k), 5)
+
+        metrics["mAP@R"] = round(mean_average_precision_at_r(gts, predictions), 5)
+        metrics["NMI"] = round(nearest_label_nmi(gts, predictions), 5)
 
         df_metrics = pd.DataFrame(metrics.items(), columns=["metric", "score"])
 

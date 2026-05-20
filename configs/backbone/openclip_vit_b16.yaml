@@ -1,4 +1,5 @@
 type: openclip-ViT-B16_laion2b
+family: openclip
 model_type: ViT-B-16
 pretrained_on: laion2b_s34b_b88k
 freeze: False

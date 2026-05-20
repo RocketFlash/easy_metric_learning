@@ -1,2 +1,6 @@
-loss:
-    _target_: src.loss.focal.FocalLoss
+losses:
+    - name: focal
+      weight: 1
+      loss_fn:
+        _target_: src.loss.focal.FocalLoss
+        gamma: 2.0

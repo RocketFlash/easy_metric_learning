@@ -1,0 +1,14 @@
+type: ijb_template
+save_results: True
+save_embeddings: ${save_embeddings}
+
+fars: [0.0001, 0.001, 0.01]
+metadata_path:
+pairs_path:
+columns:
+  file: file_name
+  template: template_id
+  media: media_id
+  left: template1
+  right: template2
+  label: is_same

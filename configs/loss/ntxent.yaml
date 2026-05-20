@@ -1,0 +1,7 @@
+losses:
+    - name: ntxent
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.pair.NTXentLoss
+        temperature: 0.5

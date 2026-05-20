@@ -1,0 +1,12 @@
+losses:
+    - name: topofr
+      weight: 0.1
+      input: images_embeddings
+      mixable: False
+      loss_fn:
+        _target_: src.loss.topofr.TopoFRLoss
+        p: 2
+        match_edges: symmetric
+        max_samples: 64
+        normalize_input: True
+        normalize_features: True

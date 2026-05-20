@@ -24,6 +24,9 @@ def get_images_paths(path):
 
 def get_sample(image_path, img_h=170, img_w=170):
     image = cv2.imread(image_path)
+    if image is None:
+        raise FileNotFoundError(image_path)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     transform = A.Compose(
         [

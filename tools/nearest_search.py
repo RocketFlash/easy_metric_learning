@@ -6,7 +6,7 @@ import argparse
 import os
 from pathlib import Path
 import numpy as np
-from src.utils import cosine_similarity_chunks
+from src.evaluator.knn.base import cosine_similarity_chunks, remove_self_neighbors
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 import pandas as pd
@@ -228,14 +228,17 @@ if __name__ == "__main__":
             print(f"FAISS search time: {end - start} seconds")
     else:
         best_top_n_vals, best_top_n_idxs = cosine_similarity_chunks(
-            train_embeddings, test_embeddings, n_chunks=args.n_chunks, top_n=args.top_n
+            test_embeddings,
+            train_embeddings,
+            n_chunks=args.n_chunks,
+            top_n=K,
         )
-        best_top_n_idxs = best_top_n_idxs.T
-        distances = best_top_n_vals.T
+        distances = best_top_n_vals
 
     if is_inner:
-        best_top_n_idxs = best_top_n_idxs[:, 1:]
-        distances = distances[:, 1:]
+        best_top_n_idxs, distances = remove_self_neighbors(
+            best_top_n_idxs, distances, args.top_n
+        )
 
     all_pred = []
     all_gts = []

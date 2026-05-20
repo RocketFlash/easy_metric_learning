@@ -43,12 +43,16 @@ class CombinedMargin(nn.Module):
         x = F.normalize(x, dim=1)
         weights = F.normalize(self.weight, dim=1)
         cos_t = F.linear(x, weights)
-        sin_t = torch.sqrt(1.0 - torch.pow(cos_t, 2))
-        cos_tm = cos_t * self.cos_m2 - sin_t * self.sin_m2 - self.m3
+        sin_t = torch.sqrt((1.0 - torch.pow(cos_t, 2)).clamp(0, 1))
+        if self.m1 == 1.0:
+            cos_tm = cos_t * self.cos_m2 - sin_t * self.sin_m2 - self.m3
+        else:
+            theta = torch.acos(cos_t.clamp(-1.0 + 1e-7, 1.0 - 1e-7))
+            cos_tm = torch.cos(self.m1 * theta + self.m2) - self.m3
         if self.easy_margin:
             # theta < pi/2, use cos(theta+m), else cos(theta)
             cos_tm = torch.where(cos_t > 0, cos_tm, cos_t)
-        else:
+        elif self.m1 == 1.0:
             # theta + m < pi, use cos(theta+m), else cos(theta) - sin(theta)*m
             cos_tm = torch.where(
                 cos_t > self.threshold, cos_tm, cos_t - self.m3 - sin_t * self.m2

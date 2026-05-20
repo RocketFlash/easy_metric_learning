@@ -1,0 +1,11 @@
+losses:
+    - name: sface
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.sface.SFaceLoss
+        in_features: ${embeddings_size}
+        out_features: ${n_classes}
+        s: 64
+        margin: 0.4
+        gamma: 20

@@ -1,0 +1,9 @@
+type: x2_softmax
+s: 64
+m: 0.5
+min_m: 0.05
+autoscale: False
+dynamic_margin:
+id_counts:
+easy_margin: False
+ls_eps: 0.0

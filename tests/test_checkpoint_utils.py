@@ -71,3 +71,23 @@ def test_checkpoint_rejects_module_class_mismatches_by_default(tmp_path):
 
     with pytest.raises(RuntimeError, match="module class mismatches"):
         load_ckp(checkpoint_path, TargetModule(), device="cpu")
+
+
+def test_checkpoint_accepts_legacy_embeddings_net_typo_class_name(tmp_path):
+    class EmbeddingsNet(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.weight = torch.nn.Parameter(torch.ones(2, 2))
+
+    model = EmbeddingsNet()
+    checkpoint_path = tmp_path / "model.pt"
+    save_ckp(checkpoint_path, model=model)
+    checkpoint = torch.load(checkpoint_path, weights_only=True)
+    checkpoint["model_module_classes"]["<root>"] = "EmbeddigsNet"
+    torch.save(checkpoint, checkpoint_path)
+
+    restored = EmbeddingsNet()
+
+    load_ckp(checkpoint_path, restored, device="cpu")
+
+    assert torch.allclose(restored.weight, model.weight)

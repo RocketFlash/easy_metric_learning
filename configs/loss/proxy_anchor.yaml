@@ -1,0 +1,10 @@
+losses:
+    - name: proxy_anchor
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.proxy.ProxyAnchorLoss
+        in_features: ${embeddings_size}
+        out_features: ${n_classes}
+        margin: 0.1
+        alpha: 32

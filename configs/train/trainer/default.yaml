@@ -1,3 +1,34 @@
 type: base
 
 grad_accum_steps: ${grad_accum_steps}
+
+model_averaging:
+  enabled: False
+  type: ema
+  decay: 0.999
+  start_epoch: 1
+  use_for_eval: True
+
+fsdp:
+  enabled: False
+  mixed_precision: False
+  use_orig_params: True
+
+compile:
+  enabled: False
+  mode:
+  fullgraph: False
+  dynamic:
+
+xbm:
+  enabled: False
+  # Under DDP this queue is local to each rank, not synchronized across ranks.
+  memory_size: 4096
+
+hard_negative_cache:
+  enabled: False
+  refresh_every: 1
+  start_epoch: 1
+  save_path:
+  max_batches:
+  update_sampler: True

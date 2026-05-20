@@ -1,0 +1,10 @@
+batch_size: ${batch_size}
+n_workers: ${n_workers}
+pin_memory: True
+
+sampler:
+  type: class_balanced
+  beta: 0.9999
+  num_samples:
+  replacement: True
+  seed: ${random_state}

@@ -1,4 +1,5 @@
 type: tf_efficientnetv2_b1.in1k
+family: timm
 pretrained: True
 freeze: False
 

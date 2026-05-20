@@ -8,6 +8,11 @@ from .elasticface import ElasticArcFace, ElasticCosFace
 from .curricularface import CurricularFace
 from .softmax import Softmax
 from .combined import CombinedMargin
+from .magface import MagFace
+from .circle import CircleMargin
+from .partialfc import DistributedPartialFCArcMarginProduct, PartialFCArcMarginProduct
+from .x2_softmax import X2Softmax
+from .qamface import QAMFace
 import numpy as np
 
 
@@ -44,6 +49,34 @@ def get_margin(
     else:
         s = config_margin.s
 
+    if margin_type == "magface":
+        return MagFace(
+            in_features=embeddings_size,
+            out_features=n_classes,
+            s=s,
+            l_a=config_margin.l_a,
+            u_a=config_margin.u_a,
+            l_margin=config_margin.l_margin,
+            u_margin=config_margin.u_margin,
+            lambda_g=config_margin.lambda_g,
+            easy_margin=config_margin.easy_margin,
+            ls_eps=config_margin.ls_eps,
+        )
+
+    if margin_type == "qamface":
+        return QAMFace(
+            in_features=embeddings_size,
+            out_features=n_classes,
+            s=s,
+            min_s=config_margin.min_s,
+            l_a=config_margin.l_a,
+            u_a=config_margin.u_a,
+            l_margin=config_margin.l_margin,
+            u_margin=config_margin.u_margin,
+            easy_margin=config_margin.easy_margin,
+            ls_eps=config_margin.ls_eps,
+        )
+
     if config_margin.dynamic_margin is not None:
         m = calculate_dynamic_margin(
             config_margin.dynamic_margin,
@@ -78,6 +111,24 @@ def get_margin(
             m=m,
             ls_eps=config_margin.ls_eps,
         )
+    elif margin_type == "circle":
+        margin = CircleMargin(
+            in_features=embeddings_size,
+            out_features=n_classes,
+            s=s,
+            m=m,
+            ls_eps=config_margin.ls_eps,
+        )
+    elif margin_type == "x2_softmax":
+        margin = X2Softmax(
+            in_features=embeddings_size,
+            out_features=n_classes,
+            s=s,
+            m=m,
+            min_m=config_margin.min_m,
+            easy_margin=config_margin.easy_margin,
+            ls_eps=config_margin.ls_eps,
+        )
     elif margin_type == "subcenter_arcface":
         margin = SubcenterArcMarginProduct(
             in_features=embeddings_size,
@@ -85,6 +136,28 @@ def get_margin(
             s=s,
             m=m,
             K=config_margin.K,
+            easy_margin=config_margin.easy_margin,
+            ls_eps=config_margin.ls_eps,
+        )
+    elif margin_type == "partialfc_arcface":
+        margin = PartialFCArcMarginProduct(
+            in_features=embeddings_size,
+            out_features=n_classes,
+            s=s,
+            m=m,
+            sample_rate=config_margin.sample_rate,
+            min_sample_classes=config_margin.min_sample_classes,
+            easy_margin=config_margin.easy_margin,
+            ls_eps=config_margin.ls_eps,
+        )
+    elif margin_type == "distributed_partialfc_arcface":
+        margin = DistributedPartialFCArcMarginProduct(
+            in_features=embeddings_size,
+            out_features=n_classes,
+            s=s,
+            m=m,
+            sample_rate=config_margin.sample_rate,
+            min_sample_classes=config_margin.min_sample_classes,
             easy_margin=config_margin.easy_margin,
             ls_eps=config_margin.ls_eps,
         )
@@ -131,6 +204,14 @@ def get_margin(
         )
     elif margin_type == "curricularface":
         margin = CurricularFace(
+            in_features=embeddings_size,
+            out_features=n_classes,
+            s=s,
+            m=m,
+            ls_eps=config_margin.ls_eps,
+        )
+    elif margin_type == "sphereface":
+        margin = SphereFace(
             in_features=embeddings_size,
             out_features=n_classes,
             s=s,

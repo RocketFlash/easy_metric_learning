@@ -29,7 +29,21 @@ class Teacher(torch.nn.Module):
         return images.float()
 
 
-def make_config(distill_loss_only):
+class TrainableStudent(torch.nn.Module):
+    def __init__(self):
+        super(TrainableStudent, self).__init__()
+        self.linear = torch.nn.Linear(2, 2)
+
+    def forward(self, images, targets=None):
+        embeddings = self.linear(images.float())
+        if targets is None:
+            return embeddings
+        return embeddings, embeddings
+
+
+def make_config(distill_loss_only, model_averaging=None):
+    if model_averaging is None:
+        model_averaging = SimpleNamespace(enabled=False)
     return SimpleNamespace(
         epochs=1,
         amp=False,
@@ -37,7 +51,12 @@ def make_config(distill_loss_only):
         visualize_batch=False,
         loss=SimpleNamespace(kind="classification"),
         scheduler=SimpleNamespace(scheduler={}),
-        train=SimpleNamespace(trainer=SimpleNamespace(grad_accum_steps=1)),
+        train=SimpleNamespace(
+            trainer=SimpleNamespace(
+                grad_accum_steps=1,
+                model_averaging=model_averaging,
+            )
+        ),
         distillation=SimpleNamespace(
             trainer=SimpleNamespace(
                 kind="distill",
@@ -127,3 +146,42 @@ def test_distill_loss_only_valid_epoch_does_not_require_classification_loss(
     stats = trainer.valid_epoch(loader)
 
     assert set(stats.losses) == {"mse", "total_loss"}
+
+
+def test_distill_trainer_updates_ema_model_after_optimizer_step(
+    monkeypatch,
+    tmp_path,
+):
+    patch_distill_dependencies(monkeypatch)
+    model = TrainableStudent()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    trainer = distill_module.DistillTrainer(
+        config=make_config(
+            distill_loss_only=False,
+            model_averaging=SimpleNamespace(
+                enabled=True,
+                type="ema",
+                decay=0.9,
+                start_epoch=1,
+                use_for_eval=True,
+            ),
+        ),
+        model=model,
+        model_teacher=Teacher(),
+        optimizer=optimizer,
+        device="cpu",
+        work_dir=tmp_path,
+    )
+    loader = [
+        (
+            torch.ones(2, 2),
+            torch.tensor([0, 1]),
+            ["a.jpg", "b.jpg"],
+        )
+    ]
+
+    trainer.train_epoch(loader)
+
+    assert trainer.averaged_model is not None
+    assert int(trainer.averaged_model.n_averaged.item()) == 1
+    assert trainer.get_eval_model() is trainer.averaged_model.module

@@ -30,7 +30,7 @@ def test_train_loader_disables_shuffle_when_sampler_is_configured(monkeypatch):
         lambda root_dir, df_names, transform, labels_to_ids, dataset_config: DummyDataset(),
     )
     monkeypatch.setattr(
-        data_module, "get_sampler", lambda labels, sampler_config: sampler
+        data_module, "get_sampler", lambda labels, sampler_config, groups=None: sampler
     )
 
     def fake_data_loader(**kwargs):
@@ -74,6 +74,63 @@ def test_base_dataset_reads_grayscale_images_as_rgb(tmp_path):
     assert np.array_equal(sample[:, :, 2], image)
     assert target.item() == 0
     assert file_name == "gray.png"
+
+
+def test_base_dataset_converts_16bit_images_to_uint8_rgb(tmp_path):
+    image = np.array([[0, 32768, 65535]], dtype=np.uint16)
+    cv2.imwrite(str(tmp_path / "gray16.png"), image)
+    df = pd.DataFrame({"file_name": ["gray16.png"], "label": ["class_a"]})
+    dataset = BaseDataset(tmp_path, df)
+
+    sample, _, _ = dataset[0]
+
+    assert sample.dtype == np.uint8
+    assert sample.shape == (1, 3, 3)
+    assert np.array_equal(sample[0, :, 0], np.array([0, 128, 255], dtype=np.uint8))
+    assert np.array_equal(sample[:, :, 0], sample[:, :, 1])
+    assert np.array_equal(sample[:, :, 0], sample[:, :, 2])
+
+
+def test_base_dataset_returns_keypoint_metadata(tmp_path):
+    image = np.zeros((4, 5, 3), dtype=np.uint8)
+    cv2.imwrite(str(tmp_path / "rgb.png"), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+    df = pd.DataFrame(
+        {
+            "file_name": ["rgb.png"],
+            "label": ["class_a"],
+            "keypoints": ["0.0 0.1 0.2 0.3 0.4 0.5"],
+        }
+    )
+    dataset = BaseDataset(
+        tmp_path,
+        df,
+        keypoints_column="keypoints",
+        num_keypoints=3,
+    )
+
+    _, target, _ = dataset[0]
+
+    assert target["label"].item() == 0
+    assert target["keypoints"].shape == (3, 2)
+    assert torch.allclose(
+        target["keypoints"],
+        torch.tensor([[0.0, 0.1], [0.2, 0.3], [0.4, 0.5]]),
+    )
+
+
+def test_base_dataset_stores_group_metadata(tmp_path):
+    image = np.zeros((4, 5, 3), dtype=np.uint8)
+    cv2.imwrite(str(tmp_path / "rgb.png"), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+    df = pd.DataFrame(
+        {
+            "file_name": ["rgb.png"],
+            "label": ["class_a"],
+            "source": ["dataset_a"],
+        }
+    )
+    dataset = BaseDataset(tmp_path, df, group_column="source")
+
+    assert dataset.group_ids.tolist() == ["dataset_a"]
 
 
 def test_base_dataset_reads_gif_images_as_uint8_rgb(monkeypatch, tmp_path):

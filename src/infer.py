@@ -4,6 +4,7 @@ import time
 from .transform import get_transform
 import torch
 from tqdm import tqdm
+from pathlib import Path
 
 
 def generate_embeddings(embeddings_model, dataloader, device="cpu"):
@@ -30,6 +31,12 @@ def generate_embeddings(embeddings_model, dataloader, device="cpu"):
 
 
 def get_embeddings(image, embeddings_model, transform=None, device="cpu"):
+    """Return embeddings for an RGB image array or an image path."""
+    if isinstance(image, (str, Path)):
+        image = cv2.imread(str(image), cv2.IMREAD_COLOR)
+        if image is None:
+            raise FileNotFoundError(image)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     if transform:
         sample = transform(image=image)
         image = sample["image"]

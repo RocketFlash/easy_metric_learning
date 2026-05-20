@@ -19,7 +19,13 @@ class AdaCos(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.theta_zero = theta_zero
-        self.s = math.log(out_features - 1) / math.cos(theta_zero)
+        self.register_buffer(
+            "s",
+            torch.tensor(
+                math.log(out_features - 1) / math.cos(theta_zero),
+                dtype=torch.float32,
+            ),
+        )
         self.m = m
         self.ls_eps = ls_eps  # label smoothing
         self.weight = Parameter(torch.FloatTensor(out_features, in_features))
@@ -47,9 +53,10 @@ class AdaCos(nn.Module):
             )
             B_avg = torch.sum(B_avg) / input_x.size(0)
             theta_med = torch.median(theta)
-            self.s = torch.log(B_avg) / torch.cos(
+            updated_s = torch.log(B_avg) / torch.cos(
                 torch.min(self.theta_zero * torch.ones_like(theta_med), theta_med)
             )
+            self.s.copy_(updated_s.to(dtype=self.s.dtype))
         output *= self.s
 
         return output

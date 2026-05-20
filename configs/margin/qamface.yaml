@@ -1,0 +1,12 @@
+type: qamface
+s: 64
+min_s: 16
+l_a: 10
+u_a: 110
+l_margin: 0.2
+u_margin: 0.6
+autoscale: False
+dynamic_margin:
+id_counts:
+easy_margin: False
+ls_eps: 0.0

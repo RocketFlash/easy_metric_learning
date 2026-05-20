@@ -1,4 +1,5 @@
 type: unicom_vit_b16
+family: unicom
 freeze: False
 
 norm_mean: [0.48145466, 0.4578275,  0.40821073]

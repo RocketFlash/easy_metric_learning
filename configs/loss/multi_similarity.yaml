@@ -1,0 +1,10 @@
+losses:
+    - name: multi_similarity
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.multi_similarity.MultiSimilarityLoss
+        alpha: 2.0
+        beta: 50.0
+        base: 0.5
+        eps: 1e-5

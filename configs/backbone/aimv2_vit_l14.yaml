@@ -1,0 +1,7 @@
+type: hf_hub:timm/aimv2_large_patch14_224.apple_pt_dist
+family: timm
+pretrained: True
+freeze: False
+
+norm_mean: [0.485, 0.456, 0.406]
+norm_std:  [0.229, 0.224, 0.225]

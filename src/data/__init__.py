@@ -184,7 +184,9 @@ def get_loader(
 
     if split == "train":
         sampler = get_sampler(
-            labels=dataset.label_ids, sampler_config=dataloader_config.sampler
+            labels=dataset.label_ids,
+            sampler_config=dataloader_config.sampler,
+            groups=getattr(dataset, "group_ids", None),
         )
     else:
         sampler = None

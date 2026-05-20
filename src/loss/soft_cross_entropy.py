@@ -1,8 +1,6 @@
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 
 class SoftCrossEntropyLoss(nn.NLLLoss):
@@ -11,7 +9,8 @@ class SoftCrossEntropyLoss(nn.NLLLoss):
         self.label_smoothing = label_smoothing
         self.confidence = 1 - self.label_smoothing
         self.num_classes = num_classes
-        self.register_buffer("weight", Variable(weight))
+        weight = None if weight is None else torch.as_tensor(weight, dtype=torch.float)
+        self.register_buffer("weight", weight)
 
         assert label_smoothing >= 0.0 and label_smoothing <= 1.0
 

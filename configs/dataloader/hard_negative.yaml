@@ -1,0 +1,13 @@
+batch_size: ${batch_size}
+n_workers: ${n_workers}
+pin_memory: True
+
+sampler:
+  type: hard_negative
+  p: 64
+  k: 4
+  hard_negative_rate: 0.5
+  length_before_new_iter: 100000
+  embeddings_path:
+  embeddings:
+  seed: ${random_state}

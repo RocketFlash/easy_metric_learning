@@ -10,6 +10,20 @@ def get_scheduler(optimizer, scheduler_config):
     return scheduler
 
 
+def set_scheduler_tmax(scheduler_config, t_max):
+    try:
+        has_tmax = "T_max" in scheduler_config
+    except TypeError:
+        has_tmax = hasattr(scheduler_config, "T_max")
+    if not has_tmax:
+        return
+
+    try:
+        scheduler_config.T_max = t_max
+    except AttributeError:
+        scheduler_config["T_max"] = t_max
+
+
 def scheduler_steps_per_batch(scheduler):
     scheduler = getattr(scheduler, "scheduler", scheduler)
     return isinstance(
@@ -35,15 +49,26 @@ def step_scheduler(scheduler, metric=None):
         scheduler.step()
 
 
+def _has_config_key(config, key):
+    try:
+        return key in config
+    except TypeError:
+        return hasattr(config, key)
+
+
 def get_warmup_scheduler(optimizer, scheduler_config):
-    if "warmup_scheduler" in scheduler_config:
+    warmup_config = None
+    if _has_config_key(scheduler_config, "warmup_scheduler"):
+        warmup_config = scheduler_config.warmup_scheduler
+
+    if warmup_config is not None:
         import pytorch_warmup as warmup
 
-        if "adam" in scheduler_config.warmup_scheduler.optimizer_type:
+        if "adam" in warmup_config.optimizer_type:
             warmup_scheduler = warmup.UntunedLinearWarmup(optimizer)
         else:
             warmup_scheduler = warmup.LinearWarmup(
-                optimizer, warmup_period=scheduler_config.warmup_scheduler.warmup_period
+                optimizer, warmup_period=warmup_config.warmup_period
             )
     else:
         warmup_scheduler = None

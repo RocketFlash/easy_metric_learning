@@ -1,0 +1,9 @@
+losses:
+    - name: unitsface
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.unitsface.UniTSFaceLoss
+        positive_threshold: 0.5
+        negative_threshold: 0.2
+        scale: 32

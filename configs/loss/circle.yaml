@@ -1,0 +1,8 @@
+losses:
+    - name: circle
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.circle.CircleLoss
+        m: 0.25
+        gamma: 256

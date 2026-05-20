@@ -73,7 +73,7 @@ if __name__ == "__main__":
             token_value = tokenizer(batch)
             token_value = token_value.cuda()
 
-            with torch.no_grad(), torch.cuda.amp.autocast():
+            with torch.no_grad(), torch.amp.autocast("cuda"):
                 text_embeddings = clip_model.encode_text(token_value)
                 text_embebddings.append(text_embeddings.cpu().numpy())
             batch = []

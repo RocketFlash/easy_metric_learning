@@ -1,0 +1,10 @@
+type: magface
+s: 64
+l_a: 10
+u_a: 110
+l_margin: 0.45
+u_margin: 0.8
+lambda_g: 35
+easy_margin: True
+ls_eps: 0.1
+autoscale: False

@@ -3,15 +3,16 @@ from tqdm.auto import tqdm
 import pandas as pd
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
+from src.evaluator.rerank import is_rerank_enabled, rerank_from_config
 
 
 def cosine_similarity_chunks(X, Y, n_chunks=5, top_n=5, sparse=False):
     n_chunks = max(1, min(int(n_chunks), X.shape[0]))
-    top_n = min(top_n, X.shape[0])
+    top_n = min(top_n, Y.shape[0])
     ch_sz = X.shape[0] // n_chunks
 
-    best_top_n_vals = None
-    best_top_n_idxs = None
+    top_n_vals = []
+    top_n_idxs = []
 
     for i in tqdm(range(n_chunks)):
         chunk = (
@@ -20,39 +21,52 @@ def cosine_similarity_chunks(X, Y, n_chunks=5, top_n=5, sparse=False):
             else X[i * ch_sz : (i + 1) * ch_sz, :]
         )
         cosine_sim_matrix_i = cosine_similarity(chunk, Y)
-        best_top_n_vals, best_top_n_idxs = calculate_top_n(
+        chunk_top_n_vals, chunk_top_n_idxs = calculate_top_n(
             cosine_sim_matrix_i,
-            best_top_n_vals,
-            best_top_n_idxs,
-            curr_zero_idx=(i * ch_sz),
             n=top_n,
         )
-    return best_top_n_vals, best_top_n_idxs
+        top_n_vals.append(chunk_top_n_vals)
+        top_n_idxs.append(chunk_top_n_idxs)
+    return np.vstack(top_n_vals), np.vstack(top_n_idxs)
 
 
 def calculate_top_n(
-    sim_matrix, best_top_n_vals, best_top_n_idxs, curr_zero_idx=0, n=10
+    sim_matrix, best_top_n_vals=None, best_top_n_idxs=None, curr_zero_idx=0, n=10
 ):
-    n_rows, n_cols = sim_matrix.shape
-    total_matrix_vals = sim_matrix
-    total_matrix_idxs = (
-        np.tile(np.arange(n_rows).reshape(n_rows, 1), (1, n_cols)).astype(int)
-        + curr_zero_idx
-    )
-    if curr_zero_idx > 0:
-        total_matrix_vals = np.vstack((total_matrix_vals, best_top_n_vals))
-        total_matrix_idxs = np.vstack((total_matrix_idxs, best_top_n_idxs))
-    n = min(n, total_matrix_vals.shape[0])
-    res = np.argpartition(total_matrix_vals, -n, axis=0)[-n:]
-    res_vals = np.take_along_axis(total_matrix_vals, res, axis=0)
-    res_idxs = np.take_along_axis(total_matrix_idxs, res, axis=0)
+    del best_top_n_vals, best_top_n_idxs, curr_zero_idx
+    n = min(n, sim_matrix.shape[1])
+    top_n_idxs = np.argpartition(sim_matrix, -n, axis=1)[:, -n:]
+    top_n_vals = np.take_along_axis(sim_matrix, top_n_idxs, axis=1)
+    order = np.argsort(top_n_vals, axis=1)[:, ::-1]
+    top_n_vals = np.take_along_axis(top_n_vals, order, axis=1)
+    top_n_idxs = np.take_along_axis(top_n_idxs, order, axis=1)
+    return top_n_vals, top_n_idxs
 
-    del res, total_matrix_idxs, total_matrix_vals
-    return res_vals, res_idxs
+
+def remove_self_neighbors(best_top_n_idxs, distances, top_k):
+    filtered_idxs = []
+    filtered_distances = []
+    for query_index, (neighbor_idxs, neighbor_distances) in enumerate(
+        zip(best_top_n_idxs, distances)
+    ):
+        keep = neighbor_idxs != query_index
+        filtered_idxs.append(neighbor_idxs[keep][:top_k])
+        filtered_distances.append(neighbor_distances[keep][:top_k])
+    return (
+        np.asarray(filtered_idxs, dtype=best_top_n_idxs.dtype),
+        np.asarray(filtered_distances, dtype=distances.dtype),
+    )
 
 
 class BaseKNN:
-    def __init__(self, K=1, n_chunks=5, save_results=False, save_dir="./"):
+    def __init__(
+        self,
+        K=1,
+        n_chunks=5,
+        save_results=False,
+        save_dir="./",
+        rerank_config=None,
+    ):
         if isinstance(K, int):
             K = [K]
 
@@ -60,6 +74,7 @@ class BaseKNN:
         self.n_chunks = n_chunks
         self.save_results = save_results
         self.save_dir = Path(save_dir)
+        self.rerank_config = rerank_config
 
     def get_nearest_info(self, labels, best_top_n_idxs, distances, file_names=None):
         all_pred = []
@@ -93,15 +108,18 @@ class BaseKNN:
 
         top_k = max(self.K)
 
-        best_top_n_vals, best_top_n_idxs = cosine_similarity_chunks(
-            embeddings, embeddings, n_chunks=self.n_chunks, top_n=top_k + 1
-        )
+        if is_rerank_enabled(self.rerank_config):
+            best_top_n_idxs, distances = rerank_from_config(
+                embeddings, top_k=top_k, config=self.rerank_config
+            )
+        else:
+            best_top_n_vals, best_top_n_idxs = cosine_similarity_chunks(
+                embeddings, embeddings, n_chunks=self.n_chunks, top_n=top_k + 1
+            )
 
-        best_top_n_idxs = best_top_n_idxs.T
-        distances = best_top_n_vals.T
-
-        best_top_n_idxs = best_top_n_idxs[:, 1:]
-        distances = distances[:, 1:]
+            best_top_n_idxs, distances = remove_self_neighbors(
+                best_top_n_idxs, best_top_n_vals, top_k
+            )
 
         df_nearest = self.get_nearest_info(
             labels, best_top_n_idxs, distances, file_names=file_names

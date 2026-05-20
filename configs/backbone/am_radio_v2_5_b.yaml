@@ -1,0 +1,16 @@
+type: am_radio_v2_5_b
+family: radio
+# Loaded through torch.hub from NVIDIA RADIO; requires network/cache access.
+repo: NVlabs/RADIO
+entrypoint: radio_model
+version: radio_v2.5-b
+pretrained: True
+progress: True
+skip_validation: True
+resize_to_supported_resolution: True
+output_key: backbone
+freeze: False
+num_features: 768
+
+norm_mean: [0.0, 0.0, 0.0]
+norm_std:  [1.0, 1.0, 1.0]

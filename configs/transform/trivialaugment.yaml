@@ -1,0 +1,25 @@
+defaults:
+  - default
+  - _self_
+
+train:
+  order:
+    [
+      resize,
+      trivialaugment,
+      horizontal_flip,
+      random_brightness_contrast,
+      random_erasing,
+      normalize,
+      to_tensor
+    ]
+  trivialaugment:
+    _target_: src.transform.torchvision_policy.TorchvisionPolicy
+    policy: trivialaugment
+    p: 0.5
+  random_erasing:
+    _target_: src.transform.torchvision_policy.RandomErasing
+    scale: [0.02, 0.2]
+    ratio: [0.3, 3.3]
+    fill: 0
+    p: 0.25

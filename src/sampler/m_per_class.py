@@ -4,7 +4,7 @@ import collections
 import numpy as np
 
 
-def safe_random_choice(input_data, size):
+def safe_random_choice(input_data, size, rng=None):
     """
     Randomly samples without replacement from a sequence. It is "safe" because
     if len(input_data) < size, it will randomly sample WITH replacement
@@ -16,7 +16,9 @@ def safe_random_choice(input_data, size):
         An array of size "size", randomly sampled from input_data
     """
     replace = len(input_data) < size
-    return np.random.choice(input_data, size=size, replace=replace)
+    if rng is None:
+        return np.random.choice(input_data, size=size, replace=replace)
+    return rng.choice(input_data, size=size, replace=replace)
 
 
 def get_labels_to_indices(labels):
@@ -43,7 +45,14 @@ class MPerClassSampler(Sampler):
     each will be returned
     """
 
-    def __init__(self, labels, m, batch_size=8, length_before_new_iter=100000):
+    def __init__(
+        self,
+        labels,
+        m,
+        batch_size=8,
+        length_before_new_iter=100000,
+        seed=0,
+    ):
         if isinstance(labels, torch.Tensor):
             labels = labels.numpy()
         self.m_per_class = int(m)
@@ -52,6 +61,8 @@ class MPerClassSampler(Sampler):
         self.labels = list(self.labels_to_indices.keys())
         self.length_of_single_pass = self.m_per_class * len(self.labels)
         self.list_size = length_before_new_iter
+        self.seed = int(seed)
+        self.epoch = 0
         if self.batch_size is None:
             if self.length_of_single_pass < self.list_size:
                 self.list_size -= (self.list_size) % (self.length_of_single_pass)
@@ -68,20 +79,26 @@ class MPerClassSampler(Sampler):
     def __len__(self):
         return self.list_size
 
+    def set_epoch(self, epoch):
+        self.epoch = int(epoch)
+
     def __iter__(self):
+        rng = np.random.default_rng(self.seed + self.epoch)
         idx_list = [0] * self.list_size
         i = 0
         num_iters = self.calculate_num_iters()
         for _ in range(num_iters):
-            np.random.shuffle(self.labels)
+            labels = list(self.labels)
+            rng.shuffle(labels)
 
-            curr_label_set = self.labels[: self.batch_size // self.m_per_class]
+            curr_label_set = labels[: self.batch_size // self.m_per_class]
             for label in curr_label_set:
                 t = self.labels_to_indices[label]
                 idx_list[i : i + self.m_per_class] = safe_random_choice(
-                    t, size=self.m_per_class
+                    t, size=self.m_per_class, rng=rng
                 )
                 i += self.m_per_class
+        self.epoch += 1
         return iter(idx_list)
 
     def calculate_num_iters(self):

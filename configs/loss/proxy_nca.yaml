@@ -1,0 +1,9 @@
+losses:
+    - name: proxy_nca
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.proxy.ProxyNCALoss
+        in_features: ${embeddings_size}
+        out_features: ${n_classes}
+        temperature: 0.1

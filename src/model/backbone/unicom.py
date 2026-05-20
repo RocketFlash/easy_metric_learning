@@ -221,19 +221,20 @@ class Attention(nn.Module):
         self.proj = nn.Linear(dim, dim)
 
     def forward(self, x):
-        with torch.cuda.amp.autocast(True):
+        amp_enabled = x.is_cuda
+        with torch.amp.autocast("cuda", enabled=amp_enabled):
             B, L, D = x.shape
             qkv = (
                 self.qkv(x)
                 .reshape(B, L, 3, self.num_heads, D // self.num_heads)
                 .permute(2, 0, 3, 1, 4)
             )
-        with torch.cuda.amp.autocast(False):
+        with torch.amp.autocast("cuda", enabled=False):
             q, k, v = qkv[0].float(), qkv[1].float(), qkv[2].float()
             attn = (q @ k.transpose(-2, -1)) * self.scale
             attn = attn.softmax(dim=-1)
             x = (attn @ v).transpose(1, 2).reshape(B, L, D)
-        with torch.cuda.amp.autocast(True):
+        with torch.amp.autocast("cuda", enabled=amp_enabled):
             x = self.proj(x)
         return x
 
@@ -263,7 +264,7 @@ class Block(nn.Module):
         )
 
     def forward_impl(self, x):
-        with torch.cuda.amp.autocast(True):
+        with torch.amp.autocast("cuda", enabled=x.is_cuda):
             x = x + self.drop_path(self.attn(self.norm1(x)))
             x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x

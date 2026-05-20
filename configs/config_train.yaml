@@ -23,6 +23,7 @@ debug : False
 ddp: False
 
 embeddings_size: 512
+n_classes: 1000
 batch_size : 256
 epochs : 15
 fold: 0 
@@ -39,7 +40,15 @@ visualize_batch: True
 save_embeddings: False
 use_wandb  : True
 use_mlflow : True
+use_tensorboard: False
+use_aim: False
+use_neptune: False
 mlflow_server_uri : ${oc.env:MLFLOW_TRACKING_URI,''}
+tensorboard_log_dir:
+aim_repo:
+neptune_project:
+neptune_api_token: ${oc.env:NEPTUNE_API_TOKEN,''}
+neptune_mode: async
 
 amp: True
                   

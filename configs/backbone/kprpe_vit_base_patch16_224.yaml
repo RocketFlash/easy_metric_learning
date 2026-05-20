@@ -1,0 +1,14 @@
+type: kprpe_vit_base_patch16_224
+family: kprpe_timm
+model_type: vit_base_patch16_224
+pretrained: True
+freeze: False
+
+kprpe:
+  grid_size: [14, 14]
+  num_keypoints: 5
+  hidden_dim: 64
+  aggregate: mean
+
+norm_mean: [0.5, 0.5, 0.5]
+norm_std:  [0.5, 0.5, 0.5]

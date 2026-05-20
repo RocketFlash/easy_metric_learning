@@ -1,0 +1,9 @@
+type: iresnet200
+family: iresnet
+pretrained: False
+freeze: False
+dropout: 0.0
+num_features: 512
+
+norm_mean: [0.5, 0.5, 0.5]
+norm_std:  [0.5, 0.5, 0.5]

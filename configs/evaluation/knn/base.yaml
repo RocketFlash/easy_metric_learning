@@ -1,3 +1,11 @@
 type: base
 n_chunks: 5
 save_results: False
+
+rerank:
+  enabled: False
+  # k-reciprocal re-ranking builds dense NxN distances; keep disabled for
+  # million-scale galleries unless a chunked variant is added.
+  k1: 20
+  k2: 6
+  lambda_value: 0.3

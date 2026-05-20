@@ -58,11 +58,13 @@ class DDPEvaluator(BaseEvaluator):
         else:
             file_names = list(file_names)
 
+        used_metric_gather = False
         if getattr(self.accelerator, "num_processes", 1) > 1:
             try:
                 file_names = self.accelerator.gather_for_metrics(
                     file_names, use_gather_object=True
                 )
+                used_metric_gather = True
             except TypeError:
                 try:
                     from accelerate.utils import gather_object
@@ -75,6 +77,12 @@ class DDPEvaluator(BaseEvaluator):
         if len(file_names) < batch_size:
             raise RuntimeError(
                 f"Gathered {len(file_names)} file names for a DDP batch of {batch_size}"
+            )
+        if len(file_names) > batch_size and not used_metric_gather:
+            raise RuntimeError(
+                "Object-gathered file names include padded DDP samples that cannot be "
+                "safely aligned with gather_for_metrics embeddings. Upgrade Accelerate "
+                "to use gather_for_metrics(..., use_gather_object=True)."
             )
 
         return file_names[:batch_size]

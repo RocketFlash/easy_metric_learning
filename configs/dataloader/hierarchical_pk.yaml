@@ -1,0 +1,11 @@
+batch_size: ${batch_size}
+n_workers: ${n_workers}
+pin_memory: True
+
+sampler:
+  type: hierarchical_pk
+  groups_per_batch: 4
+  labels_per_group: 4
+  samples_per_label: 4
+  length_before_new_iter: 100000
+  seed: ${random_state}

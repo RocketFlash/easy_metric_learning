@@ -1,0 +1,13 @@
+losses:
+    - name: uniface_uce
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.uniface.UnifiedCrossEntropyLoss
+        in_features: ${embeddings_size}
+        out_features: ${n_classes}
+        m: 0.4
+        s: 64
+        l: 1.0
+        sample_rate: 1.0
+        min_sample_classes: 0

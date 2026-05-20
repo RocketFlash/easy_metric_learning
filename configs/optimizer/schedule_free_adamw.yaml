@@ -1,0 +1,10 @@
+type: schedule_free_adamw
+optimizer:
+  _target_: src.optimizer.schedule_free_adamw.ScheduleFreeAdamW
+  eps: 1e-8
+  weight_decay: 1e-2
+  lr: 1e-3
+  betas: [0.9, 0.999]
+  averaging: 0.9
+
+backbone_lr_scaler: ${backbone_lr_scaler}

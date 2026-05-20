@@ -4,6 +4,6 @@ optimizer:
   rho: 0.04
   weight_decay: 1e-5
   lr: 1e-3
+  bs: ${batch_size}
 
 backbone_lr_scaler: 1e-3
-  

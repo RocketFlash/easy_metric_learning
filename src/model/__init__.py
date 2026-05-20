@@ -1,5 +1,5 @@
 import omegaconf
-from .model import MLNet, get_model_embeddings
+from .model import EmbeddingsNet, MLNet, get_model_embeddings
 from .margin import get_margin
 from ..utils import load_checkpoint
 

@@ -10,11 +10,15 @@ from pathlib import Path
 from omegaconf import OmegaConf
 
 from src.data import get_train_data_from_config, get_test_data_from_config
+from src.config import validate_training_config
 from src.model import get_model
 from src.optimizer import get_optimizer
 from src.logger import Logger
 from src.data.utils import save_labels_to_ids
 from src.trainer import get_trainer
+from src.trainer.compile import maybe_compile_model
+from src.trainer.fsdp import maybe_wrap_fsdp
+from src.trainer.hard_negative_cache import maybe_refresh_hard_negative_cache
 from src.evaluator import get_evaluator
 from src.experiment_tracker import get_experiment_trackers
 from src.utils import (
@@ -31,6 +35,7 @@ from src.utils import (
 @hydra.main(version_base=None, config_path="../configs/", config_name="config_train")
 def train(config):
     seed_everything(config.random_state)
+    validate_training_config(config)
 
     if config.distillation.teacher.model is not None:
         config.run_name = f"distill_{config.backbone.type}_{config.head.type}_{config.dataset.name}{config.run_info}"
@@ -40,6 +45,7 @@ def train(config):
         config.n_workers = multiprocessing.cpu_count()
 
     accelerator = None
+    optimizer_config = config.optimizer
     if config.ddp:
         from accelerate import Accelerator
         from accelerate.utils import set_seed
@@ -51,7 +57,10 @@ def train(config):
             gradient_accumulation_steps=config.train.trainer.grad_accum_steps,
             step_scheduler_with_optimizer=False,
         )
-        config.optimizer.optimizer.lr *= accelerator.num_processes
+        optimizer_config = OmegaConf.create(
+            OmegaConf.to_container(config.optimizer, resolve=False)
+        )
+        optimizer_config.optimizer.lr *= accelerator.num_processes
 
     work_dir = Path(config.work_dirs) / config.run_name
     work_dir.mkdir(exist_ok=True, parents=True)
@@ -70,6 +79,8 @@ def train(config):
     save_paths = get_save_paths(work_dir)
     data_info_train = get_train_data_from_config(config, logger=logger)
     data_infos_test = get_test_data_from_config(config, logger=logger)
+    config.n_classes = data_info_train.train.dataset_stats.n_classes
+    OmegaConf.save(config, work_dir / "config_train.yaml")
 
     train_loader = data_info_train.train.dataloader
     valid_loader = data_info_train.valid.dataloader
@@ -96,7 +107,7 @@ def train(config):
 
     logger.info_model(config)
 
-    optimizer = get_optimizer(model=model, optimizer_config=config.optimizer)
+    optimizer = get_optimizer(model=model, optimizer_config=optimizer_config)
 
     if config.load_checkpoint is not None:
         checkpoint_data = load_checkpoint(
@@ -129,8 +140,11 @@ def train(config):
             if hasattr(model, "embeddings_net"):
                 model = model.embeddings_net
 
+    model = maybe_compile_model(model, config)
+
     if config.ddp:
         device = accelerator.device
+        model = maybe_wrap_fsdp(model, config)
         model, optimizer, train_loader = accelerator.prepare(
             model, optimizer, train_loader
         )
@@ -168,6 +182,20 @@ def train(config):
     start_time = time.time()
     for epoch in range(start_epoch, config.epochs + 1):
         stats_train = trainer.train_epoch(train_loader)
+        if hasattr(trainer, "get_eval_model"):
+            cache_model = trainer.get_eval_model()
+        else:
+            cache_model = model
+        maybe_refresh_hard_negative_cache(
+            config,
+            model=cache_model,
+            data_loader=train_loader,
+            work_dir=work_dir,
+            device=device,
+            epoch=epoch,
+            logger=logger,
+            accelerator=accelerator,
+        )
         if valid_loader is not None:
             stats_valid = trainer.valid_epoch(valid_loader)
         else:
@@ -176,6 +204,10 @@ def train(config):
         trainer.update_epoch()
 
         eval_stats = {}
+        if hasattr(trainer, "get_eval_model"):
+            evaluator.model = trainer.get_eval_model()
+        if hasattr(optimizer, "eval"):
+            optimizer.eval()
         for data_info in data_infos_test:
             logger.info(f"Model evaluation on {data_info.dataset_name}")
             eval_metrics = evaluator.evaluate(data_info)
@@ -184,6 +216,8 @@ def train(config):
             logger.info(f"{data_info.dataset_name} metrics:")
             for k_metric, v_metric in eval_metrics.items():
                 logger.info(f"{k_metric}: {v_metric}")
+        if hasattr(optimizer, "train"):
+            optimizer.train()
 
         save_ckp(
             save_paths.last_weights_path,
@@ -201,6 +235,27 @@ def train(config):
             emb_model_only=True,
             accelerator=accelerator,
         )
+
+        if (
+            hasattr(trainer, "averaged_model")
+            and trainer.averaged_model is not None
+            and int(trainer.averaged_model.n_averaged.item()) > 0
+        ):
+            averaged_model = trainer.get_eval_model()
+            save_ckp(
+                save_paths.last_averaged_weights_path,
+                model=averaged_model,
+                epoch=epoch,
+                best_criterion_val=best_criterion_val,
+                criterion=config.train.best_model_criterion.criterion,
+                accelerator=accelerator,
+            )
+            save_ckp(
+                save_paths.last_averaged_emb_weights_path,
+                model=averaged_model,
+                emb_model_only=True,
+                accelerator=accelerator,
+            )
 
         if is_main_process(accelerator):
             stats = dict(
@@ -226,6 +281,16 @@ def train(config):
                 shutil.copyfile(
                     save_paths.last_emb_weights_path, save_paths.best_emb_weights_path
                 )
+                if save_paths.last_averaged_weights_path.is_file():
+                    shutil.copyfile(
+                        save_paths.last_averaged_weights_path,
+                        save_paths.best_averaged_weights_path,
+                    )
+                if save_paths.last_averaged_emb_weights_path.is_file():
+                    shutil.copyfile(
+                        save_paths.last_averaged_emb_weights_path,
+                        save_paths.best_averaged_emb_weights_path,
+                    )
                 logger.info(
                     f"Best model was saved based on {config.train.best_model_criterion.criterion}"
                 )

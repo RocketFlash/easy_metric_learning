@@ -54,13 +54,10 @@ train:
     blur_limit: [3, 5]
     p: 0.1
   coarse_dropout:
-    _target_ : albumentations.CoarseDropout
-    max_holes: 8
-    min_holes: 4
-    max_height: 40
-    max_width: 40
-    min_height: 20
-    min_width: 20
+    _target_ : src.transform.albumentations_compat.coarse_dropout
+    num_holes_range: [4, 8]
+    hole_height_range: [20, 40]
+    hole_width_range: [20, 40]
     p: 0.2
   gauss_noise:
     _target_ : albumentations.GaussNoise
@@ -130,5 +127,13 @@ cutmix:
 mixup:
   p: 0
   alpha: 0.5
+
+transface_dpap:
+  enabled: False
+  patch_grid: [12, 12]
+  top_k: 7
+  probability: 0.2
+  alpha: 1.0
+  ratio: 1.0
 
 maintain_aspect_ratio: False

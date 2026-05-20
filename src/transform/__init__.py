@@ -1,5 +1,6 @@
 import albumentations as A
 from .mix import mix_transform
+from .transface import DynamicPatchAmplitudeMix
 
 import hydra
 from torchvision import transforms

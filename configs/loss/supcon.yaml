@@ -1,0 +1,8 @@
+losses:
+    - name: supcon
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.pair.SupervisedContrastiveLoss
+        temperature: 0.07
+        base_temperature: 0.07

@@ -21,6 +21,9 @@ def get_dataset(root_dir, df_annos, transform, labels_to_ids, dataset_config):
             label_column=dataset_config.label_column,
             fname_column=dataset_config.fname_column,
             use_bboxes=dataset_config.use_bboxes,
+            keypoints_column=getattr(dataset_config, "keypoints_column", None),
+            num_keypoints=getattr(dataset_config, "num_keypoints", None),
+            group_column=getattr(dataset_config, "group_column", None),
         )
 
     return dataset

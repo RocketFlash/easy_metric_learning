@@ -1,0 +1,14 @@
+losses:
+    - name: boundaryface
+      weight: 1
+      input: embeddings
+      loss_fn:
+        _target_: src.loss.boundaryface.BoundaryFaceLoss
+        in_features: ${embeddings_size}
+        out_features: ${n_classes}
+        s: 64
+        m: 0.5
+        boundary_margin: 0.05
+        correction_threshold: 0.35
+        correction_weight: 0.2
+        easy_margin: False

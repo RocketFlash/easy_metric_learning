@@ -1,0 +1,10 @@
+losses:
+    - name: transface_ehsm
+      weight: 1
+      loss_fn:
+        _target_: src.loss.transface.TransFaceEntropyMiningLoss
+        gamma: 1.0
+        hard_fraction: 1.0
+        easy_fraction: 0.0
+        easy_weight: 1.0
+        weight_by_entropy: True
